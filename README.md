@@ -18,10 +18,17 @@ Whether you're looking to fine-tune models, deploy to edge devices, or build com
 
 ## What are you looking for?
 
-- [Fine-tune an LFM2 model](#fine-tune-an-lfm2-model) - Customize Liquid models to your specific use case
-- [Deploy to an edge device](#deploy-to-an-edge-device) - Run models on mobile, both Android and iOS.
-- [End-to-end tutorials](#end-2-end-tutorials) - Complete walkthroughs from setup to production.
-- [Examples built by our community](#examples-built-by-our-community) - Working demos you can run and modify
+- [Local agentic workflow examples](#local-agentic-workflow-examples)
+- [Fine tune an LFM2 model](#fine-tune-an-lfm2-model)
+- [Deploy an LFM2 model to an iOS or Android device](#deploy-to-an-edge-device)
+- [End-to-end tutorials](#end-2-end-tutorials). Complete walkthroughs from setup to production.
+- [Apps built by our community](#examples-built-by-our-community) that you can run and modify
+
+## Local agentic workflow examples
+
+| Name | What's that? |  |
+|-------|-----------|---------------|
+| **invoice-parser** | A Python CLI that extracts structured data from bill pictures using a 2-step agentic workflow | [▶️ Go to the code](./examples/invoice-parser/) |
 
 ## Fine-Tune an LFM2 model
 
