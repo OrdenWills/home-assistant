@@ -8,7 +8,6 @@
     <a href="https://discord.gg/DFU3WQeaYD"><img src="https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white" alt="Join Discord"></a>&nbsp&nbsp</a>
 </p>
 
----
 
 ## Welcome dear developer!
 
@@ -102,8 +101,8 @@ Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to mak
 
 | Platform | Example |  |
 |-------|-----------|---------------|
-| **Android** | LeapChat: A simple chat-style app allowing the users to chat with the model | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
-|  | SloganApp: Single turn generation for marketing. The UI is implemented with Android Views.| [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/SloganApp) |
+| **Android** | LeapChat: A comprehensive chat application with real-time token streaming, persistent message history, and modern chat UI featuring message bubbles and typing indicators | [🤖 Tutorial](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
+|  | SloganApp: Single turn generation for marketing. The UI is implemented with Android Views.| [🤖 Tutorial](./examples/leap-slogan-example-ios/README.md) |
 |  | ShareAI: Website summary generator | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
 |  | Recipe Generator: Structured output generation with the LEAP SDK | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/RecipeGenerator) |
 |  | Visual Language Model example | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/VLMExample) |

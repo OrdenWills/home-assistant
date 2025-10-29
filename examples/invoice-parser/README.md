@@ -1,17 +1,84 @@
 # Invoice Extractor Tool
 
-## What's this example?
-This is an automated invoice processing tool that monitors a folder for new invoice files and automatically extracts key information from them.
+## What is this?
+A Python CLI that monitors a folder for new invoice files and automatically extracts key information from them.
 
-When you drop an invoice photo into a watched directory, the tool uses a chain with 2 language models:
+When you drop an invoice photo into a watched directory, the tool uses a chain with 2 local language models
 
-- [LFM2-VL-3B](https://huggingface.co/LiquidAI/LFM2-VL-3B) -> local Vision Language Model to extract a textual description of the invoice
+1. [LFM2-VL-3B](https://huggingface.co/LiquidAI/LFM2-VL-3B) extracts a raw textual description from an invoice picture.
 
-- [LFM2-1.2B-Extract](https://huggingface.co/LiquidAI/LFM2-1.2B-Extract) -> local unstructured-to-structured text-to-text Language Model that tranforms the raw text into a structured record. This record is appended to a CSV file.
+2. [LFM2-1.2B-Extract](https://huggingface.co/LiquidAI/LFM2-1.2B-Extract) tranforms the raw textual description into a structured record. This record is appended to a CSV file.
+
+This a practical example of building agentic workflows that run entirely on your local machine: no API keys, no cloud costs, no private data shared with third-parties.
 
 ![](./media/chain_diagram.gif)
 
-This a practical example of building agentic workflows that run entirely on your local machine: no API keys, no cloud costs, no private data shared with third-parties.
+## Features
+
+- Automatic invoice processing using [Liquid Nanos](https://huggingface.co/collections/LiquidAI/liquid-nanos).
+- Structured outputs using Pydantic models for type-safe data extraction
+- Real-time directory monitoring with file system events
+- Two-stage extraction pipeline (image-to-text → text-to-structured data)
+
+
+## Project Structure
+
+```
+invoice-parser/
+├── pyproject.toml              # Python project configuration
+├── uv.lock                     # Dependency lock file
+├── Makefile                    # Build automation
+├── README.md                   # This file
+├── invoices/                   # Sample invoice images
+│   ├── Sample-electric-Bill-2023.jpg
+│   ├── british_gas.png
+│   └── water_australia.png
+├── media/                      # Documentation assets
+│   └── chain_diagram.gif
+└── src/                        # Source code
+    └── invoice_parser/
+        ├── __init__.py         # Package initialization
+        ├── main.py             # CLI entry point
+        ├── invoice_processor.py # AI processing pipeline
+        ├── invoice_file_handler.py # File monitoring & CSV export
+        └── py.typed            # Type checking marker
+```
+
+## Code Overview
+
+### Key Components
+
+**InvoiceProcessor**: Manages AI model pipeline
+```python
+class InvoiceProcessor:
+    def __init__(self, extractor_model: str, image_process_model: str):
+        self.extractor_model = extractor_model
+        self.image_process_model = image_process_model
+    
+    def process(self, image_path: str) -> InvoiceData | None:
+        invoice_text = self.image2text(image_path)
+        return self.text2json(invoice_text)
+```
+
+**InvoiceFileHandler**: Monitors directory for new files
+```python
+class InvoiceFileHandler(FileSystemEventHandler):
+    def on_created(self, event):
+        if self._is_image_file(event.src_path):
+            self.process_invoice(event.src_path)
+    
+    def process_invoice(self, image_path: str):
+        bill_data = self.processor.process(image_path)
+        self.append_to_csv(bill_data)
+```
+
+**Pydantic Models**: Type-safe data structures
+```python
+class InvoiceData(BaseModel):
+    utility: str
+    amount: float
+    currency: str
+```
 
 ## Environment setup
 
