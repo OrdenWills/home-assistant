@@ -159,7 +159,7 @@ To improve the tool you need to:
 
 If you are interested in learning more about model customization for Vision Language Models, we recommend you to check out the following example:
 
-- [Cats vs dogs identification from images](/examples/customize-models/cats-vs-dogs-identification-from-images)
+- [Cats vs dogs identification from images](https://github.com/Paulescu/image-classification-with-local-vlms/tree/main)
 
 
 ## Need help?
