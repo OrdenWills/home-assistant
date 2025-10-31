@@ -1,84 +1,33 @@
-# Invoice Extractor Tool
+# Invoice extractor tool
 
-## What is this?
-A Python CLI that monitors a folder for new invoice files and automatically extracts key information from them.
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-purple?style=for-the-badge&logo=github)](https://github.com/Liquid4All/cookbook/tree/main/examples/invoice-parser)
 
-When you drop an invoice photo into a watched directory, the tool uses a chain with 2 local language models
-
-1. [LFM2-VL-3B](https://huggingface.co/LiquidAI/LFM2-VL-3B) extracts a raw textual description from an invoice picture.
-
-2. [LFM2-1.2B-Extract](https://huggingface.co/LiquidAI/LFM2-1.2B-Extract) tranforms the raw textual description into a structured record. This record is appended to a CSV file.
+A Python CLI that monitors a folder for new invoice files and automatically extracts key information from them using
+two Liquid Foundational Models.
 
 This a practical example of building agentic workflows that run entirely on your local machine: no API keys, no cloud costs, no private data shared with third-parties.
 
+## What's inside?
+
+In this example, you will learn how to:
+
+- **Chain multiple Liquid Foundational Models** to build a complete workflow that processes visual data (invoice images) and extracts structured information
+- **Set up local AI inference** using Ollama to run Liquid models entirely on your machine without requiring cloud services or API keys
+- **Build a file monitoring system** that automatically processes new files dropped into a directory
+- **Extract text from images** using the LFM2-VL-3B vision-language model for optical character recognition
+- **Transform unstructured text into structured data** using the LFM2-1.2B-Extract model for information extraction
+- **Create agentic workflows** that combine multiple AI models to solve real-world business problems while keeping your data private and secure
+
+
+## Understanding the architecture
+
+When you drop an invoice photo into a watched directory, the tool uses a chain with 2 Liquid Foundational Models:
+
+1. [LFM2-VL-3B](https://huggingface.co/LiquidAI/LFM2-VL-3B) extracts a raw textual description from an invoice picture.
+2. [LFM2-1.2B-Extract](https://huggingface.co/LiquidAI/LFM2-1.2B-Extract) tranforms the raw textual description into a structured record. This record is appended to a CSV file.
+
 ![](./media/chain_diagram.gif)
 
-## Features
-
-- Automatic invoice processing using [Liquid Nanos](https://huggingface.co/collections/LiquidAI/liquid-nanos).
-- Structured outputs using Pydantic models for type-safe data extraction
-- Real-time directory monitoring with file system events
-- Two-stage extraction pipeline (image-to-text → text-to-structured data)
-
-
-## Project Structure
-
-```
-invoice-parser/
-├── pyproject.toml              # Python project configuration
-├── uv.lock                     # Dependency lock file
-├── Makefile                    # Build automation
-├── README.md                   # This file
-├── invoices/                   # Sample invoice images
-│   ├── Sample-electric-Bill-2023.jpg
-│   ├── british_gas.png
-│   └── water_australia.png
-├── media/                      # Documentation assets
-│   └── chain_diagram.gif
-└── src/                        # Source code
-    └── invoice_parser/
-        ├── __init__.py         # Package initialization
-        ├── main.py             # CLI entry point
-        ├── invoice_processor.py # AI processing pipeline
-        ├── invoice_file_handler.py # File monitoring & CSV export
-        └── py.typed            # Type checking marker
-```
-
-## Code Overview
-
-### Key Components
-
-**InvoiceProcessor**: Manages AI model pipeline
-```python
-class InvoiceProcessor:
-    def __init__(self, extractor_model: str, image_process_model: str):
-        self.extractor_model = extractor_model
-        self.image_process_model = image_process_model
-    
-    def process(self, image_path: str) -> InvoiceData | None:
-        invoice_text = self.image2text(image_path)
-        return self.text2json(invoice_text)
-```
-
-**InvoiceFileHandler**: Monitors directory for new files
-```python
-class InvoiceFileHandler(FileSystemEventHandler):
-    def on_created(self, event):
-        if self._is_image_file(event.src_path):
-            self.process_invoice(event.src_path)
-    
-    def process_invoice(self, image_path: str):
-        bill_data = self.processor.process(image_path)
-        self.append_to_csv(bill_data)
-```
-
-**Pydantic Models**: Type-safe data structures
-```python
-class InvoiceData(BaseModel):
-    utility: str
-    amount: float
-    currency: str
-```
 
 ## Environment setup
 
@@ -132,7 +81,14 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 
 ## How to run it?
 
-For example:
+Let's start by cloning the repository:
+
+```sh
+git clone https://github.com/Liquid4All/cookbook.git
+cd cookbook/examples/invoice-parser
+```
+
+Then, run the application using the invoices that are already in the repository:
 ```sh
 uv run python src/invoice_parser/main.py \
     --dir invoices/ \
@@ -141,15 +97,73 @@ uv run python src/invoice_parser/main.py \
     --process-existing
 ```
 
-## Further improvements
 
-Here is a list of features I challenge you to implement:
+Feel free to modify the path to the invoices directory and the model IDs to suit your needs.
 
-- [ ] Add a system prompt in the VLM to identify and discard images that do not correspond to bills.
-- [ ] Add an on_delete handler to keep in sync the list of invoices in the directory and the `bills.csv` file.
+> [!NOTE]
+>
+> You can use the 1.6B version of the VLM model and the 350M version of the extractor model as follows:
+> 
+> ```sh
+> uv run python src/invoice_parser/main.py \
+>     --dir invoices/ \
+>     --image-model hf.co/LiquidAI/LFM2-VL-1.6B-GGUF:F16 \
+>     --extractor-model hf.co/LiquidAI/LFM2-350M-Extract-GGUF:F16 \
+>     --process-existing
+> ```
+
+If you have `make` installed, you can run the application with the following command:
+```sh
+make run
+```
+
+The data extracted from the invoices is be saved in the same directory as the invoices, in a file called `bills.csv`.
+If you open the file, you will see the following data:
+
+| processed_at | file_path | utility | amount | currency |
+|--------------|-----------|---------|--------|----------|
+| 2025-10-31 11:25:47 | invoices/water_australia.png | electricity | 68.46 | AUD |
+| 2025-10-31 11:26:00 | invoices/Sample-electric-Bill-2023.jpg | electricity | 28.32 | USD |
+| 2025-10-31 11:26:09 | invoices/british_gas.png | electricity | 81.31 | GBP |
+| 2025-10-31 11:42:35 | invoices/castlewater1.png | electricity | 150.0 | USD |
+
+Observations:
+- The first 3 invoices are properly extracted, with the correct amount and currency.
+- The fourth invoice is not properly extracted, where both amount and currency are not correct.
+
+## How to improve it?
+
+We have a tool that works well 75% of the time on our sample of invoices, which is
+
+- good enough for a demo
+- not good enough for a production-ready application
+
+To improve the tool you need to:
+
+- Collect more invoices
+- Collect model input and outputs at each step of the pipeline, including
+    - the VLM model input and output
+    - the extractor model input and output
+- Flag and correct (input, output) pairs that are not properly extracted
+- Fine-tune the model(s) on the corrected (input, output) pairs
+
+> [!NOTE]
+>
+> Our tool uses two Liquid Foundational Models:
+> - LFM2-VL-3B for vision-language understanding
+> - LFM2-1.2B-Extract for information extraction
+> 
+> LFM2-1.2B-Extract is a highly specialized model for structurd data extraction from text. So the problem is likely not here.
+> On the other hand, LFM2-VL-3B is a more general-purpose model for vision-language understanding,
+> which has not necessarily been trained on the task of invoice extraction. This is the first place to look for improvements.
+
+If you are interested in learning more about model customization for Vision Language Models, we recommend you to check out the following example:
+
+- [Cats vs dogs identification from images](/examples/customize-models/cats-vs-dogs-identification-from-images)
 
 
-## Wanna learn more about building prod-ready local agentic workflows?
+## Need help?
 
-<a href="https://discord.gg/DFU3WQeaYD"><img src="https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white" alt="Join Discord"></a></a>
+Join the [Liquid AI Discord Community](https://discord.gg/DFU3WQeaYD) and ask.
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
 
