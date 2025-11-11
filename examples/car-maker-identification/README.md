@@ -1,7 +1,5 @@
 # Fine tuning LFM2-VL to identify car makers from images
 
-<!-- [![GitHub](https://img.shields.io/badge/GitHub-Repository-purple?style=for-the-badge&logo=github)](https://github.com/Liquid4All/cookbook/tree/main/examples/car-maker-identification) -->
-
 [![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
 
 A step by step guide on fine tuning a Vision Language Model for image identification tasks. The task we solve in this example is to identify the car maker from an image, but the learnings transfer to any other image classification task you might be interested in.
@@ -17,12 +15,11 @@ A step by step guide on fine tuning a Vision Language Model for image identifica
   - [Modal setup](#modal-setup)
   - [Weights & Biases setup](#weights--biases-setup)
   - [Install make](#install-make)
-- [Steps](#steps-to-build-an-accurate-image-classification-model)
+- [Steps](#steps-to-fine-tune-lfm2-vl-for-this-task)
 - [Step 1. Dataset preparation](#step-1-dataset-preparation)
 - [Step 2. Baseline performance of LFM2-VL models](#step-2-baseline-performance-of-lfm2-vl-models)
-- [Step 3. Structured generation to increase model robustness](#step-3-fine-tune-lfm2-vl-models)
-- [Step 4. Fine tuning experiments with LoRA](#step-4-evaluate-the-fine-tuned-model)
-- [Step 5. Fine tuning the most promising model until we overfit on the eval dataset]()
+- [Step 3. Structured generation to increase model robustness](#step-3-structured-generation-to-increase-model-robustness)
+- [Step 4. Fine tuning with LoRA](#step-4-fine-tuning-with-lora)
 - [What's next?](#whats-next)
 
 

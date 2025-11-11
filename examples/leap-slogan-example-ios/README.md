@@ -2,6 +2,8 @@
 
 [![GitHub](https://img.shields.io/badge/GitHub-Repository-blue?style=for-the-badge&logo=github)](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapSloganExample)
 
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+
 A simple iOS app that generates creative slogans using local AI models, with no internet connection required.
 
 ## What's inside?

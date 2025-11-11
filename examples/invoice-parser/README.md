@@ -1,6 +1,6 @@
 # Invoice extractor tool
 
-[![GitHub](https://img.shields.io/badge/GitHub-Repository-purple?style=for-the-badge&logo=github)](https://github.com/Liquid4All/cookbook/tree/main/examples/invoice-parser)
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
 
 A Python CLI that monitors a folder for new invoice files and automatically extracts key information from them using
 two Liquid Foundational Models.
