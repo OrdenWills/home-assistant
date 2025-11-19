@@ -9,13 +9,13 @@
 </p>
 
 
-## Welcome dear developer!
+## Welcome dear developer! 👋
 
-This repository contains **examples**, **tutorials**, and **applications** for building with Liquid AI open-weight models and the open-source LEAP SDK.
+This repository contains **examples**, **tutorials**, and **applications** built with Liquid AI open-weight models and the open-source LEAP SDK.
 
-Whether you're looking to fine-tune models, deploy to edge devices, or build complete applications, you'll find resources here to get started.
+Whether you're looking to customize models, deploy to laptops, edge devices, or build complete applications, you'll find resources here to get started.
 
-## What are you looking for?
+## What are you looking for? 🔍
 
 - [Local agentic workflow examples](#local-agentic-workflow-examples)
 - [Fine tune an LFM2 model](#fine-tune-an-lfm2-model)
@@ -23,13 +23,16 @@ Whether you're looking to fine-tune models, deploy to edge devices, or build com
 - [End-to-end tutorials](#end-2-end-tutorials). Complete walkthroughs from setup to production.
 - [Apps built by our community](#examples-built-by-our-community) that you can run and modify
 
-## Local agentic workflow examples
+## Local agentic workflow examples 🤖
 
 | Name | What's that? |  |
 |-------|-----------|---------------|
 | **invoice-parser** | A Python CLI that extracts structured data from bill pictures using a 2-step agentic workflow | [▶️ Go to the code](./examples/invoice-parser/) |
+| **audio-transcription-cli** | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [▶️ Go to the code](./examples/audio-transcription-cli/) |
 
-## Fine-Tune an LFM2 model
+
+
+## Fine-Tune an LFM2 model 🎯
 
 ### LFM2 (Text-to-text)
 
@@ -93,7 +96,7 @@ LFM2-VL is our first series of vision-language models, designed for on-device de
 | [LFM2-VL-450M](https://huggingface.co/LiquidAI/LFM2-VL-450M) | Supervised Fine Tuning (TRL) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1csXCLwJx7wI7aruudBp6ZIcnqfv8EMYN?usp=sharing) |
 
 
-## Deploy to an edge device
+## Deploy to an edge device 📱
 
 The [LEAP Edge SDK](https://leap.liquid.ai/docs/edge-sdk/overview) is our native framework for running LFM2 models on mobile devices.
 
@@ -114,7 +117,7 @@ Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to mak
 
 
 
-## End-2-end Tutorials
+## End-2-end Tutorials 📚
 
 Complete end-to-end tutorials that take you from setup to deployment.
 
@@ -124,13 +127,15 @@ Complete end-to-end tutorials that take you from setup to deployment.
 | Let's build a Chess game using small and local Large Language Models | [▶️ Go to the repo](https://github.com/Paulescu/chess-game) ![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/chess-game) |
 
 
-## Examples built by our community
+## Examples built by our community 🌟
 
 Working applications that demonstrate Liquid models in action.
 
 | Project | Repository |
 |---------|------------|
 | TranslatorLens: Building An Offline Translation Camera | [▶️ Go to the repo](https://github.com/linmx0130/TranslatorLens) ![GitHub Repo stars](https://img.shields.io/github/stars/linmx0130/TranslatorLens) |
+| Food Images Fine-tuning | [▶️ Go to the repo](https://github.com/benitomartin/food-images-finetuning) ![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning) |
+
 
 
 <!-- Detailed documentation for working with Liquid models:
@@ -141,14 +146,14 @@ Working applications that demonstrate Liquid models in action.
 - [Data Processing](docs/api/data.md) - Dataset handling and preprocessing -->
 
 
-## Contributing
+## Contributing 🤝
 
 We welcome contributions!
 
 - Open a PR with a link to your project github repo in the `Examples built by our community` section.
 
 
-## Support
+## Support 💬
 
-- **Documentation:** [https://leap.liquid.ai/docs](https://leap.liquid.ai/docs)
-- **Discord:** [Join our community 🤗](https://discord.gg/DFU3WQeaYD)
+- 📖 [Liquid AI Documentation](https://leap.liquid.ai/docs)
+- 💬 [Join our community on Discord](https://discord.gg/DFU3WQeaYD)

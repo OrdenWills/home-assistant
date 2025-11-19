@@ -1,0 +1,25 @@
+[project]
+name = "audio-transcription-cli"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Paulescu", email = "plabartabajo@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "pyaudio>=0.2.11",
+    "numpy>=1.24.0",
+    "soundfile>=0.12.1",
+    "scipy>=1.10.0",
+    "pydantic-settings>=2.0.0",
+    "pygame>=2.1.0",
+    "huggingface_hub>=0.20.0",
+]
+
+[project.scripts]
+transcribe = "audio_transcription_cli.transcribe:cli"
+
+[build-system]
+requires = ["uv_build>=0.9.8,<0.10.0"]
+build-backend = "uv_build"
