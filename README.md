@@ -1,8 +1,8 @@
 <h1 align="center">Liquid AI Cookbook</h1>
-<p align="center"><em>Build with LFM2 Models and the LEAP SDK</em></p>
+<p align="center"><em>Build with Liquid AI Models and the Liquid Edge AI Platform</em></p>
 
 <p align="center">
-    🌊 <a href="https://leap.liquid.ai/docs"><b>Documentation</b></a>&nbsp&nbsp | &nbsp&nbsp🤗 <a href="https://huggingface.co/LiquidAI">Hugging Face</a>&nbsp&nbsp | &nbsp&nbsp🚀 <a href="https://leap.liquid.ai">LEAP Edge SDK</a>&nbsp&nbsp | &nbsp&nbsp📚 <a href="#end-2-end-tutorials">Tutorials</a>&nbsp&nbsp | &nbsp&nbsp🏗️ <a href="#examples-built-by-our-community">Community Examples</a>
+    🌊 <a href="https://docs.liquid.ai/"><b>Liquid Docs</b></a>&nbsp&nbsp | &nbsp&nbsp🤗 <a href="https://huggingface.co/LiquidAI">Hugging Face</a>&nbsp&nbsp | &nbsp&nbsp🚀 <a href="https://leap.liquid.ai">Liquid Edge AI Platform</a>
 </p>
 <p align="center">
     <a href="https://discord.gg/DFU3WQeaYD"><img src="https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white" alt="Join Discord"></a>&nbsp&nbsp</a>
