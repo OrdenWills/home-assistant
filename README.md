@@ -17,11 +17,11 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 
 ## What are you looking for? 🔍
 
-- [Local agentic workflow examples](#local-agentic-workflow-examples)
-- [Fine tune an LFM2 model](#fine-tune-an-lfm2-model)
-- [Deploy an LFM2 model to an iOS or Android device](#deploy-to-an-edge-device)
-- [End-to-end tutorials](#end-2-end-tutorials). Complete walkthroughs from setup to production.
-- [Apps built by our community](#examples-built-by-our-community) that you can run and modify
+- [Local agentic workflow examples 🤖](#local-agentic-workflow-examples-🤖)
+- [Fine tune an LFM2 model 🎯](#fine-tune-an-lfm2-model-🎯)
+- [Deploy an LFM2 model to an iOS or Android device 📱](#deploy-to-an-edge-device-📱)
+- [End-to-end tutorials 📚](#end-2-end-tutorials-📚). Complete walkthroughs from setup to production.
+- [Examples built by our community 🌟](#examples-built-by-our-community-🌟) that you can run and modify
 
 ## Local agentic workflow examples 🤖
 
