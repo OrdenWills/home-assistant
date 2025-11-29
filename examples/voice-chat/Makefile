@@ -1,5 +1,5 @@
 run:
-	uv run modal run -m src.news_reader.client
+	uv run modal run -m src.voice_chat.client
 
 deploy-server:
-	uv run modal deploy -m src.news_reader.server
+	uv run modal deploy -m src.voice_chat.server
