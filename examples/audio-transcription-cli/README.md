@@ -80,7 +80,7 @@ The Python code downloads the necessary llama.cpp builds for your platform autom
 
 [llama.cpp](https://github.com/ggerganov/llama.cpp) is a super fast and lightweight open-source inference engine for Language Models. It is written in C++ and can be used to run LLMs on your local machine. For example, our Python CLI used llama.cpp under the hood to deliver fast transcriptions, instead of using either `PyTorch` or the higher-level `transformers` library.
 
-In the `examples.sh` script you will find 3 examples on how to run inference with LFM2-Audio-1.5 for 3 common use cases:
+In the [examples.sh](https://github.com/Liquid4All/cookbook/blob/main/examples/audio-transcription-cli/examples.sh) script you will find 3 examples on how to run inference with LFM2-Audio-1.5 for 3 common use cases:
 
 - Audio to text transcription. This is essentially what our Python CLI does under the hood:
     ```sh
