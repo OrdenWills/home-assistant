@@ -12,7 +12,7 @@ Key features:
 - **Efficient inference** - Runs on modest hardware with merged adapters for speed
 - **Easy-to-use CLI** - Simple command-line interface powered by Fire
 
-*This project was built by a community member with the support of Maxime Labone.*
+*This project was built and released by [Kiwoong Yeom](https://www.linkedin.com/in/kiwoong-yeom/) with the support of [Maxime Labone](https://www.linkedin.com/in/maxime-labonne/).*
 *[Link to the original announcement on LinkedIn](https://www.linkedin.com/posts/activity-7406831565210583040-2B9p?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAqH-bMBMXBij-GI7SN8H4dk_E4j4k19f_w)*
 
 ## Quick Start
@@ -110,10 +110,7 @@ The current implementation uses adapter merging for faster inference. Future imp
 - Streaming inference for real-time translation
 - Batch processing for large document translation
 
-## Need Help?
+## Need help?
 
-Join our community for support and collaboration:
-- [Liquid4All Discord](https://discord.gg/liquid4all) - Get help and share your projects
-- [GitHub Issues](https://github.com/[your-username]/lfm2-english-to-korean/issues) - Report bugs and request features
-
-Special thanks to Maxime Labone for guidance on the fine-tuning methodology that enabled this project's success.
+Join the [Liquid AI Discord Community](https://discord.gg/DFU3WQeaYD) and ask.
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
