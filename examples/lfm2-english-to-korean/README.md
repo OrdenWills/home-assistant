@@ -1,6 +1,6 @@
 # LFM2 English-Korean Translation: Efficient Bidirectional Translation with 1.2B Parameters
 
-[![Discord](https://img.shields.io/discord/1211795224896753766?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/liquid4all)
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
 
 ## What's inside?
 
