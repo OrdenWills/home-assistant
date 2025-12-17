@@ -1,6 +1,6 @@
 # LFM2 English-Korean Translation: Efficient Bidirectional Translation with 1.2B Parameters
 
-[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
 ## What's inside?
 
@@ -112,5 +112,5 @@ The current implementation uses adapter merging for faster inference. Future imp
 
 ## Need help?
 
-Join the [Liquid AI Discord Community](https://discord.gg/DFU3WQeaYD) and ask.
-[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+Join the [Liquid AI Discord Community](https://discord.com/invite/liquid-ai) and ask.
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)

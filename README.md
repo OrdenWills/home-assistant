@@ -5,7 +5,7 @@
     🌊 <a href="https://docs.liquid.ai/"><b>Liquid Docs</b></a>&nbsp&nbsp | &nbsp&nbsp🤗 <a href="https://huggingface.co/LiquidAI">Hugging Face</a>&nbsp&nbsp | &nbsp&nbsp🚀 <a href="https://leap.liquid.ai">Liquid Edge AI Platform</a>
 </p>
 <p align="center">
-    <a href="https://discord.gg/DFU3WQeaYD"><img src="https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white" alt="Join Discord"></a>&nbsp&nbsp</a>
+    <a href="https://discord.com/invite/liquid-ai"><img src="https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white" alt="Join Discord"></a>&nbsp&nbsp</a>
 </p>
 
 
@@ -84,9 +84,9 @@ Need a model for data extraction, RAG, tool use, or math reasoning? Start with o
 > 
 > **Need support for another language?**
 > 
-> [Join the Liquid AI Discord Community](https://discord.gg/DFU3WQeaYD) and request it! Our community is working on expanding language support, and your input helps us prioritize which languages to tackle next. Connect with fellow developers, share your use cases, and collaborate on multilingual AI solutions.
+> [Join the Liquid AI Discord Community](https://discord.com/invite/liquid-ai) and request it! Our community is working on expanding language support, and your input helps us prioritize which languages to tackle next. Connect with fellow developers, share your use cases, and collaborate on multilingual AI solutions.
 > 
-> [![Join Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+> [![Join Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
 ### LFM2-VL (Text+Image to Text)
 
@@ -149,4 +149,4 @@ We welcome contributions!
 ## Support 💬
 
 - 📖 [Liquid AI Documentation](https://leap.liquid.ai/docs)
-- 💬 [Join our community on Discord](https://discord.gg/DFU3WQeaYD)
+- 💬 [Join our community on Discord](https://discord.com/invite/liquid-ai)

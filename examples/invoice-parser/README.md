@@ -1,6 +1,6 @@
 # Invoice extractor tool
 
-[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
 A Python CLI that monitors a folder for new invoice files and automatically extracts key information from them using
 two Liquid Foundational Models.
@@ -164,6 +164,6 @@ If you are interested in learning more about model customization for Vision Lang
 
 ## Need help?
 
-Join the [Liquid AI Discord Community](https://discord.gg/DFU3WQeaYD) and ask.
-[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.gg/DFU3WQeaYD)
+Join the [Liquid AI Discord Community](https://discord.com/invite/liquid-ai) and ask.
+[![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
