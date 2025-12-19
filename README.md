@@ -23,7 +23,7 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 - [End-to-end tutorials 📚](#end-2-end-tutorials). Complete walkthroughs from setup to production.
 - [Examples built by our community 🌟](#examples-built-by-our-community) that you can run and modify
 
-## Local agentic workflow examples 🤖
+## Local agentic workflow examples
 
 | Name | What's that? |  |
 |-------|-----------|---------------|
@@ -34,7 +34,7 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 
 
 
-## Fine-Tune an LFM2 model 🎯
+## Fine-Tune an LFM2 model
 
 ### LFM2 (Text-to-text)
 
@@ -98,7 +98,7 @@ LFM2-VL is our first series of vision-language models, designed for on-device de
 | [LFM2-VL-450M](https://huggingface.co/LiquidAI/LFM2-VL-450M) | Supervised Fine Tuning (TRL) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1csXCLwJx7wI7aruudBp6ZIcnqfv8EMYN?usp=sharing) |
 
 
-## Deploy to an edge device 📱
+## Deploy to an edge device
 
 The [LEAP Edge SDK](https://leap.liquid.ai/docs/edge-sdk/overview) is our native framework for running LFM2 models on mobile devices.
 
@@ -119,7 +119,7 @@ Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to mak
 
 
 
-## End-2-end Tutorials 📚
+## End-2-end Tutorials
 
 Complete end-to-end tutorials that take you from setup to deployment.
 
@@ -129,7 +129,7 @@ Complete end-to-end tutorials that take you from setup to deployment.
 | Let's build a Chess game using small and local Large Language Models | [▶️ Go to the repo](https://github.com/Paulescu/chess-game) ![GitHub Repo stars](https://img.shields.io/github/stars/Paulescu/chess-game) |
 
 
-## Examples built by our community 🌟
+## Examples built by our community
 
 Working applications that demonstrate Liquid models in action.
 
@@ -139,7 +139,7 @@ Working applications that demonstrate Liquid models in action.
 | Food Images Fine-tuning | [▶️ Go to the repo](https://github.com/benitomartin/food-images-finetuning) ![GitHub Repo stars](https://img.shields.io/github/stars/benitomartin/food-images-finetuning) |
 
 
-## Contributing 🤝
+## Contributing
 
 We welcome contributions!
 
