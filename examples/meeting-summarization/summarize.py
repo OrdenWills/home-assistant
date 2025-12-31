@@ -184,7 +184,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--transcript-file",
         type=str,
-        default="https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/transcripts/example_1.txt",
+        default="https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/main/examples/meeting-summarization/transcripts/example_1.txt",
         help="Path to the text file containing the transcript, or an HTTP/HTTPS URL"
     )
     args = parser.parse_args()

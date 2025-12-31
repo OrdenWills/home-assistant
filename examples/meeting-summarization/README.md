@@ -26,18 +26,18 @@ Isn't that beautiful?
 2. Run the tool without cloning the repository using a `uv run` one-liner:
   
     ```sh
-    uv run https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/summarize.py
+    uv run https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/main/examples/meeting-summarization/summarize.py
     ```
 
-    The previous command uses [this default transcript file](https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/transcripts/example_1.txt) to summarize the meeting.
+    The previous command uses [this default transcript file](https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/main/examples/meeting-summarization/transcripts/example_1.txt) to summarize the meeting.
 
 3. If you want to use a different transcript file, you can pass the `--transcript-file` argument explicitly, either as a local file path or as an HTTP/HTTPS URL, and the tool will automatically download and use it.
 
-    For example, to use [this other file](https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/transcripts/example_2.txt) you can run:
+    For example, to use [this other file](https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/main/examples/meeting-summarization/transcripts/example_2.txt) you can run:
 
     ```sh
-    uv run https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/summarize.py \
-      --transcript-file https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/pau/example/meeting-summarization/examples/meeting-summarization/transcripts/example_2.txt
+    uv run https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/main/examples/meeting-summarization/summarize.py \
+      --transcript-file https://raw.githubusercontent.com/Liquid4All/cookbook/refs/heads/main/examples/meeting-summarization/transcripts/example_2.txt
     ```
 
 
