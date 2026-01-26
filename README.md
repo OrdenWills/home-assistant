@@ -29,11 +29,12 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 
 ## Examples of local AI applications
 
-| Name | What's that? |  |
-|-------|-----------|---------------|
-| 🧾 **invoice-parser** | A Python CLI that extracts structured data from invoice pdfiles using LFM2-VL-3B | [▶️ Go to the code](./examples/invoice-parser/) |
-| 🎙️ **audio-transcription-cli** | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [▶️ Go to the code](./examples/audio-transcription-cli/) |
-| ✈️ **flight-search-assistant** | A Python CLI that helps you find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling | [▶️ Go to the code](./examples/flight-search-assistant/) |
+| Name | What's that? |
+|-------|-----------|
+| 🧾 [**invoice-parser**](./examples/invoice-parser/) | A Python CLI that extracts structured data from invoice pdfiles using LFM2-VL-3B |
+| 🎙️ [**audio-transcription-cli**](./examples/audio-transcription-cli/) | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp |
+| ✈️ [**flight-search-assistant**](./examples/flight-search-assistant/) | A Python CLI that helps you find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling |
+| 🚗 [**audio-car-cockpit**](./examples/audio-car-cockpit/) | A voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B (TTS/STT) with LFM2-1.2B-Tool for real-time local inference |
 
 
 ## Deployment to iOS and Android devices
@@ -42,18 +43,24 @@ The [LEAP Edge SDK](https://leap.liquid.ai/docs/edge-sdk/overview) is our native
 
 Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to make Small Language Model deployment as easy as calling a cloud LLM API endpoint, for any app developer.
 
-| Platform | Example |  |
-|-------|-----------|---------------|
-| **Android** | LeapChat: A comprehensive chat application with real-time token streaming, persistent message history, and modern chat UI featuring message bubbles and typing indicators | [🤖 Tutorial](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
-|  | SloganApp: Single turn generation for marketing. The UI is implemented with Android Views.| [🤖 Tutorial](./examples/leap-slogan-example-ios/README.md) |
-|  | ShareAI: Website summary generator | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
-|  | Recipe Generator: Structured output generation with the LEAP SDK | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/RecipeGenerator) |
-|  | Visual Language Model example | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/VLMExample) |
-||||
-| **iOS** | LeapChat: A comprehensive chat application demonstrating advanced LeapSDK features including real-time streaming, conversation management, and modern UI components. | [▶️ Go to the code ](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
-|  | LeapSloganExample: A simple SwiftUI app demonstrating basic LeapSDK integration for text generation.| [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
-|  | Recipe Generator: Structured output generation | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
-|  | Audio demo: A SwiftUI app demonstrating audio input and output with the LeapSDK for on-device AI inference. | [▶️ Go to the code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) |
+### Android
+
+| Example | Description |
+|---------|-------------|
+| [LeapChat](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) | A comprehensive chat application with real-time token streaming, persistent message history, and modern chat UI featuring message bubbles and typing indicators |
+| [SloganApp](./examples/leap-slogan-example-ios/README.md) | Single turn generation for marketing. The UI is implemented with Android Views. |
+| [ShareAI](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) | Website summary generator |
+| [Recipe Generator](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/RecipeGenerator) | Structured output generation with the LEAP SDK |
+| [Visual Language Model example](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/VLMExample) | Visual Language Model example |
+
+### iOS
+
+| Example | Description |
+|---------|-------------|
+| [LeapChat](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) | A comprehensive chat application demonstrating advanced LeapSDK features including real-time streaming, conversation management, and modern UI components. |
+| [LeapSloganExample](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) | A simple SwiftUI app demonstrating basic LeapSDK integration for text generation. |
+| [Recipe Generator](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) | Structured output generation |
+| [Audio demo](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) | A SwiftUI app demonstrating audio input and output with the LeapSDK for on-device AI inference. |
 
 
 
