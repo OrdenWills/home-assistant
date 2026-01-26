@@ -31,10 +31,10 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 
 | Name | What's that? |
 |-------|-----------|
-| 🧾 [**invoice-parser**](./examples/invoice-parser/) | A Python CLI that extracts structured data from invoice pdfiles using LFM2-VL-3B |
+| 🧾 [**invoice-parser**](./examples/invoice-parser/README.md) | A Python CLI that extracts structured data from invoice pdfiles using LFM2-VL-3B |
 | 🎙️ [**audio-transcription-cli**](./examples/audio-transcription-cli/) | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp |
-| ✈️ [**flight-search-assistant**](./examples/flight-search-assistant/) | A Python CLI that helps you find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling |
-| 🚗 [**audio-car-cockpit**](./examples/audio-car-cockpit/) | A voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B (TTS/STT) with LFM2-1.2B-Tool for real-time local inference |
+| ✈️ [**flight-search-assistant**](./examples/flight-search-assistant/README.md) | A Python CLI that helps you find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling |
+| 🚗 [**audio-car-cockpit**](./examples/audio-car-cockpit/README.md) | A voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B (TTS/STT) with LFM2-1.2B-Tool for real-time local inference |
 
 
 ## Deployment to iOS and Android devices
