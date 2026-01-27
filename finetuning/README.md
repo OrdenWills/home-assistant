@@ -25,7 +25,7 @@ Models:
 | Continued Pre-Training (CPT) (use only with `LFM2.5-1.2B-Base`)| [Text-completion pre-training](https://colab.research.google.com/drive/10fm7eNMezs-DSn36mF7vAsNYlOsx9YZO?usp=sharing)<br>[Cross-lingual pre-training](https://colab.research.google.com/drive/1gaP8yTle2_v35Um8Gpu9239fqbU7UgY8?usp=sharing) |
 | Supervised fine-tuning (SFT) with LoRA | [With TRL](https://colab.research.google.com/drive/1j5Hk_SyBb2soUsuhU0eIEA9GwLNRnElF?usp=sharing)<br>[With Unsloth](https://colab.research.google.com/drive/1vGRg4ksRj__6OLvXkHhvji_Pamv801Ss?usp=sharing) |
 | Direct Preference Optimization (DPO) with LoRA | [With TRL](https://colab.research.google.com/drive/1MQdsPxFHeZweGsNx4RH7Ia8lG8PiGE1t?usp=sharing) |
-| Group Relative Policy Optimization (GRPO) with LoRA | - Turn a non-reasoning model into a reasoning model with [Unsloth](https://colab.research.google.com/drive/1mIikXFaGvcW4vXOZXLbVTxfBRw_XsXa5?usp=sharing) or [TRL]() <br> - [Boost browser control tasks with OpenEnv and GRPO](../examples/browser-control/README.md) |
+| Group Relative Policy Optimization (GRPO) with LoRA | - Turn a non-reasoning model into a reasoning model with [Unsloth](https://colab.research.google.com/drive/1mIikXFaGvcW4vXOZXLbVTxfBRw_XsXa5?usp=sharing) or [TRL](./grpo_for_verifiable_tasks.ipynb) <br> - [Boost browser control tasks with OpenEnv and GRPO](../examples/browser-control/README.md) |
 
 ## Vision Language Models
 
