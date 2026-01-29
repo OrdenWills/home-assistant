@@ -7,7 +7,8 @@ This example showcases how to run a local vision language model on the browser u
 
 This is a WebGPU-based vision-language model demo, so make sure you're using a browser that supports WebGPU (like Chrome or Edge).
 
-You can fin all the code [in this Hugging Face Space](https://huggingface.co/spaces/LiquidAI/LFM2.5-VL-1.6B-WebGPU/tree/main).
+You can find all the code [in this Hugging Face Space](https://huggingface.co/spaces/LiquidAI/LFM2.5-VL-1.6B-WebGPU/tree/main), including a deployed version you can interact with [0 setup here](https://huggingface.co/spaces/LiquidAI/LFM2.5-VL-1.6B-WebGPU).
+
 
 ## Table of Contents
 
