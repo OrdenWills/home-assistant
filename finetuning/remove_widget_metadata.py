@@ -1,8 +1,11 @@
+import sys
 import nbformat
 from pathlib import Path
 
 # Find all .ipynb files in the current directory
-notebook_files = Path('.').glob('*.ipynb')
+notebook_files = Path('./notebooks').glob('*.ipynb')
+
+changes_made = False
 
 for notebook_path in notebook_files:
     # Read the notebook
@@ -18,5 +21,10 @@ for notebook_path in notebook_files:
             nbformat.write(nb, f)
 
         print(f"Removed widget metadata from: {notebook_path}")
+        changes_made = True
     else:
         print(f"No widget metadata in: {notebook_path}")
+
+# Exit with code 1 if changes were made, so pre-commit knows to re-stage
+if changes_made:
+    sys.exit(1)
