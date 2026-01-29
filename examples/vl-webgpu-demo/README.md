@@ -1,6 +1,5 @@
 # Real-time video captioning with LFM2.5-VL-1.6B and WebGPU
 
-[![Hugging Face](https://img.shields.io/badge/Hugging%20Face-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/spaces/LiquidAI/LFM2.5-VL-1.6B-WebGPU/tree/main)
 [![Discord](https://img.shields.io/discord/1385439864920739850?color=7289da&label=Join%20Discord&logo=discord&logoColor=white)](https://discord.com/invite/liquid-ai)
 
 This example showcases how to run a local vision language model on the browser using the LFM2.5-VL-1.6B model and the ONNX runtime.

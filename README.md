@@ -35,6 +35,8 @@ Whether you're looking to customize models, deploy to laptops, edge devices, or 
 | 🎙️ [**audio-transcription-cli**](./examples/audio-transcription-cli/) | A Python CLI for real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp |
 | ✈️ [**flight-search-assistant**](./examples/flight-search-assistant/README.md) | A Python CLI that helps you find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling |
 | 🚗 [**audio-car-cockpit**](./examples/audio-car-cockpit/README.md) | A voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B (TTS/STT) with LFM2-1.2B-Tool for real-time local inference |
+| 🔊 [**audio-webgpu-demo**](./examples/audio-webgpu-demo/README.md) | Run LFM2.5-Audio-1.5B entirely in your browser with WebGPU for speech recognition, text-to-speech, and interleaved audio/text conversation |
+| 📹 [**vl-webgpu-demo**](./examples/vl-webgpu-demo/README.md) | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU |
 
 
 ## Deployment to iOS and Android devices

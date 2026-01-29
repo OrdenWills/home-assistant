@@ -4,7 +4,7 @@
 
 This example demonstrates [LFM2.5-Audio-1.5B](https://huggingface.co/LiquidAI/LFM2.5-Audio-1.5B) running entirely in your browser using WebGPU and ONNX Runtime Web.
 
-You can find all the code [in this Hugging Face Space](https://huggingface.co/spaces/LFM2.5-Audio-1.5B-transformers-js/tree/main), including a deployed version you can interact with [0 setup here](https://huggingface.co/spaces/LiquidAI/LFM2.5-Audio-1.5B-transformers-js).
+You can find all the code [in this Hugging Face Space](https://huggingface.co/spaces/LiquidAI/LFM2.5-Audio-1.5B-transformers-js/tree/main), including a deployed version you can interact with [0 setup here](https://huggingface.co/spaces/LiquidAI/LFM2.5-Audio-1.5B-transformers-js).
 
 
 ## Quickstart
