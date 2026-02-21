@@ -27,8 +27,11 @@ Usage:
 make setup
 
 # Optional, if you have already llama-server in your path, you can
-# symlink instead of building it
-# ln -s $(which llama-server) llama-server
+#   symlink instead of building it
+ln -s $(which llama-server) llama-server
+# else: build llama-server for your target hardware
+#   Note: When building for ROCm, libstdc++-14-dev has to be installed with: sudo apt install -y libstdc++-14-dev
+make llama-server
 
 # Prepare the audio and tool calling models
 make LFM2.5-Audio-1.5B-GGUF LFM2-1.2B-Tool-GGUF
