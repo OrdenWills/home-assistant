@@ -42,7 +42,7 @@ OS := $(shell uname -s)
 .venv:
 ifeq (, $(shell which uv))
 	$(info uv is not installed yet, fetching it now)
-	$(shell curl -LsSf https://astral.sh/uv/install.sh | sh)
+	curl -LsSf https://astral.sh/uv/install.sh | sh
 endif
 	uv venv --allow-python-downloads --allow-existing
 
@@ -61,7 +61,7 @@ LFM2.5-Audio-1.5B-GGUF:  ## Download audio model
 
 LFM2-1.2B-Tool-GGUF: llama-server  ## Download tool calling model
 	@# Not strictly necessary, but pre-download for smoother first startup
-	llama-server -hf "LiquidAI/LFM2-1.2B-Tool-GGUF:Q8_0" --version
+	./llama-server -hf "LiquidAI/LFM2-1.2B-Tool-GGUF:Q8_0" --version
 
 
 # ┌──────────────────────────────────────────────────────────┐
@@ -121,7 +121,7 @@ llama.cpp:
 llama.cpp/build/bin/llama-server: llama.cpp
 	cd llama.cpp && \
 		export BUILD_TARGETS=llama-server && \
-		cmake -B build -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON && \
+		cmake -B build -DBUILD_SHARED_LIBS=OFF -DLLAMA_CURL=ON -DGGML_HIP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON && \
 		cmake --build build --config Release -j 8
 
 llama-server:  ## Static build of llama-server
