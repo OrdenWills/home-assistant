@@ -93,6 +93,7 @@ Open-source projects built by the community showcasing LFMs with real use cases.
 | Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
 | LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
 | LFM-2.5 Thinking on Web | LFM2.5 1.2B parameter reasoning language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime Web | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
+| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
 
 ## 🕐 Technical Deep Dives
 
