@@ -115,7 +115,8 @@ ifdef HAS_ROCM
 		git fetch origin pull/$(LLAMA_CPP_PR)/head:pr-$(LLAMA_CPP_PR) && \
 		git checkout pr-$(LLAMA_CPP_PR)
 
-  AUDIO_SERVER := ./llama-liquid-audio-server
+  AUDIO_SERVER        := ./llama-liquid-audio-server
+  AUDIO_SERVER_TARGET := llama-liquid-audio-server
 
 else
   $(info ROCm not found — building CPU-only, downloading pre-built audio runner)
@@ -128,7 +129,8 @@ else
 		cd llama.cpp && \
 		git checkout $(LLAMA_CPP_COMMIT)
 
-  AUDIO_SERVER := ./llama-liquid-audio/llama-liquid-audio-server
+  AUDIO_SERVER        := ./llama-liquid-audio/llama-liquid-audio-server
+  AUDIO_SERVER_TARGET := llama-liquid-audio/llama-liquid-audio-server
 
 endif
 
@@ -190,7 +192,7 @@ endif
 serve: llama-server  ## Start FastAPI server
 	uv run --frozen server.py
 
-audioserver: LFM2.5-Audio-1.5B-GGUF  ## Start audio server
+audioserver: $(AUDIO_SERVER_TARGET) LFM2.5-Audio-1.5B-GGUF  ## Start audio server
 	$(AUDIO_SERVER) \
 		-m LFM2.5-Audio-1.5B-GGUF/LFM2.5-Audio-1.5B-Q8_0.gguf \
 		-mm LFM2.5-Audio-1.5B-GGUF/mmproj-LFM2.5-Audio-1.5B-Q8_0.gguf \
