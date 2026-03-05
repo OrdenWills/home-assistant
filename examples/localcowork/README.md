@@ -1,5 +1,7 @@
 # LocalCowork
 
+[![LocalCowork Demo](https://img.youtube.com/vi/WnxxW2jTDgE/maxresdefault.jpg)](https://youtu.be/WnxxW2jTDgE)
+
 **Tool-calling that actually feels instant on a laptop.**
 
 Building a local AI agent sounds great until you try to use one all day. The hard part isn't getting a model to understand you -- it's getting it to choose the right tool and do it fast enough that the experience feels interactive. This is where [LFM2-24B-A2B](https://huggingface.co/LiquidAI/LFM2-24B-A2B-Preview) shines: it's designed for tool dispatch on consumer hardware, where latency and memory aren't abstract constraints -- they decide whether your agent is a product or a demo.
