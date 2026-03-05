@@ -9,6 +9,7 @@ class Agent:
 
     def __init__(self, llm: LLMClient, config: Config) -> None:
         self._llm = llm
+        self._config = config
         self._context = ContextManager(max_messages=config.max_context_messages)
 
     def run_turn(self, user_input: str) -> None:
@@ -17,8 +18,13 @@ class Agent:
 
         tools_used = 0
         nudged = False
+        turns = 0
 
         while True:
+            if turns >= self._config.max_turns:
+                print(f"[agent] max_turns ({self._config.max_turns}) reached — stopping.")
+                break
+            turns += 1
             if self._context.should_compact():
                 self._context.compact()
                 print("[context compacted]")

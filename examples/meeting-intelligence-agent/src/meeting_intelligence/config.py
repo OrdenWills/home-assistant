@@ -19,6 +19,7 @@ class Config:
     # Agent behavior
     max_tokens: int = 8192
     max_context_messages: int = 40  # before compaction triggers
+    max_turns: int = 30  # hard stop to prevent infinite tool-call loops
 
 
 def load_config() -> Config:
