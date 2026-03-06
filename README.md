@@ -132,7 +132,7 @@ Recorded sessions (~60 minutes) covering advanced topics and hands-on implementa
 | 2025-11-27 | Building a 100% local Audio-to-Speech CLI with LFM2-Audio | [Video](https://www.youtube.com/watch?v=yeu077gPmCA) |
 | 2025-12-26 | Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv | [Video](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
 | 2026-01-22 | Local video-captioning with LFM2.5-VL-1.6B and WebGPU | [Video](https://www.youtube.com/watch?v=xsWARHFoA3E) |
-| 2026-03-05 | Build your own local AI coding assistant | [Video](https://www.linkedin.com/posts/pau-labarta-bajo-4432074b_how-to-build-a-local-ai-assistant-step-activity-7435641177799835648-wE-z?utm_source=share&utm_medium=member_desktop&rcm=ACoAAAqH-bMBMXBij-GI7SN8H4dk_E4j4k19f_w) |
+| 2026-03-05 | Build your own local AI coding assistant | [Video](https://www.youtube.com/watch?v=6JEm1IxcxEw) |
 
 Join the next session! Head to the `#live-events` channel on [Discord](https://discord.com/invite/liquid-ai).
 
