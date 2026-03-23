@@ -79,11 +79,30 @@ def intent_unclear(reason: str = "unknown") -> dict:
     return {"success": False, "reason": reason}
 
 
+def toggle_all_lights(state: str) -> dict:
+    """Toggle all lights in the house to the same state."""
+    for room in home_state["lights"]:
+        home_state["lights"][room]["state"] = state
+    affected_rooms = list(home_state["lights"].keys())
+    return {"success": True, "state": state, "rooms": affected_rooms, "count": len(affected_rooms)}
+
+
+def lock_all_doors(state: str) -> dict:
+    """Lock or unlock all doors in the house."""
+    target_state = "locked" if state == "lock" else "unlocked"
+    for door in home_state["doors"]:
+        home_state["doors"][door] = target_state
+    affected_doors = list(home_state["doors"].keys())
+    return {"success": True, "state": target_state, "doors": affected_doors, "count": len(affected_doors)}
+
+
 TOOL_HANDLERS = {
     "toggle_lights":    toggle_lights,
     "set_thermostat":   set_thermostat,
     "lock_door":        lock_door,
     "get_device_status": get_device_status,
     "set_scene":        set_scene,
+    "toggle_all_lights": toggle_all_lights,
+    "lock_all_doors":   lock_all_doors,
     "intent_unclear":   intent_unclear,
 }

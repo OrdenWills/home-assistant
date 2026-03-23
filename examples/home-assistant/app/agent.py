@@ -19,11 +19,20 @@ BACKENDS = {
 SYSTEM_PROMPT = (
     "You are a home assistant AI. Use tools to control the home; respond in text when no tool is needed. "
     "Output function calls as JSON.\n"
-    "Lights (on/off): bedroom, bathroom, office, hallway, kitchen, living_room.\n"
-    "Doors (lock/unlock): front, back, garage, side.\n"
-    "Thermostat: temperature 60-80°F, modes: heat, cool, auto.\n"
-    "Scenes: movie_night, bedtime, morning, away, party.\n"
-    "Call intent_unclear (never plain text) when the request is: "
+    "INDIVIDUAL CONTROL:\n"
+    "- Lights (on/off): bedroom, bathroom, office, hallway, kitchen, living_room.\n"
+    "- Doors (lock/unlock): front, back, garage, side.\n"
+    "- Thermostat: temperature 60-80°F, modes: heat, cool, auto.\n"
+    "BULK CONTROL (for 'all' or 'entire house'):\n"
+    "- toggle_all_lights: turn all lights in the house on/off at once.\n"
+    "- lock_all_doors: lock/unlock all doors at once.\n"
+    "PRESETS:\n"
+    "- Scenes: movie_night, bedtime, morning, away, party.\n"
+    "GUIDELINES:\n"
+    "- For 'turn on all lights' or 'turn off all lights', use toggle_all_lights.\n"
+    "- For 'lock all doors' or 'unlock all doors', use lock_all_doors.\n"
+    "- For 'turn on lights in [room]', use toggle_lights with that room.\n"
+    "- Call intent_unclear (never plain text) when the request is: "
     "ambiguous (could be satisfied by multiple different home control actions, e.g. 'make it nicer in here' could mean thermostat, lights, or a scene), "
     "off_topic (unrelated to home control), "
     "incomplete (no target device or room specified even after reading conversation history, e.g. 'turn it on' as the opening message), "
@@ -82,6 +91,31 @@ def clean_text_response(text: str) -> str:
     return cleaned.strip()
 
 
+def classify_and_expand_intent(user_message: str) -> str:
+    """
+    Analyze user request to provide helpful context for bulk operations.
+    This helps the model understand requests like 'turn on all lights'.
+    """
+    lower_msg = user_message.lower()
+    
+    # Detect bulk operation keywords
+    bulk_keywords = {
+        'all lights': 'Use toggle_all_lights to control all lights at once.',
+        'all rooms': 'Use toggle_all_lights to control lights in all rooms at once.',
+        'entire house': 'Use toggle_all_lights and lock_all_doors for bulk operations.',
+        'all doors': 'Use lock_all_doors to control all doors at once.',
+        'everything': 'You can use bulk operations: toggle_all_lights and lock_all_doors.',
+    }
+    
+    # Check for bulk operation keywords
+    for keyword, hint in bulk_keywords.items():
+        if keyword in lower_msg:
+            # Return expanded prompt with hint
+            return f"{user_message}\n[HINT: {hint}]"
+    
+    return user_message
+
+
 def run_agent(
     user_message: str,
     history: list[dict] | None = None,
@@ -96,10 +130,15 @@ def run_agent(
     client = backend_cfg["client"]
     model  = backend_cfg["model"]
 
+    # Classify and expand user intent to help model understand bulk operations
+    expanded_message = classify_and_expand_intent(user_message)
+    print(f"[Agent] Original: {user_message}")
+    print(f"[Agent] Expanded: {expanded_message}")
+
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         *(history or []),
-        {"role": "user", "content": user_message},
+        {"role": "user", "content": expanded_message},
     ]
 
     seen_calls: set[str] = set()  # Guard against repeated identical tool calls

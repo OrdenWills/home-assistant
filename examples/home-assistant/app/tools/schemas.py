@@ -76,6 +76,34 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "toggle_all_lights",
+            "description": "Turn all lights in the entire house on or off at once.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "state": {"type": "string", "enum": ["on", "off"]},
+                },
+                "required": ["state"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lock_all_doors",
+            "description": "Lock or unlock all doors in the house at once.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "state": {"type": "string", "enum": ["lock", "unlock"]},
+                },
+                "required": ["state"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "intent_unclear",
             "description": (
                 "Call this tool instead of responding with text when the request cannot be fulfilled. "
