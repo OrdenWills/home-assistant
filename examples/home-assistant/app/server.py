@@ -70,7 +70,7 @@ def _start_llama_server_bg(model: dict) -> None:
         llama_proc = None
 
     cmd = [
-        "llama-server",
+        "C:\\Users\\Adolphus\\llama-b8479-bin-win-cpu-x64\\llama-server.exe",
         "--hf-repo", model["hf_repo"],
         "--hf-file", model["hf_file"],
         "--port", "8080",
@@ -103,7 +103,15 @@ def _start_llama_server_bg(model: dict) -> None:
 
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
+    # Auto-load default model on startup
+    default_model_id = "lfm25-1b-q8"
+    model = next((m for m in LOCAL_MODELS if m["id"] == default_model_id), None)
+    if model:
+        print(f"[Startup] Auto-loading default model: {model['name']}")
+        threading.Thread(target=_start_llama_server_bg, args=(model,), daemon=True).start()
+    
     yield
+    
     global llama_proc
     if llama_proc is not None:
         try:
@@ -128,15 +136,15 @@ def serve_index():
 
 @app.get("/model")
 def get_model():
-    global active_backend
+    global active_backend, llama_active_model_id
     if active_backend == "openai":
         return JSONResponse({"name": "gpt-4o-mini"})
-    try:
-        models = local_client.models.list()
-        name = models.data[0].id.split("_", 2)[-1] if models.data else "unknown"
-    except Exception:
-        name = "unknown"
-    return JSONResponse({"name": name})
+    # Return the actual selected model name from the registry
+    if llama_active_model_id:
+        model = next((m for m in LOCAL_MODELS if m["id"] == llama_active_model_id), None)
+        if model:
+            return JSONResponse({"name": model["name"]})
+    return JSONResponse({"name": "No model loaded"})
 
 
 @app.get("/backend")
@@ -233,6 +241,7 @@ def chat(req: ChatRequest):
     events = []
 
     def on_tool_call(name, args, result):
+        print(f"[Server] Tool called: {name} with args {args}, result: {result}")
         events.append({"name": name, "args": args, "result": result})
 
     try:

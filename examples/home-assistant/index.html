@@ -254,7 +254,11 @@
   }
 
   function appendToolCalls(toolCalls) {
-    if (!toolCalls || toolCalls.length === 0) return;
+    console.log("[AppendToolCalls] Called with:", toolCalls);
+    if (!toolCalls || toolCalls.length === 0) {
+      console.log("[AppendToolCalls] No tool calls to display");
+      return;
+    }
     const details = document.createElement("details");
     details.className = "tool-calls";
     details.innerHTML =
@@ -262,6 +266,7 @@
       `<pre>${JSON.stringify(toolCalls, null, 2)}</pre>`;
     messagesEl.appendChild(details);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+    console.log("[AppendToolCalls] Appended successfully");
   }
 
   function setAssistantDot(state) {
@@ -321,27 +326,47 @@
   }
 
   function updateFloorplan(state) {
+    console.log("[UpdateFloorplan] Updating with state:", state.lights, state.doors);
+    // Update lights in floorplan
     for (const [room, light] of Object.entries(state.lights || {})) {
       const el = document.getElementById(`fp-room-${room}`);
-      if (el) el.classList.toggle("lit", light.state === "on");
+      const isOn = light.state === "on";
+      if (el) {
+        el.classList.toggle("lit", isOn);
+        console.log(`[UpdateFloorplan] Room '${room}': element found, light is ${isOn ? "ON" : "OFF"}, classes: ${el.className}`);
+      } else {
+        console.warn(`[UpdateFloorplan] Element NOT found for: fp-room-${room}`);
+      }
     }
+    // Update doors in floorplan
     for (const [door, doorState] of Object.entries(state.doors || {})) {
       const el = document.getElementById(`fp-door-${door}`);
+      const isLocked = doorState === "locked";
       if (el) {
-        el.classList.toggle("locked",   doorState === "locked");
-        el.classList.toggle("unlocked", doorState === "unlocked");
+        el.classList.toggle("locked",   isLocked);
+        el.classList.toggle("unlocked", !isLocked);
+        console.log(`[UpdateFloorplan] Door '${door}': element found, is ${isLocked ? "LOCKED" : "UNLOCKED"}, classes: ${el.className}`);
+      } else {
+        console.warn(`[UpdateFloorplan] Element NOT found for: fp-door-${door}`);
       }
     }
   }
 
   async function refreshState() {
     try {
-      const state = await fetch("/state").then(r => r.json());
+      const res = await fetch("/state");
+      if (!res.ok) {
+        console.error("Failed to fetch state:", res.status, res.statusText);
+        return;
+      }
+      const state = await res.json();
+      console.log("[RefreshState] State fetched:", state);
       updateHouseVisualization(state);
       updateStateCards(state);
       updateFloorplan(state);
+      console.log("[RefreshState] UI update complete");
     } catch (e) {
-      console.warn("Could not fetch state:", e);
+      console.error("[RefreshState] Error:", e);
     }
   }
 
@@ -383,10 +408,18 @@
   async function fetchLocalModelStatus() {
     try {
       const d = await fetch("/local-model-status").then(r => r.json());
+      const prevStatus = llamaStatus;
       llamaStatus = d.status;
       updateStatusPill(d.status, d.error);
       updateModelOptions(d.model_id);
       updateInputState();
+      
+      // Refresh model name when it transitions to ready
+      if (d.status === "ready" && prevStatus !== "ready") {
+        console.log("[FetchLocalModelStatus] Model is now ready, refreshing model label");
+        await refreshModel();
+      }
+      
       if (d.status === "starting") {
         if (!statusPollTimer) {
           statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
@@ -397,7 +430,9 @@
           statusPollTimer = null;
         }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("[FetchLocalModelStatus] Error:", e);
+    }
   }
 
   async function fetchLocalModels() {
@@ -482,11 +517,14 @@
       });
 
       const data = await res.json();
+      console.log("[SendMessage] Chat response:", data);
       typing.remove();
       appendMessage("assistant", data.text || "(no response)");
       speakText(data.text || "");
       appendToolCalls(data.tool_calls);
+      console.log("[SendMessage] Calling refreshState...");
       await refreshState();
+      console.log("[SendMessage] RefreshState complete");
     } catch (e) {
       typing.remove();
       appendMessage("assistant", "Error: could not reach the server.");
@@ -506,8 +544,11 @@
   async function refreshModel() {
     try {
       const d = await fetch("/model").then(r => r.json());
+      console.log("[RefreshModel] Model name updated:", d.name);
       document.getElementById("model-label").textContent = `Model: ${d.name}`;
-    } catch (e) {}
+    } catch (e) {
+      console.error("[RefreshModel] Error:", e);
+    }
   }
 
   function setActiveBackendBtn(backend) {

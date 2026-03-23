@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from dotenv import load_dotenv
 from openai import OpenAI
 from app.tools.schemas import TOOL_SCHEMAS
@@ -40,6 +41,47 @@ def get_model_name(backend: str) -> str:
     return BACKENDS[backend]["model"]
 
 
+def parse_tool_calls_from_text(text: str) -> list[dict]:
+    """
+    Parse tool calls from text output like: [toggle_lights(room="kitchen", state="on")]
+    Returns a list of dicts with tool_call info compatible with server expectations.
+    """
+    tool_calls = []
+    # Match pattern: [function_name(args)]
+    pattern = r'\[(\w+)\((.*?)\)\]'
+    matches = re.finditer(pattern, text)
+    
+    for idx, match in enumerate(matches):
+        func_name = match.group(1)
+        args_str = match.group(2)
+        
+        try:
+            # Parse arguments like: room="kitchen", state="on"
+            args = {}
+            # Split by comma, but be careful with quoted strings
+            arg_pairs = re.findall(r'(\w+)="([^"]*)"', args_str)
+            for key, value in arg_pairs:
+                args[key] = value
+            
+            tool_calls.append({
+                "name": func_name,
+                "args": args,
+                "id": f"call_{idx}",  # Synthetic ID since model didn't provide one
+            })
+            print(f"[ParseToolCalls] Extracted: {func_name}({args})")
+        except Exception as e:
+            print(f"[ParseToolCalls] Failed to parse '{match.group(0)}': {e}")
+    
+    return tool_calls
+
+
+def clean_text_response(text: str) -> str:
+    """Remove tool call syntax from text response."""
+    # Remove patterns like [function_name(...)]
+    cleaned = re.sub(r'\[(\w+)\([^)]*\)\]', '', text)
+    return cleaned.strip()
+
+
 def run_agent(
     user_message: str,
     history: list[dict] | None = None,
@@ -73,18 +115,41 @@ def run_agent(
             max_tokens=512,
         )
         message = response.choices[0].message
+        print(f"[Agent] Model response - tool_calls: {message.tool_calls}, content: {message.content[:100]}")
 
-        if not message.tool_calls:
+        # BACKWARD COMPATIBILITY: Handle both formats
+        # - Current (text parsing): LFM model outputs text like "[toggle_lights(room="kitchen", state="on")]..."
+        # - Future (structured): Fine-tuned model returns proper OpenAI tool_calls format
+        parsed_tool_calls = parse_tool_calls_from_text(message.content) if not message.tool_calls else None
+        tool_calls_to_use = message.tool_calls or parsed_tool_calls
+
+        if not tool_calls_to_use:
+            # No tool calls found; clean any tool syntax from response and use as final
+            final_response = clean_text_response(message.content)
             messages.append({"role": "assistant", "content": message.content})
-            final_response = message.content
             break
+
+        # If we parsed tool calls from text, convert to the expected tool_call object format
+        # This adapter ensures both text-based and structured tool calls work uniformly
+        if parsed_tool_calls:
+            # For parsed calls, simulate the tool_call structure that would come from a structured model
+            class MockToolCall:
+                def __init__(self, call_dict):
+                    self.id = call_dict["id"]
+                    self.type = "function"
+                    self.function = type('obj', (object,), {
+                        'name': call_dict["name"],
+                        'arguments': json.dumps(call_dict["args"])
+                    })()
+            
+            tool_calls_to_use = [MockToolCall(tc) for tc in parsed_tool_calls]
 
         # Check for duplicate calls before appending to messages, so the
         # messages list stays in a valid state for the forced-text fallback.
         duplicate = any(
             f"{tc.function.name}:{json.dumps(json.loads(tc.function.arguments), sort_keys=True)}"
             in seen_calls
-            for tc in message.tool_calls
+            for tc in tool_calls_to_use
         )
         if duplicate:
             break
@@ -98,11 +163,11 @@ def run_agent(
                     "type": tc.type,
                     "function": {"name": tc.function.name, "arguments": tc.function.arguments},
                 }
-                for tc in message.tool_calls
+                for tc in tool_calls_to_use
             ],
         })
 
-        for tool_call in message.tool_calls:
+        for tool_call in tool_calls_to_use:
             name = tool_call.function.name
             args = json.loads(tool_call.function.arguments)
 
@@ -138,4 +203,5 @@ def run_agent(
     if messages_out is not None:
         messages_out.extend(messages)
 
-    return final_response
+    # Clean the response text of any tool syntax before returning
+    return clean_text_response(final_response)
