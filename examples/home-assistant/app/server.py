@@ -16,6 +16,22 @@ from app.state import home_state
 
 LOCAL_MODELS = [
     {
+        "id": "lfm25-1b-thinking-q4",
+        "name": "LFM2.5-1.2B-Thinking-Q4_0.gguf",
+        "hf_repo": "LiquidAI/LFM2.5-1.2B-Thinking-GGUF",
+        "hf_file": "LFM2.5-1.2B-Thinking-Q4_0.gguf",
+        "size_label": "718 MB",
+        "score_label": "75%",
+    },
+    {
+        "id": "lfm25-1b-thinking-q8",
+        "name": "LFM2.5-1.2B-Thinking-Q8_0.gguf",
+        "hf_repo": "LiquidAI/LFM2.5-1.2B-Thinking-GGUF",
+        "hf_file": "LFM2.5-1.2B-Thinking-Q8_0.gguf",
+        "size_label": "1.28 GB",
+        "score_label": "82%",
+    },
+    {
         "id": "lfm25-1b-q4",
         "name": "LFM2.5-1.2B-Instruct-Q4_0.gguf",
         "hf_repo": "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
