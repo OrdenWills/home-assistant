@@ -35,6 +35,27 @@ open http://localhost:5173
 The UI includes a model selector. When you pick a model, the app automatically downloads
 and starts `llama-server` in the background. No manual model server setup is needed.
 
+### Pre-download models (recommended)
+
+Large model downloads can take time. To avoid UI timeouts when selecting models the first time, pre-download them using the provided scripts:
+
+**Option 1: PowerShell** (Windows)
+```powershell
+.\download_models.ps1
+```
+
+**Option 2: Batch** (Windows)
+```bash
+download_models.bat
+```
+
+**Option 3: Python** (Any OS)
+```bash
+uv run python download_models.py
+```
+
+This will cache the thinking and 350M models locally. First-time downloads may take 30-60 minutes depending on your connection.
+
 ## Step 1: Build a proof of concept
 
 The main components of our solution are: 

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from huggingface_hub import hf_hub_download
 
 from app.agent import local_client, run_agent
 from app.state import home_state
@@ -48,13 +49,12 @@ LOCAL_MODELS = [
         "score_label": "53%",
     },
     {
-        "id": "lfm2-350m-q8",
-        "name": "LFM2-350M-Q8_0.gguf",
-        "hf_repo": "LiquidAI/LFM2-350M-Instruct-GGUF",
-        "hf_file": "LFM2-350M-Q8_0.gguf",
-        "size_label": "370 MB",
-        "score_label": "37%",
-    },
+    "id": "lfm2-vl-450m-q4",
+    "name": "LFM2-VL-450M-Q4_0.gguf",
+    "hf_repo": "LiquidAI/LFM2-VL-450M-GGUF",
+    "hf_file": "LFM2-VL-450M-Q4_0.gguf",
+    "size_label": "209 MB",
+    "score_label": "40%",},
 ]
 
 # ── Module-level state ─────────────────────────────────────────────────────────
@@ -85,20 +85,73 @@ def _start_llama_server_bg(model: dict) -> None:
             llama_proc.kill()
         llama_proc = None
 
-    cmd = [
-        "C:\\Users\\Adolphus\\llama-b8479-bin-win-cpu-x64\\llama-server.exe",
-        "--hf-repo", model["hf_repo"],
-        "--hf-file", model["hf_file"],
-        "--port", "8080",
-        "--ctx-size", "4096",
-        "--n-gpu-layers", "99",
-    ]
+    print(f"[LlamaServer] Starting: {model['name']}")
+    
+    # Try to resolve cached model first (for pre-downloaded models)
+    model_path = None
+    try:
+        model_path = hf_hub_download(
+            repo_id=model["hf_repo"],
+            filename=model["hf_file"],
+            repo_type="model",
+            local_files_only=True,  # Don't download, only check cache
+        )
+        print(f"[LlamaServer] Using cached model: {model_path}")
+    except Exception:
+        # Not in cache, will use repo/file method (llama-server downloads on first run)
+        print(f"[LlamaServer] Model not in cache, will download on demand...")
+        model_path = None
+
+    # Build command
+    if model_path:
+        # Use cached file directly
+        cmd = [
+            "C:\\Users\\Adolphus\\llama-b8479-bin-win-cpu-x64\\llama-server.exe",
+            "--model", model_path,
+            "--port", "8080",
+            "--ctx-size", "4096",
+            "--n-gpu-layers", "99",
+        ]
+    else:
+        # Fall back to repo/file (llama-server will download)
+        cmd = [
+            "C:\\Users\\Adolphus\\llama-b8479-bin-win-cpu-x64\\llama-server.exe",
+            "--hf-repo", model["hf_repo"],
+            "--hf-file", model["hf_file"],
+            "--port", "8080",
+            "--ctx-size", "4096",
+            "--n-gpu-layers", "99",
+        ]
+    
+    print(f"[LlamaServer] Command: {' '.join(cmd)}")
 
     try:
-        llama_proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Capture stderr to see what's happening
+        llama_proc = subprocess.Popen(
+            cmd, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Stream output in real-time for debugging
+        def log_output():
+            try:
+                for line in iter(llama_proc.stdout.readline, ''):
+                    if line:
+                        print(f"[LlamaServer] {line.rstrip()}")
+            except Exception:
+                pass
+        
+        import threading as th
+        log_thread = th.Thread(target=log_output, daemon=True)
+        log_thread.start()
+        
     except Exception as e:
         llama_status = "error"
         llama_error = str(e)
+        print(f"[LlamaServer] Error starting process: {e}")
         return
 
     deadline = time.time() + 1800
@@ -107,12 +160,15 @@ def _start_llama_server_bg(model: dict) -> None:
             urllib.request.urlopen("http://localhost:8080/v1/models", timeout=2)
             llama_status = "ready"
             active_backend = "local"
+            elapsed = time.time() - (deadline - 1800)
+            print(f"[LlamaServer] Ready! Loaded in {elapsed:.1f}s")
             return
         except Exception:
             time.sleep(2)
 
     llama_status = "error"
-    llama_error = "llama-server did not become ready within 180s"
+    llama_error = "llama-server did not become ready within 1800s"
+    print(f"[LlamaServer] {llama_error}")
 
 
 # ── Lifespan ───────────────────────────────────────────────────────────────────
