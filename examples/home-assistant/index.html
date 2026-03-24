@@ -236,10 +236,21 @@
   // ── Helpers ──────────────────────────────────────────────
 
   function appendMessage(role, text) {
+    const container = document.createElement("div");
+    container.className = `msg-container ${role}`;
+    
     const div = document.createElement("div");
     div.className = `msg ${role}`;
     div.textContent = text;
-    messagesEl.appendChild(div);
+    
+    const timestamp = document.createElement("div");
+    timestamp.className = "msg-timestamp";
+    const now = new Date();
+    timestamp.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    container.appendChild(div);
+    container.appendChild(timestamp);
+    messagesEl.appendChild(container);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return div;
   }

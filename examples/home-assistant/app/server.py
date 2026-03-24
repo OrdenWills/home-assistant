@@ -101,7 +101,7 @@ def _start_llama_server_bg(model: dict) -> None:
         llama_error = str(e)
         return
 
-    deadline = time.time() + 180
+    deadline = time.time() + 1800
     while time.time() < deadline:
         try:
             urllib.request.urlopen("http://localhost:8080/v1/models", timeout=2)

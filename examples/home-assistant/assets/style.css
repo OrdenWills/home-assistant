@@ -465,7 +465,21 @@ main {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
+}
+
+.msg-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.msg-container.user {
+  align-items: flex-end;
+}
+
+.msg-container.assistant {
+  align-items: flex-start;
 }
 
 .msg {
@@ -479,17 +493,21 @@ main {
 }
 
 .msg.user {
-  align-self: flex-end;
   background: var(--user-bubble);
   border: 1px solid rgba(168, 85, 247, 0.25);
   border-bottom-right-radius: var(--radius-sm);
 }
 
 .msg.assistant {
-  align-self: flex-start;
   background: var(--assistant-bubble);
   border: 1px solid var(--border);
   border-bottom-left-radius: var(--radius-sm);
+}
+
+.msg-timestamp {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 0 8px;
 }
 
 /* Tool call inspector */
