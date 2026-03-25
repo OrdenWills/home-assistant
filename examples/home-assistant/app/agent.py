@@ -151,7 +151,7 @@ def run_agent(
             tools=TOOL_SCHEMAS,
             tool_choice="auto",
             temperature=temperature,
-            max_tokens=512,
+            # max_tokens=512,
         )
         message = response.choices[0].message
         print(f"[Agent] Model response - tool_calls: {message.tool_calls}, content: {message.content[:100]}")

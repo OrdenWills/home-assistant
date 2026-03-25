@@ -20,6 +20,7 @@
     </div>
     <div class="meta">
       <span id="model-label">Model: …</span>
+      <button class="backend-btn" id="theme-toggle" title="Cycle theme: Light → Soft Dark → High Contrast">🌙</button>
       <div class="backend-toggle">
         <div class="local-wrapper">
           <button class="backend-btn active" id="local-btn" data-backend="local">LFM Local ▾</button>
@@ -229,6 +230,62 @@
 </div>
 
 <script>
+  // ── Theme management ──────────────────────────────────────
+  // Cycles through: light → soft-dark → dark-hc → light
+
+  function initializeTheme() {
+    // Detect system preference
+    const systemPreferences = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const savedTheme = localStorage.getItem('theme');
+    
+    // Priority: localStorage > system preference > default (light)
+    let theme = savedTheme || (systemPreferences ? 'soft-dark' : 'light');
+    applyTheme(theme);
+  }
+
+  function applyTheme(theme) {
+    const themeIcons = {
+      'light': '🌙',
+      'soft-dark': '🌓',
+      'dark-hc': '⚡'
+    };
+
+    if (theme === 'light') {
+      document.documentElement.removeAttribute('data-theme');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+    
+    document.getElementById('theme-toggle').textContent = themeIcons[theme];
+    localStorage.setItem('theme', theme);
+  }
+
+  function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const themeOrder = ['light', 'soft-dark', 'dark-hc'];
+    const currentIndex = themeOrder.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % themeOrder.length;
+    applyTheme(themeOrder[nextIndex]);
+  }
+
+  // Initialize theme before page fully renders
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeTheme);
+  } else {
+    initializeTheme();
+  }
+  
+  // Attach event listener after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+    });
+  } else {
+    document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  }
+
+  // ── Main app ──────────────────────────────────────────────
+
   const messagesEl = document.getElementById("messages");
   const inputEl    = document.getElementById("user-input");
   const sendBtn    = document.getElementById("send-btn");

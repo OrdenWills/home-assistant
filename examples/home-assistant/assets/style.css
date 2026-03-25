@@ -23,6 +23,71 @@
   --radius-lg:       12px;
 }
 
+/* Dark mode: system preference (defaults to soft dark) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:              #1a1a1a;
+    --surface:         #262626;
+    --surface-2:       #2d2d2d;
+    --border:          #404040;
+    --border-light:    #333333;
+    --text:            #e0e0e0;
+    --text-muted:      #a0a0a0;
+    --accent:          #9d4edd;
+    --accent-dim:      rgba(157, 78, 221, 0.12);
+    --gradient:        linear-gradient(135deg, #c77dff, #9d4edd);
+    --amber:           #f59e0b;
+    --amber-glow:      rgba(245, 158, 11, 0.10);
+    --green:           #10b981;
+    --green-dim:       rgba(16, 185, 129, 0.08);
+    --red:             #ef4444;
+    --user-bubble:     #262626;
+    --assistant-bubble:#2d2d2d;
+  }
+}
+
+/* Soft dark mode: manual override via data-theme attribute */
+html[data-theme="soft-dark"] {
+  --bg:              #1a1a1a;
+  --surface:         #262626;
+  --surface-2:       #2d2d2d;
+  --border:          #404040;
+  --border-light:    #333333;
+  --text:            #e0e0e0;
+  --text-muted:      #a0a0a0;
+  --accent:          #9d4edd;
+  --accent-dim:      rgba(157, 78, 221, 0.12);
+  --gradient:        linear-gradient(135deg, #c77dff, #9d4edd);
+  --amber:           #f59e0b;
+  --amber-glow:      rgba(245, 158, 11, 0.10);
+  --green:           #10b981;
+  --green-dim:       rgba(16, 185, 129, 0.08);
+  --red:             #ef4444;
+  --user-bubble:     #262626;
+  --assistant-bubble:#2d2d2d;
+}
+
+/* High contrast dark mode */
+html[data-theme="dark-hc"] {
+  --bg:              #000000;
+  --surface:         #111111;
+  --surface-2:       #222222;
+  --border:          #555555;
+  --border-light:    #444444;
+  --text:            #ffffff;
+  --text-muted:      #e0e0e0;
+  --accent:          #00d4ff;
+  --accent-dim:      rgba(0, 212, 255, 0.15);
+  --gradient:        linear-gradient(135deg, #00d4ff, #00ff88);
+  --amber:           #ffff00;
+  --amber-glow:      rgba(255, 255, 0, 0.15);
+  --green:           #00ff00;
+  --green-dim:       rgba(0, 255, 0, 0.12);
+  --red:             #ff0000;
+  --user-bubble:     #0a0a0a;
+  --assistant-bubble:#1a1a1a;
+}
+
 html, body {
   height: 100%;
   background: var(--bg);
@@ -152,6 +217,12 @@ main {
   border-radius: var(--radius-md);
 }
 
+@media (prefers-color-scheme: dark) {
+  .house-body { background: #333333; border-color: #333333; }
+}
+
+html[data-theme="dark"] .house-body { background: #333333; border-color: #333333; }
+
 .fp-room {
   background: #eeede9;
   display: flex;
@@ -160,6 +231,12 @@ main {
   position: relative;
   transition: background 0.4s ease;
 }
+
+@media (prefers-color-scheme: dark) {
+  .fp-room { background: #2d2d2d; }
+}
+
+html[data-theme="dark"] .fp-room { background: #2d2d2d; }
 
 #fp-room-hallway      { grid-column: 1 / 4; }
 #fp-room-living_room  { grid-column: 2 / 4; }
@@ -174,12 +251,24 @@ main {
   transition: color 0.4s ease;
 }
 
+@media (prefers-color-scheme: dark) {
+  .fp-room-label { color: #707070; }
+}
+
+html[data-theme="dark"] .fp-room-label { color: #707070; }
+
 /* Lit room: solid amber matching the light cards */
 .fp-room.lit {
   background: #fde8c8;
 }
 
 .fp-room.lit .fp-room-label { color: var(--amber); }
+
+@media (prefers-color-scheme: dark) {
+  .fp-room.lit { background: #3a3a2a; }
+}
+
+html[data-theme="dark"] .fp-room.lit { background: #3a3a2a; }
 
 /* Door markers: absolutely positioned on house walls */
 .fp-door {
@@ -370,6 +459,14 @@ main {
 .mode-text[data-mode="heat"] { color: #f97316; }
 .mode-text[data-mode="cool"] { color: #38bdf8; }
 .mode-text[data-mode="auto"] { color: var(--text-muted); }
+
+@media (prefers-color-scheme: dark) {
+  .mode-text[data-mode="heat"] { color: #ff8a50; }
+  .mode-text[data-mode="cool"] { color: #4db8ff; }
+}
+
+html[data-theme="dark"] .mode-text[data-mode="heat"] { color: #ff8a50; }
+html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
 
 /* ── Scenes ── */
 .scene-list {
