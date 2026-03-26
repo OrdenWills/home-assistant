@@ -12,8 +12,11 @@ from pydantic import BaseModel
 from huggingface_hub import hf_hub_download
 
 from app.agent import local_client, run_agent
-from app.state import home_state
-from app.cache import init_db, get_cached, set_cached, delete_cached, clear_all, list_entries
+from app.state import home_state, load_state
+from app.cache import (
+    init_db, get_cached, set_cached, delete_cached,
+    clear_all, clear_stale, list_entries, build_snapshot,
+)
 from app.tools.handlers import TOOL_HANDLERS
 
 # ── Model registry ─────────────────────────────────────────────────────────────
@@ -171,9 +174,10 @@ def _start_llama_server_bg(model: dict) -> None:
 
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
-    # Initialise the SQLite cache (creates table if absent)
+    # Initialise the SQLite cache and restore persisted home state
     init_db()
     print("[Cache] SQLite tool-call cache initialised.")
+    load_state()
 
     # Auto-load default model on startup
     default_model_id = "lfm25-1b-q8"
@@ -303,8 +307,9 @@ def stop_local_model():
 
 @app.get("/cache")
 def list_cache():
-    """Return every entry stored in the tool-call cache."""
-    return JSONResponse(list_entries())
+    """Return every entry stored in the tool-call cache, with is_stale flags."""
+    snapshot = build_snapshot(home_state)
+    return JSONResponse(list_entries(current_snapshot=snapshot))
 
 
 @app.delete("/cache")
@@ -323,6 +328,29 @@ def delete_cache_entry(req: CacheDeleteRequest):
     """Remove a single cache entry by its (unnormalised) message text."""
     removed = delete_cached(req.message)
     return JSONResponse({"removed": removed})
+
+
+@app.get("/cache/stale")
+def list_stale_cache():
+    """
+    Return every cache entry that is stale relative to the current device
+    topology (i.e. a room or door has been added / removed since it was cached).
+    """
+    snapshot = build_snapshot(home_state)
+    entries  = list_entries(current_snapshot=snapshot)
+    stale    = [e for e in entries if e.get("is_stale")]
+    return JSONResponse({"count": len(stale), "entries": stale})
+
+
+@app.delete("/cache/stale")
+def clean_stale_cache():
+    """
+    Delete all stale cache entries.  Safe to call any time; the next request
+    for a stale phrase will go to the model and rebuild a correct entry.
+    """
+    snapshot = build_snapshot(home_state)
+    deleted  = clear_stale(snapshot)
+    return JSONResponse({"deleted": deleted})
 
 
 # ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -400,7 +428,8 @@ def chat(req: ChatRequest):
         return JSONResponse({"text": msg, "tool_calls": []}, status_code=503)
 
     # ── 2. Cache lookup ───────────────────────────────────────────────────────
-    cached = get_cached(req.message)
+    current_snapshot = build_snapshot(home_state)
+    cached = get_cached(req.message, current_snapshot)
     if cached:
         print(f"[Cache] HIT for: {req.message!r}")
         events, text = _replay_cached_tools(cached)
@@ -445,7 +474,7 @@ def chat(req: ChatRequest):
     ]
     if action_events:
         to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
-        set_cached(req.message, to_cache)
+        set_cached(req.message, to_cache, current_snapshot)
         print(f"[Cache] STORED {len(to_cache)} tool call(s) for: {req.message!r}")
 
     return JSONResponse({"text": text, "tool_calls": events, "cached": False})

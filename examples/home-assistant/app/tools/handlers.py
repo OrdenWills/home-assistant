@@ -1,24 +1,28 @@
 #app/tools/handlers.py
-from app.state import home_state
+from app.state import home_state, persist_state
 
 
 def toggle_lights(room: str, state: str) -> dict:
     home_state["lights"][room]["state"] = state
+    persist_state()
     return {"success": True, "room": room, "state": state}
 
 
 def set_thermostat(temperature: int, mode: str) -> dict:
     home_state["thermostat"]["temperature"] = temperature
     home_state["thermostat"]["mode"] = mode
+    persist_state()
     return {"success": True, "temperature": temperature, "mode": mode}
 
 
 def lock_door(door: str, state: str) -> dict:
     home_state["doors"][door] = "locked" if state == "lock" else "unlocked"
+    persist_state()
     return {"success": True, "door": door, "state": home_state["doors"][door]}
 
 
 def get_device_status(device_type: str, room: str = None) -> dict:
+    # Read-only — no persist needed
     if device_type == "lights":
         if room:
             return {"device_type": "lights", "room": room, "status": home_state["lights"].get(room)}
@@ -73,37 +77,39 @@ def set_scene(scene: str) -> dict:
         therm["mode"] = "auto"
 
     home_state["active_scene"] = scene
+    persist_state()
     return {"success": True, "scene": scene}
 
 
 def intent_unclear(reason: str = "unknown") -> dict:
+    # No state change — no persist needed
     return {"success": False, "reason": reason}
 
 
 def toggle_all_lights(state: str) -> dict:
-    """Toggle all lights in the house to the same state."""
     for room in home_state["lights"]:
         home_state["lights"][room]["state"] = state
+    persist_state()
     affected_rooms = list(home_state["lights"].keys())
     return {"success": True, "state": state, "rooms": affected_rooms, "count": len(affected_rooms)}
 
 
 def lock_all_doors(state: str) -> dict:
-    """Lock or unlock all doors in the house."""
     target_state = "locked" if state == "lock" else "unlocked"
     for door in home_state["doors"]:
         home_state["doors"][door] = target_state
+    persist_state()
     affected_doors = list(home_state["doors"].keys())
     return {"success": True, "state": target_state, "doors": affected_doors, "count": len(affected_doors)}
 
 
 TOOL_HANDLERS = {
-    "toggle_lights":    toggle_lights,
-    "set_thermostat":   set_thermostat,
-    "lock_door":        lock_door,
+    "toggle_lights":     toggle_lights,
+    "set_thermostat":    set_thermostat,
+    "lock_door":         lock_door,
     "get_device_status": get_device_status,
-    "set_scene":        set_scene,
+    "set_scene":         set_scene,
     "toggle_all_lights": toggle_all_lights,
-    "lock_all_doors":   lock_all_doors,
-    "intent_unclear":   intent_unclear,
+    "lock_all_doors":    lock_all_doors,
+    "intent_unclear":    intent_unclear,
 }

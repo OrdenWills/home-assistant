@@ -26,3 +26,4 @@ LFM2.5-Audio-1.5B-transformers-js/
 node_modules/
 package-lock.json
 examples/home-assistant/cache.db
+examples/home-assistant/app/Todo
