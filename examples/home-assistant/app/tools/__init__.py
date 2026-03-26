@@ -1,3 +1,4 @@
+#app/tools/__init__.py
 from app.tools.schemas import TOOL_SCHEMAS
 from app.tools.handlers import TOOL_HANDLERS
 
