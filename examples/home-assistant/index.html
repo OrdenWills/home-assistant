@@ -234,13 +234,9 @@
   // Cycles through: light → soft-dark → dark-hc → light
 
   function initializeTheme() {
-    // Detect system preference
-    const systemPreferences = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedTheme = localStorage.getItem('theme');
-    
-    // Priority: localStorage > system preference > default (light)
-    let theme = savedTheme || (systemPreferences ? 'soft-dark' : 'light');
-    applyTheme(theme);
+    // Manual theme selection only - no system preference
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(savedTheme);
   }
 
   function applyTheme(theme) {

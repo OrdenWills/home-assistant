@@ -15,6 +15,7 @@
   --amber-glow:      rgba(217, 119, 6, 0.08);
   --green:           #16a34a;
   --green-dim:       rgba(22, 163, 74, 0.07);
+  --golden:          #d97706;
   --red:             #dc2626;
   --user-bubble:     #faf5ff;
   --assistant-bubble:#ffffff;
@@ -23,28 +24,7 @@
   --radius-lg:       12px;
 }
 
-/* Dark mode: system preference (defaults to soft dark) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg:              #1a1a1a;
-    --surface:         #262626;
-    --surface-2:       #2d2d2d;
-    --border:          #404040;
-    --border-light:    #333333;
-    --text:            #e0e0e0;
-    --text-muted:      #a0a0a0;
-    --accent:          #9d4edd;
-    --accent-dim:      rgba(157, 78, 221, 0.12);
-    --gradient:        linear-gradient(135deg, #c77dff, #9d4edd);
-    --amber:           #f59e0b;
-    --amber-glow:      rgba(245, 158, 11, 0.10);
-    --green:           #10b981;
-    --green-dim:       rgba(16, 185, 129, 0.08);
-    --red:             #ef4444;
-    --user-bubble:     #262626;
-    --assistant-bubble:#2d2d2d;
-  }
-}
+
 
 /* Soft dark mode: manual override via data-theme attribute */
 html[data-theme="soft-dark"] {
@@ -62,6 +42,7 @@ html[data-theme="soft-dark"] {
   --amber-glow:      rgba(245, 158, 11, 0.10);
   --green:           #10b981;
   --green-dim:       rgba(16, 185, 129, 0.08);
+  --golden:          #fbbf24;
   --red:             #ef4444;
   --user-bubble:     #262626;
   --assistant-bubble:#2d2d2d;
@@ -78,11 +59,12 @@ html[data-theme="dark-hc"] {
   --text-muted:      #e0e0e0;
   --accent:          #00d4ff;
   --accent-dim:      rgba(0, 212, 255, 0.15);
-  --gradient:        linear-gradient(135deg, #00d4ff, #00ff88);
+  --gradient:        linear-gradient(135deg, #f472b6, #a855f7);
   --amber:           #ffff00;
   --amber-glow:      rgba(255, 255, 0, 0.15);
   --green:           #00ff00;
   --green-dim:       rgba(0, 255, 0, 0.12);
+  --golden:          #ffff00;
   --red:             #ff0000;
   --user-bubble:     #0a0a0a;
   --assistant-bubble:#1a1a1a;
@@ -147,7 +129,7 @@ header .meta {
 
 #model-label {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--golden);
 }
 
 .backend-toggle {
@@ -264,11 +246,13 @@ html[data-theme="dark"] .fp-room-label { color: #707070; }
 
 .fp-room.lit .fp-room-label { color: var(--amber); }
 
-@media (prefers-color-scheme: dark) {
-  .fp-room.lit { background: #3a3a2a; }
-}
+/* Soft dark lit room */
+html[data-theme="soft-dark"] .fp-room.lit { background: #3a3a2a; }
+html[data-theme="soft-dark"] .fp-room.lit .fp-room-label { color: var(--amber); }
 
-html[data-theme="dark"] .fp-room.lit { background: #3a3a2a; }
+/* High contrast lit room */
+html[data-theme="dark-hc"] .fp-room.lit { background: #3a3a2a; }
+html[data-theme="dark-hc"] .fp-room.lit .fp-room-label { color: var(--amber); }
 
 /* Door markers: absolutely positioned on house walls */
 .fp-door {
@@ -544,7 +528,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
 
 .assistant-dot.ready {
   background: var(--green);
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  box-shadow: 0 0 6px var(--green);
 }
 
 .assistant-dot.loading {
@@ -658,7 +642,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
 #input-bar input::placeholder { color: var(--text-muted); }
 
 #input-bar button {
-  background: var(--gradient);
+  background: linear-gradient(135deg, #f472b6, #a855f7);
   color: #fff;
   border: none;
   border-radius: var(--radius-md);

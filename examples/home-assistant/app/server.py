@@ -316,12 +316,14 @@ def chat(req: ChatRequest):
         print(f"[Server] Tool called: {name} with args {args}, result: {result}")
         events.append({"name": name, "args": args, "result": result})
 
+    messages_out = []
     try:
-        text = run_agent(req.message, history=conversation_history, backend=active_backend, on_tool_call=on_tool_call)
+        text = run_agent(req.message, history=conversation_history, backend=active_backend, on_tool_call=on_tool_call, messages_out=messages_out)
     except Exception as e:
         return JSONResponse({"text": f"Error: {e}", "tool_calls": events}, status_code=500)
 
-    conversation_history.append({"role": "user",      "content": req.message})
-    conversation_history.append({"role": "assistant", "content": text})
+    # Append the full conversation (including tool calls) to history
+    # This ensures the model knows about actual tool calls in future requests
+    conversation_history.extend(messages_out)
 
     return JSONResponse({"text": text, "tool_calls": events})
