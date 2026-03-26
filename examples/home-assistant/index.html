@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/style.css?v=9"/>
+  <link rel="stylesheet" href="/assets/style.css?v=10"/>
 </head>
 <body>
 <div id="app">
@@ -45,7 +45,7 @@
         <div class="panel-label">Floor Plan</div>
         <div class="panel-body fp-body">
           <div class="house-body">
-            <!-- Door markers (absolutely positioned, out of grid flow) -->
+            <!-- Door markers -->
             <div class="fp-door locked" id="fp-door-back"><div class="fp-door-seg"></div></div>
             <div class="fp-door locked" id="fp-door-garage"><div class="fp-door-seg"></div></div>
             <div class="fp-door locked" id="fp-door-side"><div class="fp-door-seg"></div></div>
@@ -60,8 +60,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Row 2–3: four device panels -->
 
       <!-- Top-left: Lights -->
       <div class="panel">
@@ -121,15 +119,28 @@
         </div>
       </div>
 
-      <!-- Top-right: Climate -->
+      <!-- Top-right: Current Room tracker -->
       <div class="panel">
-        <div class="panel-label">Climate</div>
-        <div class="panel-body climate-body">
-          <div class="thermo-display">
-            <div class="thermo-temp" id="state-thermostat-temp">68°F</div>
-            <div class="thermo-mode">
-              <span class="mode-icon" id="state-thermostat-mode-icon">⟳</span>
-              <span class="mode-text" id="state-thermostat-mode" data-mode="auto">auto</span>
+        <div class="panel-label">Current Room</div>
+        <div class="panel-body">
+          <div class="room-tracker-grid" id="room-tracker">
+            <div class="room-sq" data-room="bedroom">
+              <span class="room-sq-label">Bedroom</span>
+            </div>
+            <div class="room-sq" data-room="bathroom">
+              <span class="room-sq-label">Bathroom</span>
+            </div>
+            <div class="room-sq" data-room="office">
+              <span class="room-sq-label">Office</span>
+            </div>
+            <div class="room-sq" data-room="hallway">
+              <span class="room-sq-label">Hallway</span>
+            </div>
+            <div class="room-sq" data-room="kitchen">
+              <span class="room-sq-label">Kitchen</span>
+            </div>
+            <div class="room-sq" data-room="living_room">
+              <span class="room-sq-label">Living Room</span>
             </div>
           </div>
         </div>
@@ -231,27 +242,19 @@
 
 <script>
   // ── Theme management ──────────────────────────────────────
-  // Cycles through: light → soft-dark → dark-hc → light
 
   function initializeTheme() {
-    // Manual theme selection only - no system preference
     const savedTheme = localStorage.getItem('theme') || 'light';
     applyTheme(savedTheme);
   }
 
   function applyTheme(theme) {
-    const themeIcons = {
-      'light': '🌙',
-      'soft-dark': '🌓',
-      'dark-hc': '⚡'
-    };
-
+    const themeIcons = { 'light': '🌙', 'soft-dark': '🌓', 'dark-hc': '⚡' };
     if (theme === 'light') {
       document.documentElement.removeAttribute('data-theme');
     } else {
       document.documentElement.setAttribute('data-theme', theme);
     }
-    
     document.getElementById('theme-toggle').textContent = themeIcons[theme];
     localStorage.setItem('theme', theme);
   }
@@ -260,20 +263,17 @@
     const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
     const themeOrder = ['light', 'soft-dark', 'dark-hc'];
     const currentIndex = themeOrder.indexOf(currentTheme);
-    const nextIndex = (currentIndex + 1) % themeOrder.length;
-    applyTheme(themeOrder[nextIndex]);
+    applyTheme(themeOrder[(currentIndex + 1) % themeOrder.length]);
   }
 
-  // Initialize theme before page fully renders
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeTheme);
   } else {
     initializeTheme();
   }
-  
-  // Attach event listener after DOM is ready
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
     });
   } else {
@@ -286,21 +286,45 @@
   const inputEl    = document.getElementById("user-input");
   const sendBtn    = document.getElementById("send-btn");
 
-  // ── Helpers ──────────────────────────────────────────────
+  // ── Current room state ────────────────────────────────────
+
+  let currentRoom = null;
+
+  function setCurrentRoom(room) {
+    currentRoom = room;
+    const allSq = document.querySelectorAll(".room-sq");
+
+    allSq.forEach(sq => sq.classList.remove("active"));
+
+    if (room) {
+      const sq = document.querySelector(`.room-sq[data-room="${room}"]`);
+      if (sq) sq.classList.add("active");
+    }
+  }
+
+  // Clicking a square selects it; clicking the active square deselects
+  document.querySelectorAll(".room-sq").forEach(sq => {
+    sq.addEventListener("click", () => {
+      const room = sq.dataset.room;
+      setCurrentRoom(currentRoom === room ? null : room);
+    });
+  });
+
+  // ── Helpers ───────────────────────────────────────────────
 
   function appendMessage(role, text) {
     const container = document.createElement("div");
     container.className = `msg-container ${role}`;
-    
+
     const div = document.createElement("div");
     div.className = `msg ${role}`;
     div.textContent = text;
-    
+
     const timestamp = document.createElement("div");
     timestamp.className = "msg-timestamp";
     const now = new Date();
     timestamp.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    
+
     container.appendChild(div);
     container.appendChild(timestamp);
     messagesEl.appendChild(container);
@@ -318,11 +342,7 @@
   }
 
   function appendToolCalls(toolCalls) {
-    console.log("[AppendToolCalls] Called with:", toolCalls);
-    if (!toolCalls || toolCalls.length === 0) {
-      console.log("[AppendToolCalls] No tool calls to display");
-      return;
-    }
+    if (!toolCalls || toolCalls.length === 0) return;
     const details = document.createElement("details");
     details.className = "tool-calls";
     details.innerHTML =
@@ -330,7 +350,6 @@
       `<pre>${JSON.stringify(toolCalls, null, 2)}</pre>`;
     messagesEl.appendChild(details);
     messagesEl.scrollTop = messagesEl.scrollHeight;
-    console.log("[AppendToolCalls] Appended successfully");
   }
 
   function setAssistantDot(state) {
@@ -357,11 +376,11 @@
   const MODE_ICONS = { heat: "🔥", cool: "❄", auto: "⟳" };
 
   function updateStateCards(state) {
+    // Thermostat — elements may not exist if panel was removed; guard with if
     const t = state.thermostat || {};
     const tempEl     = document.getElementById("state-thermostat-temp");
     const modeEl     = document.getElementById("state-thermostat-mode");
     const modeIconEl = document.getElementById("state-thermostat-mode-icon");
-
     if (tempEl) tempEl.textContent = t.temperature != null ? `${t.temperature}°F` : "68°F";
     if (modeEl) {
       const mode = t.mode || "auto";
@@ -390,45 +409,36 @@
   }
 
   function updateFloorplan(state) {
-    console.log("[UpdateFloorplan] Updating with state:", state.lights, state.doors);
-    // Update lights in floorplan
     for (const [room, light] of Object.entries(state.lights || {})) {
       const el = document.getElementById(`fp-room-${room}`);
-      const isOn = light.state === "on";
-      if (el) {
-        el.classList.toggle("lit", isOn);
-        console.log(`[UpdateFloorplan] Room '${room}': element found, light is ${isOn ? "ON" : "OFF"}, classes: ${el.className}`);
-      } else {
-        console.warn(`[UpdateFloorplan] Element NOT found for: fp-room-${room}`);
-      }
+      if (el) el.classList.toggle("lit", light.state === "on");
     }
-    // Update doors in floorplan
     for (const [door, doorState] of Object.entries(state.doors || {})) {
       const el = document.getElementById(`fp-door-${door}`);
-      const isLocked = doorState === "locked";
       if (el) {
-        el.classList.toggle("locked",   isLocked);
-        el.classList.toggle("unlocked", !isLocked);
-        console.log(`[UpdateFloorplan] Door '${door}': element found, is ${isLocked ? "LOCKED" : "UNLOCKED"}, classes: ${el.className}`);
-      } else {
-        console.warn(`[UpdateFloorplan] Element NOT found for: fp-door-${door}`);
+        el.classList.toggle("locked",   doorState === "locked");
+        el.classList.toggle("unlocked", doorState !== "locked");
       }
+    }
+  }
+
+  // Sync room tracker squares with live light state
+  function updateRoomTracker(state) {
+    for (const [room, light] of Object.entries(state.lights || {})) {
+      const sq = document.querySelector(`.room-sq[data-room="${room}"]`);
+      if (sq) sq.classList.toggle("lit", light.state === "on");
     }
   }
 
   async function refreshState() {
     try {
       const res = await fetch("/state");
-      if (!res.ok) {
-        console.error("Failed to fetch state:", res.status, res.statusText);
-        return;
-      }
+      if (!res.ok) return;
       const state = await res.json();
-      console.log("[RefreshState] State fetched:", state);
       updateHouseVisualization(state);
       updateStateCards(state);
       updateFloorplan(state);
-      console.log("[RefreshState] UI update complete");
+      updateRoomTracker(state);
     } catch (e) {
       console.error("[RefreshState] Error:", e);
     }
@@ -477,22 +487,11 @@
       updateStatusPill(d.status, d.error);
       updateModelOptions(d.model_id);
       updateInputState();
-      
-      // Refresh model name when it transitions to ready
-      if (d.status === "ready" && prevStatus !== "ready") {
-        console.log("[FetchLocalModelStatus] Model is now ready, refreshing model label");
-        await refreshModel();
-      }
-      
+      if (d.status === "ready" && prevStatus !== "ready") await refreshModel();
       if (d.status === "starting") {
-        if (!statusPollTimer) {
-          statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
-        }
+        if (!statusPollTimer) statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
       } else {
-        if (statusPollTimer) {
-          clearInterval(statusPollTimer);
-          statusPollTimer = null;
-        }
+        if (statusPollTimer) { clearInterval(statusPollTimer); statusPollTimer = null; }
       }
     } catch (e) {
       console.error("[FetchLocalModelStatus] Error:", e);
@@ -531,9 +530,7 @@
     updateModelOptions(modelId);
     updateStatusPill("starting");
     updateInputState();
-    if (!statusPollTimer) {
-      statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
-    }
+    if (!statusPollTimer) statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
   }
 
   function toggleDropdown(forceOpen) {
@@ -553,9 +550,7 @@
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate  = 1.0;
-    utter.pitch = 1.0;
-
+    utter.rate = 1.0; utter.pitch = 1.0;
     window.speechSynthesis.speak(utter);
   }
 
@@ -577,31 +572,28 @@
       const res = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          message:      text,
+          current_room: currentRoom,   // null when no room selected
+        }),
       });
 
       const data = await res.json();
-      console.log("[SendMessage] Chat response:", data, "Status:", res.status);
       typing.remove();
 
-      // If model is loading (503), show message as placeholder but don't add to chat history
       if (res.status === 503) {
-        console.log("[SendMessage] Model loading, showing as notification");
         const placeholder = document.createElement("div");
         placeholder.className = "msg-placeholder";
         placeholder.textContent = data.text;
         messagesEl.appendChild(placeholder);
         messagesEl.scrollTop = messagesEl.scrollHeight;
-        // Keep input disabled and return early
         return;
       }
 
       appendMessage("assistant", data.text || "(no response)");
       speakText(data.text || "");
       appendToolCalls(data.tool_calls);
-      console.log("[SendMessage] Calling refreshState...");
       await refreshState();
-      console.log("[SendMessage] RefreshState complete");
     } catch (e) {
       typing.remove();
       appendMessage("assistant", "Error: could not reach the server.");
@@ -621,11 +613,8 @@
   async function refreshModel() {
     try {
       const d = await fetch("/model").then(r => r.json());
-      console.log("[RefreshModel] Model name updated:", d.name);
       document.getElementById("model-label").textContent = `Model: ${d.name}`;
-    } catch (e) {
-      console.error("[RefreshModel] Error:", e);
-    }
+    } catch (e) {}
   }
 
   function setActiveBackendBtn(backend) {
