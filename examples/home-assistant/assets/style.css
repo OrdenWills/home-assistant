@@ -591,6 +591,16 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
   padding: 0 8px;
 }
 
+.msg-placeholder {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 12px 16px;
+  margin: 8px 0;
+  font-style: italic;
+  opacity: 0.7;
+}
+
 /* Tool call inspector */
 .tool-calls { align-self: flex-start; width: 100%; }
 

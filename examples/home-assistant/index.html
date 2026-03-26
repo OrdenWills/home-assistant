@@ -581,8 +581,21 @@
       });
 
       const data = await res.json();
-      console.log("[SendMessage] Chat response:", data);
+      console.log("[SendMessage] Chat response:", data, "Status:", res.status);
       typing.remove();
+
+      // If model is loading (503), show message as placeholder but don't add to chat history
+      if (res.status === 503) {
+        console.log("[SendMessage] Model loading, showing as notification");
+        const placeholder = document.createElement("div");
+        placeholder.className = "msg-placeholder";
+        placeholder.textContent = data.text;
+        messagesEl.appendChild(placeholder);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        // Keep input disabled and return early
+        return;
+      }
+
       appendMessage("assistant", data.text || "(no response)");
       speakText(data.text || "");
       appendToolCalls(data.tool_calls);

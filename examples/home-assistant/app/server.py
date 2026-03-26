@@ -316,14 +316,18 @@ def chat(req: ChatRequest):
         print(f"[Server] Tool called: {name} with args {args}, result: {result}")
         events.append({"name": name, "args": args, "result": result})
 
+    # Track history length before the request so we can extract only new messages
+    initial_history_len = len(conversation_history)
     messages_out = []
     try:
         text = run_agent(req.message, history=conversation_history, backend=active_backend, on_tool_call=on_tool_call, messages_out=messages_out)
     except Exception as e:
         return JSONResponse({"text": f"Error: {e}", "tool_calls": events}, status_code=500)
 
-    # Append the full conversation (including tool calls) to history
-    # This ensures the model knows about actual tool calls in future requests
-    conversation_history.extend(messages_out)
+    # messages_out contains [system, ...history, user, tool_calls, tool_results, assistant]
+    # We only want to append the NEW messages from this turn (after the system message and old history)
+    # New messages start at index: 1 (system) + initial_history_len
+    new_messages_start = 1 + initial_history_len
+    conversation_history.extend(messages_out[new_messages_start:])
 
     return JSONResponse({"text": text, "tool_calls": events})
