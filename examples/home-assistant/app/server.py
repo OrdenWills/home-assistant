@@ -13,6 +13,8 @@ from huggingface_hub import hf_hub_download
 
 from app.agent import local_client, run_agent
 from app.state import home_state
+from app.cache import init_db, get_cached, set_cached, delete_cached, clear_all, list_entries
+from app.tools.handlers import TOOL_HANDLERS
 
 # ── Model registry ─────────────────────────────────────────────────────────────
 
@@ -50,12 +52,13 @@ LOCAL_MODELS = [
         "score_label": "53%",
     },
     {
-    "id": "lfm2-vl-450m-q4",
-    "name": "LFM2-VL-450M-Q4_0.gguf",
-    "hf_repo": "LiquidAI/LFM2-VL-450M-GGUF",
-    "hf_file": "LFM2-VL-450M-Q4_0.gguf",
-    "size_label": "209 MB",
-    "score_label": "40%",},
+        "id": "lfm2-vl-450m-q4",
+        "name": "LFM2-VL-450M-Q4_0.gguf",
+        "hf_repo": "LiquidAI/LFM2-VL-450M-GGUF",
+        "hf_file": "LFM2-VL-450M-Q4_0.gguf",
+        "size_label": "209 MB",
+        "score_label": "40%",
+    },
 ]
 
 # ── Module-level state ─────────────────────────────────────────────────────────
@@ -87,25 +90,21 @@ def _start_llama_server_bg(model: dict) -> None:
         llama_proc = None
 
     print(f"[LlamaServer] Starting: {model['name']}")
-    
-    # Try to resolve cached model first (for pre-downloaded models)
+
     model_path = None
     try:
         model_path = hf_hub_download(
             repo_id=model["hf_repo"],
             filename=model["hf_file"],
             repo_type="model",
-            local_files_only=True,  # Don't download, only check cache
+            local_files_only=True,
         )
         print(f"[LlamaServer] Using cached model: {model_path}")
     except Exception:
-        # Not in cache, will use repo/file method (llama-server downloads on first run)
         print(f"[LlamaServer] Model not in cache, will download on demand...")
         model_path = None
 
-    # Build command
     if model_path:
-        # Use cached file directly
         cmd = [
             "C:\\Users\\Adolphus\\llama-b8479-bin-win-cpu-x64\\llama-server.exe",
             "--model", model_path,
@@ -114,7 +113,6 @@ def _start_llama_server_bg(model: dict) -> None:
             "--n-gpu-layers", "99",
         ]
     else:
-        # Fall back to repo/file (llama-server will download)
         cmd = [
             "C:\\Users\\Adolphus\\llama-b8479-bin-win-cpu-x64\\llama-server.exe",
             "--hf-repo", model["hf_repo"],
@@ -123,32 +121,29 @@ def _start_llama_server_bg(model: dict) -> None:
             "--ctx-size", "4096",
             "--n-gpu-layers", "99",
         ]
-    
+
     print(f"[LlamaServer] Command: {' '.join(cmd)}")
 
     try:
-        # Capture stderr to see what's happening
         llama_proc = subprocess.Popen(
-            cmd, 
-            stdout=subprocess.PIPE, 
+            cmd,
+            stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
         )
-        
-        # Stream output in real-time for debugging
+
         def log_output():
             try:
-                for line in iter(llama_proc.stdout.readline, ''):
+                for line in iter(llama_proc.stdout.readline, ""):
                     if line:
                         print(f"[LlamaServer] {line.rstrip()}")
             except Exception:
                 pass
-        
+
         import threading as th
-        log_thread = th.Thread(target=log_output, daemon=True)
-        log_thread.start()
-        
+        th.Thread(target=log_output, daemon=True).start()
+
     except Exception as e:
         llama_status = "error"
         llama_error = str(e)
@@ -176,15 +171,21 @@ def _start_llama_server_bg(model: dict) -> None:
 
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
+    # Initialise the SQLite cache (creates table if absent)
+    init_db()
+    print("[Cache] SQLite tool-call cache initialised.")
+
     # Auto-load default model on startup
     default_model_id = "lfm25-1b-q8"
     model = next((m for m in LOCAL_MODELS if m["id"] == default_model_id), None)
     if model:
         print(f"[Startup] Auto-loading default model: {model['name']}")
-        threading.Thread(target=_start_llama_server_bg, args=(model,), daemon=True).start()
-    
+        threading.Thread(
+            target=_start_llama_server_bg, args=(model,), daemon=True
+        ).start()
+
     yield
-    
+
     global llama_proc
     if llama_proc is not None:
         try:
@@ -212,9 +213,10 @@ def get_model():
     global active_backend, llama_active_model_id
     if active_backend == "openai":
         return JSONResponse({"name": "gpt-4o-mini"})
-    # Return the actual selected model name from the registry
     if llama_active_model_id:
-        model = next((m for m in LOCAL_MODELS if m["id"] == llama_active_model_id), None)
+        model = next(
+            (m for m in LOCAL_MODELS if m["id"] == llama_active_model_id), None
+        )
         if model:
             return JSONResponse({"name": model["name"]})
     return JSONResponse({"name": "No model loaded"})
@@ -260,9 +262,9 @@ def get_local_models():
 @app.get("/local-model-status")
 def get_local_model_status():
     return JSONResponse({
-        "status": llama_status,
+        "status":   llama_status,
         "model_id": llama_active_model_id,
-        "error": llama_error,
+        "error":    llama_error,
     })
 
 
@@ -275,7 +277,9 @@ def start_local_model(req: LocalModelRequest):
     model = next((m for m in LOCAL_MODELS if m["id"] == req.model_id), None)
     if model is None:
         return JSONResponse({"error": "unknown model_id"}, status_code=400)
-    threading.Thread(target=_start_llama_server_bg, args=(model,), daemon=True).start()
+    threading.Thread(
+        target=_start_llama_server_bg, args=(model,), daemon=True
+    ).start()
     return JSONResponse({"status": "starting"})
 
 
@@ -295,6 +299,89 @@ def stop_local_model():
     return JSONResponse({"status": "idle"})
 
 
+# ── Cache endpoints ────────────────────────────────────────────────────────────
+
+@app.get("/cache")
+def list_cache():
+    """Return every entry stored in the tool-call cache."""
+    return JSONResponse(list_entries())
+
+
+@app.delete("/cache")
+def wipe_cache():
+    """Wipe the entire tool-call cache."""
+    deleted = clear_all()
+    return JSONResponse({"deleted": deleted})
+
+
+class CacheDeleteRequest(BaseModel):
+    message: str
+
+
+@app.delete("/cache/entry")
+def delete_cache_entry(req: CacheDeleteRequest):
+    """Remove a single cache entry by its (unnormalised) message text."""
+    removed = delete_cached(req.message)
+    return JSONResponse({"removed": removed})
+
+
+# ── Cache helpers ──────────────────────────────────────────────────────────────
+
+def _replay_cached_tools(
+    cached_calls: list[dict],
+    on_tool_call=None,
+) -> tuple[list[dict], str]:
+    """
+    Execute a list of cached {name, args} tool calls against the live handlers.
+    Returns (events_list, human_readable_summary).
+    State is mutated exactly as it would be during a live agent turn.
+    """
+    events: list[dict] = []
+    summaries: list[str] = []
+
+    for tc in cached_calls:
+        name = tc["name"]
+        args = tc.get("args", {})
+        handler = TOOL_HANDLERS.get(name)
+        result = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
+
+        events.append({"name": name, "args": args, "result": result})
+        if on_tool_call:
+            on_tool_call(name, args, result)
+
+        summaries.append(_summarise_tool(name, args, result))
+
+    text = " ".join(summaries) if summaries else "Done."
+    return events, text
+
+
+def _summarise_tool(name: str, args: dict, result: dict) -> str:
+    """Build a short human-readable sentence for a single tool call result."""
+    if not result.get("success"):
+        return f"({name} failed)"
+
+    if name == "toggle_lights":
+        return f"{args['room'].replace('_', ' ').title()} light turned {args['state']}."
+    if name == "toggle_all_lights":
+        return f"All lights turned {args['state']}."
+    if name == "lock_door":
+        action = "locked" if args["state"] == "lock" else "unlocked"
+        return f"{args['door'].title()} door {action}."
+    if name == "lock_all_doors":
+        action = "locked" if args["state"] == "lock" else "unlocked"
+        return f"All doors {action}."
+    if name == "set_thermostat":
+        return (
+            f"Thermostat set to {args['temperature']}°F "
+            f"in {args['mode']} mode."
+        )
+    if name == "set_scene":
+        return f"{args['scene'].replace('_', ' ').title()} scene activated."
+    if name == "intent_unclear":
+        return f"Intent unclear ({args.get('reason', '?')})."
+    return "Done."
+
+
 # ── Chat endpoint ──────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
@@ -303,32 +390,62 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 def chat(req: ChatRequest):
+    # ── 1. Gate: local model must be ready ────────────────────────────────────
     if active_backend == "local" and llama_status != "ready":
         msg = {
             "starting": "Model is still loading, please wait.",
-            "idle": "No local model loaded. Select a model from the LFM Local dropdown.",
-            "error": f"Local model failed to start: {llama_error}",
+            "idle":     "No local model loaded. Select a model from the LFM Local dropdown.",
+            "error":    f"Local model failed to start: {llama_error}",
         }.get(llama_status, "Local model is not ready.")
         return JSONResponse({"text": msg, "tool_calls": []}, status_code=503)
 
-    events = []
+    # ── 2. Cache lookup ───────────────────────────────────────────────────────
+    cached = get_cached(req.message)
+    if cached:
+        print(f"[Cache] HIT for: {req.message!r}")
+        events, text = _replay_cached_tools(cached)
+        return JSONResponse({
+            "text":       text,
+            "tool_calls": events,
+            "cached":     True,         # lets the frontend know (optional)
+        })
+
+    # ── 3. Cache miss — run the agent normally ────────────────────────────────
+    print(f"[Cache] MISS for: {req.message!r} — invoking model")
+    events: list[dict] = []
 
     def on_tool_call(name, args, result):
         print(f"[Server] Tool called: {name} with args {args}, result: {result}")
         events.append({"name": name, "args": args, "result": result})
 
-    # Track history length before the request so we can extract only new messages
     initial_history_len = len(conversation_history)
-    messages_out = []
+    messages_out: list[dict] = []
     try:
-        text = run_agent(req.message, history=conversation_history, backend=active_backend, on_tool_call=on_tool_call, messages_out=messages_out)
+        text = run_agent(
+            req.message,
+            history=conversation_history,
+            backend=active_backend,
+            on_tool_call=on_tool_call,
+            messages_out=messages_out,
+        )
     except Exception as e:
         return JSONResponse({"text": f"Error: {e}", "tool_calls": events}, status_code=500)
 
-    # messages_out contains [system, ...history, user, tool_calls, tool_results, assistant]
-    # We only want to append the NEW messages from this turn (after the system message and old history)
-    # New messages start at index: 1 (system) + initial_history_len
+    # Extend conversation history with only the new messages from this turn
     new_messages_start = 1 + initial_history_len
     conversation_history.extend(messages_out[new_messages_start:])
 
-    return JSONResponse({"text": text, "tool_calls": events})
+    # ── 4. Persist to cache only when the model called at least one tool ──────
+    # intent_unclear counts as a tool call but we don't want to cache it,
+    # because the user's next attempt may carry enough context to resolve it.
+    action_events = [
+        e for e in events
+        if e["name"] != "intent_unclear"
+        and e.get("result", {}).get("success")
+    ]
+    if action_events:
+        to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
+        set_cached(req.message, to_cache)
+        print(f"[Cache] STORED {len(to_cache)} tool call(s) for: {req.message!r}")
+
+    return JSONResponse({"text": text, "tool_calls": events, "cached": False})
