@@ -1,4 +1,4 @@
-#app/agent.py
+# app/agent.py
 import json
 import os
 import re
@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from app.tools.schemas import TOOL_SCHEMAS
 from app.tools.handlers import TOOL_HANDLERS
+from app.tools.validator import coerce_args, validate_tool_call  # Fix 1 & 2
 
 load_dotenv()
 
@@ -17,27 +18,41 @@ BACKENDS = {
     "openai": {"client": openai_client, "model": "gpt-4o-mini"},
 }
 
+# ── Fix 4: Tightened system prompt ────────────────────────────────────────────
+# Key additions vs the old prompt:
+#  - Explicit param names in every tool description
+#  - A ❌ / ✓ bad-vs-good example for the exact failure seen in logs
+#  - Reinforced that state= is always the on/off or lock/unlock parameter
+
 SYSTEM_PROMPT = (
-    "You are a home assistant AI. Use tools to control the home; respond in text when no tool is needed. "
-    "Output function calls as JSON.\n"
-    "INDIVIDUAL CONTROL:\n"
-    "- Lights (on/off): bedroom, bathroom, office, hallway, kitchen, living_room.\n"
-    "- Doors (lock/unlock): front, back, garage, side.\n"
-    "- Thermostat: temperature 60-80°F, modes: heat, cool, auto.\n"
-    "BULK CONTROL (for 'all' or 'entire house'):\n"
-    "- toggle_all_lights: turn all lights in the house on/off at once.\n"
-    "- lock_all_doors: lock/unlock all doors at once.\n"
-    "PRESETS:\n"
-    "- Scenes: movie_night, bedtime, morning, away, party.\n"
-    "GUIDELINES:\n"
-    "- For 'turn on all lights' or 'turn off all lights', use toggle_all_lights.\n"
-    "- For 'lock all doors' or 'unlock all doors', use lock_all_doors.\n"
-    "- For 'turn on lights in [room]', use toggle_lights with that room.\n"
-    "- Call intent_unclear (never plain text) when the request is: "
-    "ambiguous (could be satisfied by multiple different home control actions, e.g. 'make it nicer in here' could mean thermostat, lights, or a scene), "
-    "off_topic (unrelated to home control), "
-    "incomplete (no target device or room specified even after reading conversation history, e.g. 'turn it on' as the opening message), "
-    "or unsupported_device (refers to a device or feature not available, e.g. brightness, TV, music)."
+    "You are a home assistant AI. Use tools to control the home; respond in plain text when no tool is needed.\n"
+    "\n"
+    "ROOMS: bedroom, bathroom, office, hallway, kitchen, living_room\n"
+    "DOORS: front, back, garage, side\n"
+    "\n"
+    "TOOLS — use EXACTLY these parameter names:\n"
+    "  toggle_lights(room=<room>, state='on'|'off')          — one room\n"
+    "  toggle_all_lights(state='on'|'off')                   — ALL rooms at once\n"
+    "  lock_door(door=<door>, state='lock'|'unlock')         — one door\n"
+    "  lock_all_doors(state='lock'|'unlock')                 — ALL doors at once\n"
+    "  set_thermostat(temperature=<60-80>, mode='heat'|'cool'|'auto')\n"
+    "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
+    "  intent_unclear(reason=<string>)\n"
+    "\n"
+    "CRITICAL — parameter names matter:\n"
+    "  ❌ WRONG: [toggle_all_lights(room='off')]    ← 'room' is not a valid param\n"
+    "  ✓ RIGHT:  [toggle_all_lights(state='off')]   ← always use 'state' for on/off\n"
+    "  ❌ WRONG: [lock_all_doors(door='lock')]       ← 'door' is not a valid param here\n"
+    "  ✓ RIGHT:  [lock_all_doors(state='lock')]      ← always use 'state' for lock/unlock\n"
+    "\n"
+    "ROUTING RULES:\n"
+    "  - 'turn on/off all lights' or 'all lights on/off' → toggle_all_lights(state=...)\n"
+    "  - 'turn on/off the light' with a room context     → toggle_lights(room=..., state=...)\n"
+    "  - 'lock/unlock all doors'                         → lock_all_doors(state=...)\n"
+    "  - 'lock/unlock the [door] door'                   → lock_door(door=..., state=...)\n"
+    "\n"
+    "Call intent_unclear (never plain text) when the request is: ambiguous, off-topic, "
+    "incomplete (no target specified), or refers to an unsupported device (brightness, TV, music, etc.)."
 )
 
 
@@ -53,69 +68,52 @@ def get_model_name(backend: str) -> str:
 
 def parse_tool_calls_from_text(text: str) -> list[dict]:
     """
-    Parse tool calls from text output like: [toggle_lights(room="kitchen", state="on")]
-    Returns a list of dicts with tool_call info compatible with server expectations.
+    Parse tool calls from text like: [toggle_lights(room="kitchen", state="on")]
+    Handles both quoted strings and unquoted numeric values.
     """
     tool_calls = []
-    # Match pattern: [function_name(args)]
     pattern = r'\[(\w+)\((.*?)\)\]'
-    matches = re.finditer(pattern, text)
-    
-    for idx, match in enumerate(matches):
+    for idx, match in enumerate(re.finditer(pattern, text)):
         func_name = match.group(1)
-        args_str = match.group(2)
-        
+        args_str  = match.group(2)
         try:
-            # Parse arguments like: room="kitchen", state="on"
-            args = {}
-            # Split by comma, but be careful with quoted strings
-            arg_pairs = re.findall(r'(\w+)="([^"]*)"', args_str)
-            for key, value in arg_pairs:
-                args[key] = value
-            
-            tool_calls.append({
-                "name": func_name,
-                "args": args,
-                "id": f"call_{idx}",  # Synthetic ID since model didn't provide one
-            })
+            args: dict = {}
+            # quoted strings
+            for key, val in re.findall(r'(\w+)="([^"]*)"', args_str):
+                args[key] = val
+            # unquoted numbers (e.g. temperature=72)
+            for key, val in re.findall(r"(\w+)=([0-9]+(?:\.[0-9]+)?)\b", args_str):
+                if key not in args:
+                    args[key] = val
+            tool_calls.append({"name": func_name, "args": args, "id": f"call_{idx}"})
             print(f"[ParseToolCalls] Extracted: {func_name}({args})")
         except Exception as e:
             print(f"[ParseToolCalls] Failed to parse '{match.group(0)}': {e}")
-    
     return tool_calls
 
 
 def clean_text_response(text: str) -> str:
-    """Remove tool call syntax from text response."""
-    # Remove patterns like [function_name(...)]
-    cleaned = re.sub(r'\[(\w+)\([^)]*\)\]', '', text)
-    return cleaned.strip()
+    """Remove tool call syntax from a text response."""
+    return re.sub(r'\[(\w+)\([^)]*\)\]', '', text).strip()
 
 
 def classify_and_expand_intent(user_message: str) -> str:
-    """
-    Analyze user request to provide helpful context for bulk operations.
-    This helps the model understand requests like 'turn on all lights'.
-    """
-    lower_msg = user_message.lower()
-    
-    # Detect bulk operation keywords
-    bulk_keywords = {
-        'all lights': 'Use toggle_all_lights to control all lights at once.',
-        'all rooms': 'Use toggle_all_lights to control lights in all rooms at once.',
-        'entire house': 'Use toggle_all_lights and lock_all_doors for bulk operations.',
-        'all doors': 'Use lock_all_doors to control all doors at once.',
-        'everything': 'You can use bulk operations: toggle_all_lights and lock_all_doors.',
+    """Add a routing hint for bulk operations so the model picks the right tool."""
+    lower = user_message.lower()
+    hints = {
+        'all lights':   'Use toggle_all_lights(state=...) — NOT toggle_lights.',
+        'all rooms':    'Use toggle_all_lights(state=...) — NOT toggle_lights.',
+        'entire house': 'Use toggle_all_lights and/or lock_all_doors for bulk operations.',
+        'all doors':    'Use lock_all_doors(state=...) — NOT lock_door.',
+        'everything':   'Use bulk ops: toggle_all_lights and lock_all_doors.',
     }
-    
-    # Check for bulk operation keywords
-    for keyword, hint in bulk_keywords.items():
-        if keyword in lower_msg:
-            # Return expanded prompt with hint
+    for kw, hint in hints.items():
+        if kw in lower:
             return f"{user_message}\n[HINT: {hint}]"
-    
     return user_message
 
+
+# ── Agent loop ─────────────────────────────────────────────────────────────────
 
 def run_agent(
     user_message: str,
@@ -131,7 +129,6 @@ def run_agent(
     client = backend_cfg["client"]
     model  = backend_cfg["model"]
 
-    # Classify and expand user intent to help model understand bulk operations
     expanded_message = classify_and_expand_intent(user_message)
     print(f"[Agent] Original: {user_message}")
     print(f"[Agent] Expanded: {expanded_message}")
@@ -142,9 +139,10 @@ def run_agent(
         {"role": "user", "content": expanded_message},
     ]
 
-    seen_calls: set[str] = set()  # Guard against repeated identical tool calls
+    seen_calls: set[str] = set()
     max_iter = 5
     final_response = None
+
     for _ in range(max_iter):
         response = client.chat.completions.create(
             model=model,
@@ -152,46 +150,42 @@ def run_agent(
             tools=TOOL_SCHEMAS,
             tool_choice="auto",
             temperature=temperature,
-            # max_tokens=512,
         )
         message = response.choices[0].message
-        print(f"[Agent] Model response - tool_calls: {message.tool_calls}, content: {message.content[:100]}")
+        print(f"[Agent] Model response - tool_calls: {message.tool_calls}, "
+              f"content: {(message.content or '')[:120]}")
 
-        # BACKWARD COMPATIBILITY: Handle both formats
-        # - Current (text parsing): LFM model outputs text like "[toggle_lights(room="kitchen", state="on")]..."
-        # - Future (structured): Fine-tuned model returns proper OpenAI tool_calls format
-        parsed_tool_calls = parse_tool_calls_from_text(message.content) if not message.tool_calls else None
+        # Support both native tool_calls and text-encoded calls from local models
+        parsed_tool_calls = (
+            parse_tool_calls_from_text(message.content)
+            if not message.tool_calls
+            else None
+        )
         tool_calls_to_use = message.tool_calls or parsed_tool_calls
 
         if not tool_calls_to_use:
-            # No tool calls found; clean any tool syntax from response and use as final
-            final_response = clean_text_response(message.content)
+            final_response = clean_text_response(message.content or "")
             messages.append({"role": "assistant", "content": message.content})
             break
 
-        # If we parsed tool calls from text, convert to the expected tool_call object format
-        # This adapter ensures both text-based and structured tool calls work uniformly
+        # Wrap text-parsed calls in a mock object matching the OpenAI shape
         if parsed_tool_calls:
-            # For parsed calls, simulate the tool_call structure that would come from a structured model
             class MockToolCall:
-                def __init__(self, call_dict):
-                    self.id = call_dict["id"]
+                def __init__(self, d: dict):
+                    self.id   = d["id"]
                     self.type = "function"
-                    self.function = type('obj', (object,), {
-                        'name': call_dict["name"],
-                        'arguments': json.dumps(call_dict["args"])
+                    self.function = type("F", (), {
+                        "name":      d["name"],
+                        "arguments": json.dumps(d["args"]),
                     })()
-            
             tool_calls_to_use = [MockToolCall(tc) for tc in parsed_tool_calls]
 
-        # Check for duplicate calls before appending to messages, so the
-        # messages list stays in a valid state for the forced-text fallback.
-        duplicate = any(
+        # Duplicate-call guard
+        if any(
             f"{tc.function.name}:{json.dumps(json.loads(tc.function.arguments), sort_keys=True)}"
             in seen_calls
             for tc in tool_calls_to_use
-        )
-        if duplicate:
+        ):
             break
 
         messages.append({
@@ -201,34 +195,52 @@ def run_agent(
                 {
                     "id": tc.id,
                     "type": tc.type,
-                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                    "function": {
+                        "name":      tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
                 }
                 for tc in tool_calls_to_use
             ],
         })
 
         for tool_call in tool_calls_to_use:
-            name = tool_call.function.name
-            args = json.loads(tool_call.function.arguments)
+            name     = tool_call.function.name
+            raw_args = json.loads(tool_call.function.arguments)
 
+            # ── Fix 1: coerce wrong-key hallucinations ─────────────────────
+            args = coerce_args(name, raw_args)
+
+            # ── Fix 2 + 3: validate; on error feed back to model ───────────
+            error_msg = validate_tool_call(name, args)
+            if error_msg:
+                print(f"[Validate] {error_msg} — feeding back to model for retry")
+                messages.append({
+                    "role":         "tool",
+                    "tool_call_id": tool_call.id,
+                    "content":      json.dumps({"error": error_msg}),
+                })
+                # Don't call the handler; the loop will ask the model to retry
+                continue
+
+            # All clear — execute
             call_key = f"{name}:{json.dumps(args, sort_keys=True)}"
             seen_calls.add(call_key)
 
             handler = TOOL_HANDLERS.get(name)
-            result = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
+            result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
 
             if on_tool_call:
                 on_tool_call(name, args, result)
 
             messages.append({
-                "role": "tool",
+                "role":         "tool",
                 "tool_call_id": tool_call.id,
-                "content": json.dumps(result),
+                "content":      json.dumps(result),
             })
 
     if final_response is None:
-        # Forced text-only call: model summarises what it just did.
-        # Reached when the model loops on duplicate tool calls or hits max_iter.
+        # Force a plain-text summary after tool execution or hitting max_iter
         final = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -243,5 +255,4 @@ def run_agent(
     if messages_out is not None:
         messages_out.extend(messages)
 
-    # Clean the response text of any tool syntax before returning
     return clean_text_response(final_response)
