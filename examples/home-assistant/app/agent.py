@@ -26,14 +26,15 @@ BACKENDS = {
 
 SYSTEM_PROMPT = (
     "You are a home assistant AI. Use tools to control the home; respond in plain text when no tool is needed.\n"
+    "You can output MULTIPLE tool calls in a single turn if needed.\n"
     "\n"
     "ROOMS: bedroom, bathroom, office, hallway, kitchen, living_room\n"
     "DOORS: front, back, garage, side\n"
     "\n"
     "TOOLS — use EXACTLY these parameter names:\n"
-    "  toggle_lights(room=<room>, state='on'|'off')          — one room\n"
+    "  toggle_lights(room=<room>, state='on'|'off')          — control a specific room\n"
     "  toggle_all_lights(state='on'|'off')                   — ALL rooms at once\n"
-    "  lock_door(door=<door>, state='lock'|'unlock')         — one door\n"
+    "  lock_door(door=<door>, state='lock'|'unlock')         — control a specific door\n"
     "  lock_all_doors(state='lock'|'unlock')                 — ALL doors at once\n"
     "  set_thermostat(temperature=<60-80>, mode='heat'|'cool'|'auto')\n"
     "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
@@ -68,29 +69,44 @@ def get_model_name(backend: str) -> str:
 
 def parse_tool_calls_from_text(text: str) -> list[dict]:
     """
-    Parse tool calls from text like: [toggle_lights(room="kitchen", state="on")]
-    Handles both quoted strings and unquoted numeric values.
+    Parse tool calls from text.
+    Handles both [func(args)] and [func(args), func(args)] formats safely.
     """
     tool_calls = []
-    pattern = r'\[(\w+)\((.*?)\)\]'
+    
+    # Restrict parsing to known tools so we don't accidentally parse normal English words
+    valid_tools = {
+        "toggle_lights", "toggle_all_lights", "lock_door", 
+        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear"
+    }
+    
+    # Matches func_name(...) without getting confused by outer brackets.
+    # [^)]* ensures we stop exactly at the closing parenthesis of EACH function.
+    pattern = r'(\w+)\(([^)]*)\)'
+    
     for idx, match in enumerate(re.finditer(pattern, text)):
         func_name = match.group(1)
         args_str  = match.group(2)
+        
+        if func_name not in valid_tools:
+            continue
+            
         try:
             args: dict = {}
-            # quoted strings
-            for key, val in re.findall(r'(\w+)="([^"]*)"', args_str):
+            # Match double or single quoted strings: room="kitchen" or room='kitchen'
+            for key, val in re.findall(r'(\w+)=["\']([^"\']*)["\']', args_str):
                 args[key] = val
-            # unquoted numbers (e.g. temperature=72)
+            # Match unquoted numbers: temperature=72
             for key, val in re.findall(r"(\w+)=([0-9]+(?:\.[0-9]+)?)\b", args_str):
                 if key not in args:
                     args[key] = val
+                    
             tool_calls.append({"name": func_name, "args": args, "id": f"call_{idx}"})
             print(f"[ParseToolCalls] Extracted: {func_name}({args})")
         except Exception as e:
             print(f"[ParseToolCalls] Failed to parse '{match.group(0)}': {e}")
+            
     return tool_calls
-
 
 def clean_text_response(text: str) -> str:
     """Remove tool call syntax from a text response."""
@@ -100,21 +116,33 @@ def clean_text_response(text: str) -> str:
 def classify_and_expand_intent(user_message: str) -> str:
     """Add routing hints so the model picks the right tool."""
     lower = user_message.lower()
+    
+    # 1. Isolate the user's actual prompt to prevent matching injected system notes
+    # (which might contain strings like "Lights OFF" and artificially trigger the wrong hint).
+    user_part = lower.split("\nuser: ")[-1] if "\nuser: " in lower else lower
 
-    # ── Room-context light commands ────────────────────────────────────────────
-    # Triggered when server.py has already injected "(System note: The user is
-    # currently in the <room>. ...)" into the message.
-    room_match = re.search(r'currently in the (\w+)', lower)
-    if room_match and any(w in lower for w in ("light", "lights", "lamp", "bulb")):
-        room = room_match.group(1)
-        if any(w in lower for w in ("off", "turn off", "disable", "switch off")):
-            return (f"{user_message}\n"
-                    f"[HINT: Use toggle_lights(room='{room}', state='off') — "
-                    f"room context already resolved, do NOT call intent_unclear.]")
-        if any(w in lower for w in ("on", "turn on", "enable", "switch on")):
-            return (f"{user_message}\n"
-                    f"[HINT: Use toggle_lights(room='{room}', state='on') — "
-                    f"room context already resolved, do NOT call intent_unclear.]")
+    # 2. Avoid overriding single-room commands if it's a relative/bulk request
+    is_relative = any(k in user_part for k in {
+        "other", "rest", "remaining", "except", "apart"
+    })
+
+    if not is_relative:
+        # ── Room-context light commands ────────────────────────────────────────────
+        # Triggered when server.py has already injected "(System note: The user is
+        # currently in the <room>. ...)" into the message.
+        room_match = re.search(r'currently in the (\w+)', lower)
+        if room_match and any(w in user_part for w in ("light", "lights", "lamp", "bulb")):
+            room = room_match.group(1)
+            
+            # Check user_part specifically to avoid false positives from the system note
+            if any(w in user_part for w in ("off", "turn off", "disable", "switch off")):
+                return (f"{user_message}\n"
+                        f"[HINT: Use toggle_lights(room='{room}', state='off') — "
+                        f"room context already resolved, do NOT call intent_unclear.]")
+            if any(w in user_part for w in ("on", "turn on", "enable", "switch on")):
+                return (f"{user_message}\n"
+                        f"[HINT: Use toggle_lights(room='{room}', state='on') — "
+                        f"room context already resolved, do NOT call intent_unclear.]")
 
     # ── Bulk operations (unchanged) ────────────────────────────────────────────
     hints = {
@@ -125,8 +153,9 @@ def classify_and_expand_intent(user_message: str) -> str:
         'everything':   'Use bulk ops: toggle_all_lights and lock_all_doors.',
     }
     for kw, hint in hints.items():
-        if kw in lower:
+        if kw in user_part:
             return f"{user_message}\n[HINT: {hint}]"
+            
     return user_message
 # ── Agent loop ─────────────────────────────────────────────────────────────────
 

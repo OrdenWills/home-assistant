@@ -337,27 +337,41 @@ def chat(req: ChatRequest):
     if needs_room or is_relative:
         parts: list[str] = []
 
-        if needs_room:
+        if is_relative:
+            # ── SCALABILITY FIX FOR SMALL MODELS ──
+            msg_lower = req.message.lower()
+            target_state = "off" if any(w in msg_lower for w in ("off", "disable")) else "on" if any(w in msg_lower for w in ("on", "enable")) else None
+            
+            if target_state:
+                candidate_rooms = [
+                    r for r, data in home_state.get("lights", {}).items()
+                    if data.get("state") != target_state and r != req.current_room
+                ]
+                
+                if candidate_rooms:
+                    calls = " ".join([f"[toggle_lights(room=\"{r}\", state=\"{target_state}\")]" for r in candidate_rooms])
+                    parts.append(f"Target rooms pre-calculated. You MUST output exactly these calls: {calls}")
+                else:
+                    parts.append(f"The 'other' lights are already {target_state}. Respond in plain text saying no changes are needed.")
+            else:
+                parts.append(_lights_state_note(home_state, req.current_room))
+                parts.append(
+                    "Resolve 'other' or 'the rest' against the live state provided, "
+                    "excluding the user's current room. Issue one toggle_lights call per room."
+                )
+
+        elif needs_room:
             parts.append(
-                f"The user is currently in the {req.current_room}. "
+                f"Room context: {req.current_room}. "
                 f"If they ask to control 'the light', assume they mean the {req.current_room}."
             )
 
-        if is_relative:
-            # Give the model the live lights state so it can resolve
-            # 'the other light', 'every other light', 'the rest', etc.
-            parts.append(_lights_state_note(home_state, req.current_room))
-            parts.append(
-                "When the user says 'other', 'the rest', 'every other', or similar, "
-                "resolve it against the lights that are currently ON, "
-                "excluding the user's current room if one is set. "
-                "Issue one toggle_lights call per room that needs to change."
-            )
-
-        note = " ".join(parts)
-        resolved_message = f"(System note: {note})\nUser: {req.message}"
-        room_injected = True
-        print(f"[RoomContext] Injected (room={needs_room}, relative={is_relative}) → {resolved_message!r}")
+        if parts:
+            note = " ".join(parts)
+            # Use the [HINT: ...] format! The model obeys this much better.
+            resolved_message = f"{req.message}\n[HINT: {note}]"
+            room_injected = True
+            print(f"[RoomContext] Injected (room={needs_room}, relative={is_relative}) → {resolved_message!r}")
     else:
         print(f"[RoomContext] No injection — room={req.current_room!r}")
 

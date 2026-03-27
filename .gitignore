@@ -27,3 +27,4 @@ node_modules/
 package-lock.json
 examples/home-assistant/cache.db
 examples/home-assistant/app/Todo
+examples/home-assistant/path_helper.txt
