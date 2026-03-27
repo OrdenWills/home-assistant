@@ -98,8 +98,25 @@ def clean_text_response(text: str) -> str:
 
 
 def classify_and_expand_intent(user_message: str) -> str:
-    """Add a routing hint for bulk operations so the model picks the right tool."""
+    """Add routing hints so the model picks the right tool."""
     lower = user_message.lower()
+
+    # ── Room-context light commands ────────────────────────────────────────────
+    # Triggered when server.py has already injected "(System note: The user is
+    # currently in the <room>. ...)" into the message.
+    room_match = re.search(r'currently in the (\w+)', lower)
+    if room_match and any(w in lower for w in ("light", "lights", "lamp", "bulb")):
+        room = room_match.group(1)
+        if any(w in lower for w in ("off", "turn off", "disable", "switch off")):
+            return (f"{user_message}\n"
+                    f"[HINT: Use toggle_lights(room='{room}', state='off') — "
+                    f"room context already resolved, do NOT call intent_unclear.]")
+        if any(w in lower for w in ("on", "turn on", "enable", "switch on")):
+            return (f"{user_message}\n"
+                    f"[HINT: Use toggle_lights(room='{room}', state='on') — "
+                    f"room context already resolved, do NOT call intent_unclear.]")
+
+    # ── Bulk operations (unchanged) ────────────────────────────────────────────
     hints = {
         'all lights':   'Use toggle_all_lights(state=...) — NOT toggle_lights.',
         'all rooms':    'Use toggle_all_lights(state=...) — NOT toggle_lights.',
@@ -111,8 +128,6 @@ def classify_and_expand_intent(user_message: str) -> str:
         if kw in lower:
             return f"{user_message}\n[HINT: {hint}]"
     return user_message
-
-
 # ── Agent loop ─────────────────────────────────────────────────────────────────
 
 def run_agent(

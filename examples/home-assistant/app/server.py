@@ -60,6 +60,13 @@ _LIGHT_DEVICE_WORDS: set[str] = {
     "light", "lights", "lamp", "lamps", "bulb", "bulbs",
 }
 
+# Relative/comparative words that require the model to know live light state
+_RELATIVE_KEYWORDS: set[str] = {
+    "other", "the other", "every other", "all other",
+    "the rest", "rest of", "remaining", "except", "apart from",
+    "others", "the others",
+}
+
 
 def _should_inject_room(message: str) -> bool:
     lower = message.lower()
@@ -70,6 +77,31 @@ def _should_inject_room(message: str) -> bool:
     if any(b in lower for b in _BULK_KEYWORDS):
         return False
     return any(w in lower for w in _LIGHT_DEVICE_WORDS)
+
+
+def _has_relative_keyword(message: str) -> bool:
+    lower = message.lower()
+    return any(k in lower for k in _RELATIVE_KEYWORDS)
+
+
+def _lights_state_note(state: dict, current_room: str | None = None) -> str:
+    """
+    Build a concise lights-state string for injection into the system note.
+    e.g. 'Lights ON: bedroom, kitchen. Lights OFF: bathroom, hallway, office, living_room.'
+    Optionally flags which room the user is currently in so the model can
+    resolve 'other' / 'the rest' correctly.
+    """
+    lights = state.get("lights", {})
+    on_rooms  = sorted(r for r, v in lights.items() if v.get("state") == "on")
+    off_rooms = sorted(r for r, v in lights.items() if v.get("state") != "on")
+
+    on_str  = ", ".join(on_rooms)  or "none"
+    off_str = ", ".join(off_rooms) or "none"
+
+    note = f"Lights ON: {on_str}. Lights OFF: {off_str}."
+    if current_room:
+        note += f" The user is in the {current_room}."
+    return note
 
 
 # ── Background thread helper ───────────────────────────────────────────────────
@@ -296,13 +328,36 @@ def chat(req: ChatRequest):
         }.get(llama_status, "Local model is not ready.")
         return JSONResponse({"text": msg, "tool_calls": []}, status_code=503)
 
-    # 2. Room injection — only when message has no location and user is in a room
+    # 2. Context injection — room + live lights state when needed
     resolved_message = req.message
     room_injected = False
-    if req.current_room and _should_inject_room(req.message):
-        resolved_message = f"(System note: The user is currently in the {req.current_room}. If they ask to control 'the light', assume they mean the {req.current_room}.)\nUser: {req.message}"
+    is_relative = _has_relative_keyword(req.message)
+    needs_room  = req.current_room and _should_inject_room(req.message)
+
+    if needs_room or is_relative:
+        parts: list[str] = []
+
+        if needs_room:
+            parts.append(
+                f"The user is currently in the {req.current_room}. "
+                f"If they ask to control 'the light', assume they mean the {req.current_room}."
+            )
+
+        if is_relative:
+            # Give the model the live lights state so it can resolve
+            # 'the other light', 'every other light', 'the rest', etc.
+            parts.append(_lights_state_note(home_state, req.current_room))
+            parts.append(
+                "When the user says 'other', 'the rest', 'every other', or similar, "
+                "resolve it against the lights that are currently ON, "
+                "excluding the user's current room if one is set. "
+                "Issue one toggle_lights call per room that needs to change."
+            )
+
+        note = " ".join(parts)
+        resolved_message = f"(System note: {note})\nUser: {req.message}"
         room_injected = True
-        print(f"[RoomContext] Injected '{req.current_room}' → {resolved_message!r}")
+        print(f"[RoomContext] Injected (room={needs_room}, relative={is_relative}) → {resolved_message!r}")
     else:
         print(f"[RoomContext] No injection — room={req.current_room!r}")
 
