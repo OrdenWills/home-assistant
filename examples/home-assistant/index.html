@@ -424,11 +424,9 @@
 
   // Sync room tracker squares with live light state
   function updateRoomTracker(state) {
-    for (const [room, light] of Object.entries(state.lights || {})) {
-      const sq = document.querySelector(`.room-sq[data-room="${room}"]`);
-      if (sq) sq.classList.toggle("lit", light.state === "on");
+    // Room tracker only tracks which room the user is in (green = active).
+    // Light state is NOT reflected here — that belongs to the Lights panel only.
     }
-  }
 
   async function refreshState() {
     try {
