@@ -407,6 +407,11 @@ def chat(req: ChatRequest):
 
     conversation_history.extend(messages_out[1 + initial_history_len:])
 
+    # Keep only the last 4 turns (8 messages: 4 user + 4 assistant)
+    # Each turn = 2 entries in the list, so cap at 8
+    if len(conversation_history) > 8:
+        conversation_history[:] = conversation_history[-8:]
+
     # Record this turn for history replay
     chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
 

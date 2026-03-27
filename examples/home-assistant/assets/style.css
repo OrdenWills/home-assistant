@@ -848,3 +848,25 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
 .room-sq.active.lit .room-sq-label {
   color: var(--text);
 }
+
+
+/* Human silhouette in floor plan */
+.fp-person {
+  display: none;
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  color: #4f8ef7;
+  filter: drop-shadow(0 0 4px rgba(79,142,247,0.7));
+  pointer-events: none;
+  animation: fp-person-pop 0.2s ease;
+}
+.fp-room.occupied .fp-person {
+  display: block;
+}
+@keyframes fp-person-pop {
+  from { transform: scale(0.4); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
