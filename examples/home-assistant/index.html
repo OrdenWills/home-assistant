@@ -666,10 +666,38 @@
     })
     .catch(() => {});
 
+  async function fetchHistory() {
+    try {
+      const res = await fetch("/history");
+      if (!res.ok) return;
+      const data = await res.json();
+
+      data.history.forEach(turn => {
+        appendMessage("user", turn.user);
+        appendMessage("assistant", turn.assistant || "(no response)");
+        // Replay tool calls exactly like live chat does
+        if (turn.tool_calls && turn.tool_calls.length > 0) {
+          appendToolCalls(turn.tool_calls);
+        }
+      });
+
+      if (data.history.length > 0) {
+        const divider = document.createElement("div");
+        divider.className = "history-divider";
+        divider.textContent = "— restored history —";
+        messagesEl.appendChild(divider);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    } catch (e) {
+      console.error("[FetchHistory] Error:", e);
+    }
+  }
+
   refreshModel();
   refreshState();
   fetchLocalModels();
   fetchLocalModelStatus();
+  fetchHistory();
 
 </script>
 </body>

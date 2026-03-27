@@ -1,4 +1,5 @@
 #app/server.py
+import re
 import subprocess
 import threading
 import time
@@ -28,6 +29,8 @@ LOCAL_MODELS = [
 # ── Module-level state ─────────────────────────────────────────────────────────
 
 conversation_history: list[dict] = []
+# Stores complete turns for history replay: {user, assistant, tool_calls}
+chat_turns: list[dict] = []
 active_backend: str = "local"
 
 llama_proc: subprocess.Popen | None = None
@@ -190,9 +193,15 @@ def set_backend(req: BackendRequest):
 def get_state():
     return JSONResponse(home_state)
 
+@app.get("/history")
+def get_history():
+    """Returns the chat history so the frontend can survive a page refresh."""
+    return JSONResponse({"history": chat_turns})
+
 @app.post("/reset")
 def reset():
     conversation_history.clear()
+    chat_turns.clear()
     return JSONResponse({"ok": True})
 
 @app.get("/local-models")
@@ -291,7 +300,7 @@ def chat(req: ChatRequest):
     resolved_message = req.message
     room_injected = False
     if req.current_room and _should_inject_room(req.message):
-        resolved_message = f"{req.message} [current room: {req.current_room}]"
+        resolved_message = f"(System note: The user is currently in the {req.current_room}. If they ask to control 'the light', assume they mean the {req.current_room}.)\nUser: {req.message}"
         room_injected = True
         print(f"[RoomContext] Injected '{req.current_room}' → {resolved_message!r}")
     else:
@@ -303,6 +312,7 @@ def chat(req: ChatRequest):
     if cached:
         print(f"[Cache] HIT for: {resolved_message!r}")
         events, text = _replay_cached_tools(cached)
+        chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
         return JSONResponse({"text": text, "tool_calls": events, "cached": True, "room_injected": room_injected})
 
     # 4. Cache miss — invoke model
@@ -327,6 +337,9 @@ def chat(req: ChatRequest):
         return JSONResponse({"text": f"Error: {e}", "tool_calls": events}, status_code=500)
 
     conversation_history.extend(messages_out[1 + initial_history_len:])
+
+    # Record this turn for history replay
+    chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
 
     # 5. Cache only successful, non-unclear tool calls
     action_events = [
