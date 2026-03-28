@@ -632,6 +632,7 @@
 
       inputEl.value = "";
       sendBtn.disabled = true;
+      sendBtn.classList.add("loading");
       inputEl.disabled = true;
       setAssistantDot("loading");
 
@@ -657,21 +658,19 @@
           return;
         }
 
-        typing.remove();
-
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+          }
 
           // SSE frames are separated by \n\n
           const parts = buffer.split("\n\n");
-          buffer = parts.pop();           // keep any incomplete trailing frame
+          buffer = parts.pop() || "";           // keep any incomplete trailing frame
 
           for (const part of parts) {
             if (!part.startsWith("data: ")) continue;
@@ -683,6 +682,7 @@
               toolEvents.push(event);
 
             } else if (event.type === "token") {
+              typing.remove();
               if (!assistantMsgEl) {
                 assistantMsgEl = appendMessage("assistant", "");
               }
@@ -691,6 +691,7 @@
               messagesEl.scrollTop = messagesEl.scrollHeight;
 
             } else if (event.type === "done") {
+              typing.remove();
               // If the model returned nothing via tokens (cache hit), render now
               if (!assistantMsgEl) {
                 assistantMsgEl = appendMessage("assistant", event.text || "(no response)");
@@ -704,12 +705,16 @@
               appendMessage("assistant", event.text || "An error occurred.");
             }
           }
+
+          if (done) break;
         }
 
       } catch (e) {
         typing.remove();
         appendMessage("assistant", "Error: could not reach the server.");
       } finally {
+        typing.remove(); // Safety cleanup
+        sendBtn.classList.remove("loading");
         updateInputState();
         if (!sendBtn.disabled) inputEl.focus();
       }

@@ -5,6 +5,7 @@ import threading
 import time
 import urllib.request
 from contextlib import asynccontextmanager
+import json
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -55,6 +56,7 @@ _SPECIFIC_DEVICES: set[str] = {
 
 _BULK_KEYWORDS: set[str] = {
     "all ", "entire", "every room", "everywhere", "whole house",
+    "the lights",
 }
 
 _LIGHT_DEVICE_WORDS: set[str] = {
@@ -339,21 +341,45 @@ def chat(req: ChatRequest):
         parts: list[str] = []
 
         if is_relative:
-            # ── SCALABILITY FIX FOR SMALL MODELS ──
             msg_lower = req.message.lower()
-            target_state = "off" if any(w in msg_lower for w in ("off", "disable")) else "on" if any(w in msg_lower for w in ("on", "enable")) else None
-            
+            target_state = "off" if any(w in msg_lower for w in ("off", "disable")) else \
+                           "on"  if any(w in msg_lower for w in ("on", "enable"))  else None
+
             if target_state:
                 candidate_rooms = [
                     r for r, data in home_state.get("lights", {}).items()
                     if data.get("state") != target_state and r != req.current_room
                 ]
-                
                 if candidate_rooms:
-                    calls = " ".join([f"[toggle_lights(room=\"{r}\", state=\"{target_state}\")]" for r in candidate_rooms])
-                    parts.append(f"Target rooms pre-calculated. You MUST output exactly these calls: {calls}")
+                    # ── SHORT-CIRCUIT: execute directly, no model needed ──────────
+                    events = []
+                    summaries = []
+                    for room in candidate_rooms:
+                        args   = {"room": room, "state": target_state}
+                        result = TOOL_HANDLERS["toggle_lights"](**args)
+                        events.append({"name": "toggle_lights", "args": args, "result": result})
+                        summaries.append(f"{room.replace('_', ' ').title()} light turned {target_state}.")
+                        print(f"[ShortCircuit] toggle_lights(room={room!r}, state={target_state!r}) → {result}")
+
+                    text = " ".join(summaries)
+                    chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
+
+                    # Cache the pre-calculated calls
+                    current_snapshot = build_snapshot(home_state)
+                    to_cache = [{"name": e["name"], "args": e["args"]} for e in events]
+                    set_cached(resolved_message, to_cache, current_snapshot)
+
+                    return JSONResponse({
+                        "text": text,
+                        "tool_calls": events,
+                        "cached": False,
+                        "room_injected": True,
+                    })
                 else:
-                    parts.append(f"The 'other' lights are already {target_state}. Respond in plain text saying no changes are needed.")
+                    # Nothing to do
+                    text = f"The other lights are already {target_state}."
+                    chat_turns.append({"user": req.message, "assistant": text, "tool_calls": []})
+                    return JSONResponse({"text": text, "tool_calls": [], "cached": False, "room_injected": True})
             else:
                 parts.append(_lights_state_note(home_state, req.current_room))
                 parts.append(
@@ -450,27 +476,30 @@ def chat_stream(req: ChatRequest):
     needs_room   = req.current_room and _should_inject_room(req.message)
     room_injected = False
 
+    _sc_target = None
+    _sc_rooms  = None
+    if is_relative:
+        msg_lower = req.message.lower()
+        _sc_target = ("off" if any(w in msg_lower for w in ("off","disable")) else
+                      "on"  if any(w in msg_lower for w in ("on","enable"))   else None)
+        if _sc_target:
+            _sc_rooms = [
+                r for r, data in home_state.get("lights", {}).items()
+                if data.get("state") != _sc_target and r != req.current_room
+            ]
+
     if needs_room or is_relative:
         parts: list[str] = []
         if is_relative:
-            msg_lower    = req.message.lower()
-            target_state = (
-                "off" if any(w in msg_lower for w in ("off", "disable")) else
-                "on"  if any(w in msg_lower for w in ("on",  "enable"))  else None
-            )
-            if target_state:
-                candidate_rooms = [
-                    r for r, data in home_state.get("lights", {}).items()
-                    if data.get("state") != target_state and r != req.current_room
-                ]
-                if candidate_rooms:
+            if _sc_target:
+                if _sc_rooms:
                     calls = " ".join(
-                        f'[toggle_lights(room="{r}", state="{target_state}")]'
-                        for r in candidate_rooms
+                        f'[toggle_lights(room="{r}", state="{_sc_target}")]'
+                        for r in _sc_rooms
                     )
                     parts.append(f"Target rooms pre-calculated. You MUST output exactly these calls: {calls}")
                 else:
-                    parts.append(f"The 'other' lights are already {target_state}. Respond in plain text saying no changes are needed.")
+                    parts.append(f"The 'other' lights are already {_sc_target}. Respond in plain text saying no changes are needed.")
             else:
                 parts.append(_lights_state_note(home_state, req.current_room))
                 parts.append(
@@ -491,6 +520,34 @@ def chat_stream(req: ChatRequest):
     cached = get_cached(resolved_message, current_snapshot)
 
     def generate():
+        if is_relative and _sc_rooms is not None:
+            target = _sc_target
+            if _sc_rooms:
+                events = []
+                summaries = []
+                for room in _sc_rooms:
+                    args   = {"room": room, "state": target}
+                    result = TOOL_HANDLERS["toggle_lights"](**args)
+                    events.append({"name": "toggle_lights", "args": args, "result": result})
+                    payload = {"type": "tool_call", "name": "toggle_lights",
+                               "args": args, "result": result}
+                    yield f"data: {json.dumps(payload)}\n\n"
+                    summaries.append(f"{room.replace('_', ' ').title()} light turned {target}.")
+
+                text = " ".join(summaries)
+                chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
+                
+                # Cache the pre-calculated calls
+                to_cache = [{"name": e["name"], "args": e["args"]} for e in events]
+                set_cached(resolved_message, to_cache, current_snapshot)
+                
+                yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': False})}\n\n"
+            else:
+                text = f"The other lights are already {target}."
+                chat_turns.append({"user": req.message, "assistant": text, "tool_calls": []})
+                yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': False})}\n\n"
+            return
+
         # ── Cache HIT: replay tools then emit done immediately ────────────────
         if cached:
             print(f"[Cache] HIT (stream) for: {resolved_message!r}")

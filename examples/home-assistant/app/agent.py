@@ -322,6 +322,9 @@ def run_agent_stream(
     model       = backend_cfg["model"]
 
     expanded_message = classify_and_expand_intent(user_message)
+    print(f"[Stream] Initial Prompt: {user_message}")
+    if expanded_message != user_message:
+        print(f"[Stream] Expanded HINT: {expanded_message}")
 
     messages: list[dict] = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -330,10 +333,12 @@ def run_agent_stream(
     ]
 
     seen_calls: set[str] = set()
+    last_text_response = ""
 
     # ── Tool execution loop (same logic as run_agent, non-streaming) ──────────
-    for _ in range(5):
+    for i in range(5):
         try:
+            print(f"[Stream] Iteration {i+1}: Calling LLM for tool/intent detection...")
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -346,6 +351,8 @@ def run_agent_stream(
             return
 
         message = response.choices[0].message
+        if message.content:
+            last_text_response += message.content
 
         parsed_tool_calls = (
             parse_tool_calls_from_text(message.content)
@@ -355,9 +362,12 @@ def run_agent_stream(
         tool_calls_to_use = message.tool_calls or parsed_tool_calls
 
         if not tool_calls_to_use:
-            # No more tool calls — fall through to streaming final response
+            # No more tool calls — break out and stream the accumulated content
+            print(f"[Stream] No tool calls detected.")
             messages.append({"role": "assistant", "content": message.content})
             break
+
+        print(f"[Stream] Found {len(tool_calls_to_use)} tool call(s) to execute.")
 
         # Wrap text-parsed calls in mock objects
         if parsed_tool_calls:
@@ -408,8 +418,10 @@ def run_agent_stream(
 
             handler = TOOL_HANDLERS.get(name)
             result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
+            print(f"[Stream] Tool '{name}' result: {result}")
 
             # ── Emit tool_call event immediately so UI updates in real time ──
+            print(f"[Stream] YIELDING tool_call to frontend: {name}({args})")
             yield {"type": "tool_call", "name": name, "args": args, "result": result}
 
             messages.append({
@@ -419,25 +431,39 @@ def run_agent_stream(
 
     # ── Stream the final plain-text summary ───────────────────────────────────
     full_text = ""
-    try:
-        stream = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=TOOL_SCHEMAS,
-            tool_choice="none",
-            temperature=temperature,
-            max_tokens=256,
-            stream=True,
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content or ""
-            if delta:
-                full_text += delta
-                yield {"type": "token", "text": delta}
+    last_text_response = clean_text_response(last_text_response)
 
-    except Exception as e:
-        yield {"type": "error", "text": str(e)}
-        return
+    if last_text_response:
+        # If the loop already produced a text response, stream it directly
+        # without making another LLM call — this eliminates the redundant 40s call
+        for word in last_text_response.split(" "):
+            if not word: continue
+            token = word + " "
+            full_text += token
+            yield {"type": "token", "text": token}
+    else:
+        # Only call the model again if tools were the last thing that ran
+        try:
+            stream = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=TOOL_SCHEMAS,
+                tool_choice="none",
+                temperature=temperature,
+                max_tokens=256,
+                stream=True,
+            )
+            print(f"[Stream] Starting final summary generation...")
+            for chunk in stream:
+                delta = chunk.choices[0].delta.content or ""
+                if delta:
+                    full_text += delta
+                    # print(f"[Stream] YIELDING token: {delta!r}") # Too noisy?
+                    yield {"type": "token", "text": delta}
+
+        except Exception as e:
+            yield {"type": "error", "text": str(e)}
+            return
 
     full_text = clean_text_response(full_text) or "Done."
     messages.append({"role": "assistant", "content": full_text})

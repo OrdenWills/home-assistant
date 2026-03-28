@@ -863,10 +863,58 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
   pointer-events: none;
   animation: fp-person-pop 0.2s ease;
 }
+
+/* ── Send button loading spinner ── */
+#send-btn {
+  position: relative;
+  min-width: 70px;
+}
+
+#send-btn.loading {
+  color: transparent !important;   /* hide "Send" text */
+  pointer-events: none;
+}
+
+#send-btn.loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: btn-spin 0.7s linear infinite;
+}
+
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
+}
 .fp-room.occupied .fp-person {
   display: block;
 }
 @keyframes fp-person-pop {
   from { transform: scale(0.4); opacity: 0; }
   to   { transform: scale(1);   opacity: 1; }
+}
+/* -- Thinking block -- */
+.msg.thinking {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.thinking-dots::after {
+  content: '...';
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  animation: thinking-dots 2s steps(4, end) infinite;
+}
+
+@keyframes thinking-dots {
+  0%, 20%   { content: ''; }
+  40%       { content: '.'; }
+  60%       { content: '..'; }
+  80%, 100% { content: '...'; }
 }
