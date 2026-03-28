@@ -19,7 +19,7 @@ MODELS = [
         "name": "LFM2-350M Q4",
         "repo": "LiquidAI/LFM2-350M-GGUF",
         "file": "LFM2-350M-Q4_0.gguf",
-        "priority": 0,
+        "priority": 4,
     },
     {
     "id": "lfm2-vl-450m-q4",

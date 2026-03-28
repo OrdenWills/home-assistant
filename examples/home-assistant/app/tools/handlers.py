@@ -3,6 +3,8 @@ from app.state import home_state, persist_state
 
 
 def toggle_lights(room: str, state: str) -> dict:
+    if room == "all":
+        return toggle_all_lights(state)
     home_state["lights"][room]["state"] = state
     persist_state()
     return {"success": True, "room": room, "state": state}
@@ -16,6 +18,8 @@ def set_thermostat(temperature: int, mode: str) -> dict:
 
 
 def lock_door(door: str, state: str) -> dict:
+    if door == "all":
+        return lock_all_doors(state)
     home_state["doors"][door] = "locked" if state == "lock" else "unlocked"
     persist_state()
     return {"success": True, "door": door, "state": home_state["doors"][door]}
