@@ -36,10 +36,18 @@ MODELS = [
         "priority": 3,
     },
     {
+        "id": "lfm2.5-1.2b-thinking-q8",
         "name": "LFM2.5-1.2B-Thinking-Q8",
         "repo": "LiquidAI/LFM2.5-1.2B-Thinking-GGUF",
         "file": "LFM2.5-1.2B-Thinking-Q8_0.gguf",
         "priority": 2,
+    },
+    {
+        "id": "home-assistant-sft",
+        "name": "Home Assistant SFT (Finetuned)",
+        "repo": "OrdenWills/LFM2.5-1.2B-home-assistant-sft",
+        "file": "LFM2.5-1.2B-Instruct.Q4_K_M.gguf",
+        "priority": 0,
     },
 ]
 

@@ -20,6 +20,7 @@ from app.tools.handlers import TOOL_HANDLERS
 # ── Model registry ─────────────────────────────────────────────────────────────
 
 LOCAL_MODELS = [
+    {"id":"home-assistant-sft","name":"Home Assistant SFT (Finetuned)","hf_repo":"OrdenWills/LFM2.5-1.2B-home-assistant-sft","hf_file":"LFM2.5-1.2B-Instruct.Q4_K_M.gguf","size_label":"714 MB","score_label":"99%"},
     {"id":"lfm2-350m-q4","name":"LFM2-350M-Q4_0.gguf","hf_repo":"LiquidAI/LFM2-350M-GGUF","hf_file":"LFM2-350M-Q4_0.gguf","size_label":"209 MB","score_label":"45%"},
     {"id":"lfm25-1b-thinking-q4","name":"LFM2.5-1.2B-Thinking-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q4_0.gguf","size_label":"718 MB","score_label":"75%"},
     {"id":"lfm25-1b-thinking-q8","name":"LFM2.5-1.2B-Thinking-Q8_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q8_0.gguf","size_label":"1.28 GB","score_label":"82%"},
@@ -172,7 +173,7 @@ async def lifespan(app_: FastAPI):
     print("[Cache] SQLite tool-call cache initialised.")
     load_state()
 
-    default_model_id = "lfm25-1b-q8"
+    default_model_id = "home-assistant-sft"
     model = next((m for m in LOCAL_MODELS if m["id"] == default_model_id), None)
     if model:
         print(f"[Startup] Auto-loading default model: {model['name']}")
