@@ -7,18 +7,19 @@ import urllib.request
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from huggingface_hub import hf_hub_download
 
-from app.agent import local_client, run_agent
+from app.agent import local_client, run_agent, run_agent_stream
 from app.state import home_state, load_state
 from app.cache import init_db, get_cached, set_cached, delete_cached, clear_all, list_entries, build_snapshot
 from app.tools.handlers import TOOL_HANDLERS
 # ── Model registry ─────────────────────────────────────────────────────────────
 
 LOCAL_MODELS = [
+    {"id":"lfm2-350m-q4","name":"LFM2-350M-Q4_0.gguf","hf_repo":"LiquidAI/LFM2-350M-GGUF","hf_file":"LFM2-350M-Q4_0.gguf","size_label":"209 MB","score_label":"45%"},
     {"id":"lfm25-1b-thinking-q4","name":"LFM2.5-1.2B-Thinking-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q4_0.gguf","size_label":"718 MB","score_label":"75%"},
     {"id":"lfm25-1b-thinking-q8","name":"LFM2.5-1.2B-Thinking-Q8_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q8_0.gguf","size_label":"1.28 GB","score_label":"82%"},
     {"id":"lfm25-1b-q4","name":"LFM2.5-1.2B-Instruct-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Instruct-GGUF","hf_file":"LFM2.5-1.2B-Instruct-Q4_0.gguf","size_label":"696 MB","score_label":"68%"},
@@ -426,3 +427,135 @@ def chat(req: ChatRequest):
         print(f"[Cache] STORED {len(to_cache)} call(s) for: {resolved_message!r}")
 
     return JSONResponse({"text": text, "tool_calls": events, "cached": False, "room_injected": room_injected})
+
+@app.post("/chat/stream")
+def chat_stream(req: ChatRequest):
+    """SSE endpoint — streams tool_call events then text tokens."""
+
+    # ── Gate ──────────────────────────────────────────────────────────────────
+    if active_backend == "local" and llama_status != "ready":
+        msg = {
+            "starting": "Model is still loading, please wait.",
+            "idle":     "No local model loaded. Select a model from the LFM Local dropdown.",
+            "error":    f"Local model failed to start: {llama_error}",
+        }.get(llama_status, "Local model is not ready.")
+
+        def _gate_error():
+            yield f"data: {json.dumps({'type': 'error', 'text': msg})}\n\n"
+        return StreamingResponse(_gate_error(), media_type="text/event-stream")
+
+    # ── Context injection (identical logic to /chat) ──────────────────────────
+    resolved_message = req.message
+    is_relative  = _has_relative_keyword(req.message)
+    needs_room   = req.current_room and _should_inject_room(req.message)
+    room_injected = False
+
+    if needs_room or is_relative:
+        parts: list[str] = []
+        if is_relative:
+            msg_lower    = req.message.lower()
+            target_state = (
+                "off" if any(w in msg_lower for w in ("off", "disable")) else
+                "on"  if any(w in msg_lower for w in ("on",  "enable"))  else None
+            )
+            if target_state:
+                candidate_rooms = [
+                    r for r, data in home_state.get("lights", {}).items()
+                    if data.get("state") != target_state and r != req.current_room
+                ]
+                if candidate_rooms:
+                    calls = " ".join(
+                        f'[toggle_lights(room="{r}", state="{target_state}")]'
+                        for r in candidate_rooms
+                    )
+                    parts.append(f"Target rooms pre-calculated. You MUST output exactly these calls: {calls}")
+                else:
+                    parts.append(f"The 'other' lights are already {target_state}. Respond in plain text saying no changes are needed.")
+            else:
+                parts.append(_lights_state_note(home_state, req.current_room))
+                parts.append(
+                    "Resolve 'other' or 'the rest' against the live state provided, "
+                    "excluding the user's current room. Issue one toggle_lights call per room."
+                )
+        elif needs_room:
+            parts.append(
+                f"Room context: {req.current_room}. "
+                f"If they ask to control 'the light', assume they mean the {req.current_room}."
+            )
+        if parts:
+            resolved_message = f"{req.message}\n[HINT: {' '.join(parts)}]"
+            room_injected = True
+
+    # ── Cache check ───────────────────────────────────────────────────────────
+    current_snapshot = build_snapshot(home_state)
+    cached = get_cached(resolved_message, current_snapshot)
+
+    def generate():
+        # ── Cache HIT: replay tools then emit done immediately ────────────────
+        if cached:
+            print(f"[Cache] HIT (stream) for: {resolved_message!r}")
+            events, text = _replay_cached_tools(cached)
+            for e in events:
+                payload = {"type": "tool_call", "name": e["name"],
+                           "args": e["args"], "result": e["result"]}
+                yield f"data: {json.dumps(payload)}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': True})}\n\n"
+
+            chat_turns.append({
+                "user": req.message, "assistant": text, "tool_calls": events
+            })
+            return
+
+        # ── Cache MISS: stream from model ─────────────────────────────────────
+        print(f"[Cache] MISS (stream) for: {resolved_message!r}")
+        messages_out: list[dict] = []
+        tool_events:  list[dict] = []
+        initial_len = len(conversation_history)
+
+        for event in run_agent_stream(
+            resolved_message,
+            history=conversation_history,
+            backend=active_backend,
+            messages_out=messages_out,
+        ):
+            if event["type"] == "tool_call":
+                tool_events.append({
+                    "name":   event["name"],
+                    "args":   event["args"],
+                    "result": event["result"],
+                })
+            yield f"data: {json.dumps(event)}\n\n"
+
+            # After done, handle history + cache bookkeeping
+            if event["type"] == "done":
+                final_text = event["text"]
+
+                # Sliding window — keep last 4 turns (8 messages)
+                conversation_history.extend(messages_out[1 + initial_len:])
+                if len(conversation_history) > 8:
+                    conversation_history[:] = conversation_history[-8:]
+
+                chat_turns.append({
+                    "user":       req.message,
+                    "assistant":  final_text,
+                    "tool_calls": tool_events,
+                })
+
+                action_events = [
+                    e for e in tool_events
+                    if e["name"] != "intent_unclear"
+                    and e.get("result", {}).get("success")
+                ]
+                if action_events:
+                    to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
+                    set_cached(resolved_message, to_cache, current_snapshot)
+                    print(f"[Cache] STORED {len(to_cache)} call(s) for: {resolved_message!r}")
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control":    "no-cache",
+            "X-Accel-Buffering": "no",   # disables nginx buffering if behind a proxy
+        },
+    )

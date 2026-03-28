@@ -15,6 +15,13 @@ from huggingface_hub import hf_hub_download
 # Models to download - ORDERED BY SIZE (smallest first for faster initial setup)
 MODELS = [
     {
+        "id": "lfm2-350m-q4",
+        "name": "LFM2-350M Q4",
+        "repo": "LiquidAI/LFM2-350M-GGUF",
+        "file": "LFM2-350M-Q4_0.gguf",
+        "priority": 0,
+    },
+    {
     "id": "lfm2-vl-450m-q4",
     "name": "LFM2-VL-450M Q4",
     "repo": "LiquidAI/LFM2-VL-450M-GGUF",

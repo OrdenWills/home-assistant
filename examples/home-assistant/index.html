@@ -638,32 +638,74 @@
       appendMessage("user", text);
       const typing = appendTyping();
 
+      let assistantMsgEl = null;
+      let fullText = "";
+      let toolEvents = [];
+
       try {
-        const res = await fetch("/chat", {
+        const response = await fetch("/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: text,
-            current_room: currentRoom,   // null when no room selected
-          }),
+          body: JSON.stringify({ message: text, current_room: currentRoom }),
         });
 
-        const data = await res.json();
-        typing.remove();
-
-        if (res.status === 503) {
-          const placeholder = document.createElement("div");
-          placeholder.className = "msg-placeholder";
-          placeholder.textContent = data.text;
-          messagesEl.appendChild(placeholder);
-          messagesEl.scrollTop = messagesEl.scrollHeight;
+        // Non-200 means the gate fired before streaming started
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          typing.remove();
+          appendMessage("assistant", data.text || "Server error.");
           return;
         }
 
-        appendMessage("assistant", data.text || "(no response)");
-        speakText(data.text || "");
-        appendToolCalls(data.tool_calls);
-        await refreshState();
+        typing.remove();
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE frames are separated by \n\n
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop();           // keep any incomplete trailing frame
+
+          for (const part of parts) {
+            if (!part.startsWith("data: ")) continue;
+            let event;
+            try { event = JSON.parse(part.slice(6)); }
+            catch { continue; }
+
+            if (event.type === "tool_call") {
+              toolEvents.push(event);
+
+            } else if (event.type === "token") {
+              if (!assistantMsgEl) {
+                assistantMsgEl = appendMessage("assistant", "");
+              }
+              fullText += event.text;
+              assistantMsgEl.textContent = fullText;
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            } else if (event.type === "done") {
+              // If the model returned nothing via tokens (cache hit), render now
+              if (!assistantMsgEl) {
+                assistantMsgEl = appendMessage("assistant", event.text || "(no response)");
+              }
+              speakText(event.text || "");
+              if (toolEvents.length > 0) appendToolCalls(toolEvents);
+              await refreshState();
+
+            } else if (event.type === "error") {
+              typing.remove();
+              appendMessage("assistant", event.text || "An error occurred.");
+            }
+          }
+        }
+
       } catch (e) {
         typing.remove();
         appendMessage("assistant", "Error: could not reach the server.");
@@ -672,7 +714,6 @@
         if (!sendBtn.disabled) inputEl.focus();
       }
     }
-
     // ── Event listeners ───────────────────────────────────────
 
     sendBtn.addEventListener("click", sendMessage);

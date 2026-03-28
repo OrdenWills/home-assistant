@@ -300,3 +300,149 @@ def run_agent(
         messages_out.extend(messages)
 
     return clean_text_response(final_response)
+
+
+def run_agent_stream(
+    user_message: str,
+    history: list[dict] | None = None,
+    backend: str = "local",
+    temperature: float = 0.0,
+    messages_out: list | None = None,
+):
+    """
+    Generator version of run_agent.
+    Yields dicts:
+      {"type": "tool_call", "name": ..., "args": ..., "result": ...}
+      {"type": "token",     "text": ...}
+      {"type": "done",      "text": <full_final_text>}
+      {"type": "error",     "text": ...}
+    """
+    backend_cfg = BACKENDS[backend]
+    client      = backend_cfg["client"]
+    model       = backend_cfg["model"]
+
+    expanded_message = classify_and_expand_intent(user_message)
+
+    messages: list[dict] = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        *(history or []),
+        {"role": "user", "content": expanded_message},
+    ]
+
+    seen_calls: set[str] = set()
+
+    # ── Tool execution loop (same logic as run_agent, non-streaming) ──────────
+    for _ in range(5):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                tools=TOOL_SCHEMAS,
+                tool_choice="auto",
+                temperature=temperature,
+            )
+        except Exception as e:
+            yield {"type": "error", "text": str(e)}
+            return
+
+        message = response.choices[0].message
+
+        parsed_tool_calls = (
+            parse_tool_calls_from_text(message.content)
+            if not message.tool_calls
+            else None
+        )
+        tool_calls_to_use = message.tool_calls or parsed_tool_calls
+
+        if not tool_calls_to_use:
+            # No more tool calls — fall through to streaming final response
+            messages.append({"role": "assistant", "content": message.content})
+            break
+
+        # Wrap text-parsed calls in mock objects
+        if parsed_tool_calls:
+            class MockToolCall:
+                def __init__(self, d: dict):
+                    self.id   = d["id"]
+                    self.type = "function"
+                    self.function = type("F", (), {
+                        "name":      d["name"],
+                        "arguments": json.dumps(d["args"]),
+                    })()
+            tool_calls_to_use = [MockToolCall(tc) for tc in parsed_tool_calls]
+
+        messages.append({
+            "role":    "assistant",
+            "content": message.content,
+            "tool_calls": [
+                {
+                    "id":   tc.id,
+                    "type": tc.type,
+                    "function": {
+                        "name":      tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for tc in tool_calls_to_use
+            ],
+        })
+
+        for tc in tool_calls_to_use:
+            name     = tc.function.name
+            raw_args = json.loads(tc.function.arguments)
+            args     = coerce_args(name, raw_args)
+
+            error_msg = validate_tool_call(name, args)
+            if error_msg:
+                print(f"[Validate] {error_msg}")
+                messages.append({
+                    "role": "tool", "tool_call_id": tc.id,
+                    "content": json.dumps({"error": error_msg}),
+                })
+                continue
+
+            call_key = f"{name}:{json.dumps(args, sort_keys=True)}"
+            if call_key in seen_calls:
+                continue
+            seen_calls.add(call_key)
+
+            handler = TOOL_HANDLERS.get(name)
+            result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
+
+            # ── Emit tool_call event immediately so UI updates in real time ──
+            yield {"type": "tool_call", "name": name, "args": args, "result": result}
+
+            messages.append({
+                "role": "tool", "tool_call_id": tc.id,
+                "content": json.dumps(result),
+            })
+
+    # ── Stream the final plain-text summary ───────────────────────────────────
+    full_text = ""
+    try:
+        stream = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=TOOL_SCHEMAS,
+            tool_choice="none",
+            temperature=temperature,
+            max_tokens=256,
+            stream=True,
+        )
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content or ""
+            if delta:
+                full_text += delta
+                yield {"type": "token", "text": delta}
+
+    except Exception as e:
+        yield {"type": "error", "text": str(e)}
+        return
+
+    full_text = clean_text_response(full_text) or "Done."
+    messages.append({"role": "assistant", "content": full_text})
+
+    if messages_out is not None:
+        messages_out.extend(messages)
+
+    yield {"type": "done", "text": full_text}
