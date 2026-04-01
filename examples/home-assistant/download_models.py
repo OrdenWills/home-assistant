@@ -29,6 +29,13 @@ MODELS = [
     "priority": 1,
 },
     {
+        "id": "lfm2.5-350m-q4",
+        "name": "LFM2.5-350M Q4",
+        "repo": "LiquidAI/LFM2.5-350M-GGUF",
+        "file": "LFM2.5-350M-Q4_0.gguf",
+        "priority":6,
+    },
+    {
         "id": "lfm2.5-1.2b-thinking-q4",
         "name": "LFM2.5-1.2B-Thinking-Q4",
         "repo": "LiquidAI/LFM2.5-1.2B-Thinking-GGUF",
@@ -41,12 +48,19 @@ MODELS = [
         "repo": "LiquidAI/LFM2.5-1.2B-Thinking-GGUF",
         "file": "LFM2.5-1.2B-Thinking-Q8_0.gguf",
         "priority": 2,
-    },
+    },   
     {
         "id": "home-assistant-sft",
         "name": "Home Assistant SFT (Finetuned)",
         "repo": "OrdenWills/LFM2.5-1.2B-home-assistant-sft",
         "file": "LFM2.5-1.2B-Instruct.Q4_K_M.gguf",
+        "priority": 5,
+    },
+    {
+        "id": "home-assistant-sft",
+        "name": "Home Assistant SFT (Finetuned)",
+        "repo": "OrdenWills/LFM2.5-350M-home-assistant-sft",
+        "file": "LFM2.5-350M.Q4_K_M.gguf",
         "priority": 0,
     },
 ]
