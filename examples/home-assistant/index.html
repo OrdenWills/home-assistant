@@ -680,6 +680,14 @@
 
             if (event.type === "tool_call") {
               toolEvents.push(event);
+              
+              // Update UI immediately with the new state from the tool_call event
+              if (event.state) {
+                updateHouseVisualization(event.state);
+                updateStateCards(event.state);
+                updateFloorplan(event.state);
+                updateRoomTracker(event.state);
+              }
 
             } else if (event.type === "token") {
               typing.remove();
