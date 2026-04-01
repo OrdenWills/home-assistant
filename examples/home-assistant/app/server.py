@@ -436,10 +436,9 @@ def chat(req: ChatRequest):
 
     conversation_history.extend(messages_out[1 + initial_history_len:])
 
-    # Keep only the last 4 turns (8 messages: 4 user + 4 assistant)
-    # Each turn = 2 entries in the list, so cap at 8
-    if len(conversation_history) > 8:
-        conversation_history[:] = conversation_history[-8:]
+    # Keep only the last 2 turns (4 messages: 2 user + 2 assistant) for aggressive cleanup
+    if len(conversation_history) > 4:
+        conversation_history[:] = conversation_history[-4:]
 
     # Record this turn for history replay
     chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
@@ -589,10 +588,10 @@ def chat_stream(req: ChatRequest):
             if event["type"] == "done":
                 final_text = event["text"]
 
-                # Sliding window — keep last 4 turns (8 messages)
+                # Sliding window — keep last 2 turns (4 messages)
                 conversation_history.extend(messages_out[1 + initial_len:])
-                if len(conversation_history) > 8:
-                    conversation_history[:] = conversation_history[-8:]
+                if len(conversation_history) > 4:
+                    conversation_history[:] = conversation_history[-4:]
 
                 chat_turns.append({
                     "user":       req.message,

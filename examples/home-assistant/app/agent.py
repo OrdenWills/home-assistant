@@ -186,8 +186,10 @@ def run_agent(
     seen_calls: set[str] = set()
     max_iter = 5
     final_response = None
+    iteration = 0
 
     for _ in range(max_iter):
+        iteration += 1
         response = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -209,6 +211,16 @@ def run_agent(
 
         if not tool_calls_to_use:
             final_response = clean_text_response(message.content or "")
+            
+            # On iteration 1, if no tool calls generated, try clearing history and retry once
+            if iteration == 1 and history:
+                print(f"[Agent] Iteration 1 failed to find tool calls with history present. Clearing history and retrying...")
+                messages = [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": expanded_message},
+                ]
+                continue
+            
             messages.append({"role": "assistant", "content": message.content})
             break
 
@@ -364,6 +376,16 @@ def run_agent_stream(
         if not tool_calls_to_use:
             # No more tool calls — break out and stream the accumulated content
             print(f"[Stream] No tool calls detected.")
+            
+            # On iteration 1, if no tool calls generated, try clearing history and retry once
+            if i == 0 and history:
+                print(f"[Stream] Iteration 1 failed to find tool calls with history present. Clearing history and retrying...")
+                messages = [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": expanded_message},
+                ]
+                continue
+            
             messages.append({"role": "assistant", "content": message.content})
             break
 
