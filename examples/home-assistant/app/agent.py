@@ -109,8 +109,12 @@ def parse_tool_calls_from_text(text: str) -> list[dict]:
     return tool_calls
 
 def clean_text_response(text: str) -> str:
-    """Remove tool call syntax from a text response."""
-    return re.sub(r'\[(\w+)\([^)]*\)\]', '', text).strip()
+    """Remove tool call syntax and JSON objects from a text response."""
+    # Remove tool call syntax: [function_name(...)]
+    text = re.sub(r'\[(\w+)\([^)]*\)\]', '', text)
+    # Remove JSON objects that look like tool results: {...}
+    text = re.sub(r'\{[^{}]*\}', '', text)
+    return text.strip()
 
 
 def classify_and_expand_intent(user_message: str) -> str:
@@ -144,7 +148,7 @@ def classify_and_expand_intent(user_message: str) -> str:
                         f"[HINT: Use toggle_lights(room='{room}', state='on') — "
                         f"room context already resolved, do NOT call intent_unclear.]")
 
-    # ── Bulk operations (unchanged) ────────────────────────────────────────────
+    # ── Bulk operations ────────────────────────────────────────────────────────
     hints = {
         'all lights':   'Use toggle_all_lights(state=...) — NOT toggle_lights.',
         'all rooms':    'Use toggle_all_lights(state=...) — NOT toggle_lights.',
@@ -155,6 +159,28 @@ def classify_and_expand_intent(user_message: str) -> str:
     for kw, hint in hints.items():
         if kw in user_part:
             return f"{user_message}\n[HINT: {hint}]"
+    
+    # ── Scene commands ─────────────────────────────────────────────────────────
+    scene_keywords = {
+        'bedtime':     'Use set_scene(scene=\'bedtime\')',
+        'movie night': 'Use set_scene(scene=\'movie_night\')',
+        'morning':     'Use set_scene(scene=\'morning\')',
+        'away':        'Use set_scene(scene=\'away\')',
+        'party':       'Use set_scene(scene=\'party\')',
+    }
+    for scene_kw, scene_hint in scene_keywords.items():
+        if scene_kw in user_part or any(w in user_part for w in ['scene', 'mode', 'activate']):
+            if any(scene in user_part for scene in ['bedtime', 'morning', 'movie', 'away', 'party']):
+                if 'bedtime' in user_part:
+                    return f"{user_message}\n[HINT: Use set_scene(scene='bedtime')]"
+                elif 'morning' in user_part:
+                    return f"{user_message}\n[HINT: Use set_scene(scene='morning')]"
+                elif 'movie' in user_part:
+                    return f"{user_message}\n[HINT: Use set_scene(scene='movie_night')]"
+                elif 'away' in user_part:
+                    return f"{user_message}\n[HINT: Use set_scene(scene='away')]"
+                elif 'party' in user_part:
+                    return f"{user_message}\n[HINT: Use set_scene(scene='party')]"
             
     return user_message
 # ── Agent loop ─────────────────────────────────────────────────────────────────

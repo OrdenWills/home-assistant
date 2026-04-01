@@ -531,7 +531,7 @@ def chat_stream(req: ChatRequest):
                     result = TOOL_HANDLERS["toggle_lights"](**args)
                     events.append({"name": "toggle_lights", "args": args, "result": result})
                     payload = {"type": "tool_call", "name": "toggle_lights",
-                               "args": args, "result": result}
+                               "args": args, "result": result, "state": home_state}
                     yield f"data: {json.dumps(payload)}\n\n"
                     summaries.append(f"{room.replace('_', ' ').title()} light turned {target}.")
 
@@ -555,7 +555,7 @@ def chat_stream(req: ChatRequest):
             events, text = _replay_cached_tools(cached)
             for e in events:
                 payload = {"type": "tool_call", "name": e["name"],
-                           "args": e["args"], "result": e["result"]}
+                           "args": e["args"], "result": e["result"], "state": home_state}
                 yield f"data: {json.dumps(payload)}\n\n"
             yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': True})}\n\n"
 
@@ -582,6 +582,8 @@ def chat_stream(req: ChatRequest):
                     "args":   event["args"],
                     "result": event["result"],
                 })
+                # Add current home state to the event before streaming to frontend
+                event["state"] = home_state
             yield f"data: {json.dumps(event)}\n\n"
 
             # After done, handle history + cache bookkeeping
