@@ -464,6 +464,8 @@ def run_agent_stream(
                 continue
             seen_calls.add(call_key)
 
+            yield {"type": "status", "text": "Performing action..."}
+
             handler = TOOL_HANDLERS.get(name)
             result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
             print(f"[Stream] Tool '{name}' result: {result}")
@@ -471,6 +473,8 @@ def run_agent_stream(
             # ── Emit tool_call event immediately so UI updates in real time ──
             print(f"[Stream] YIELDING tool_call to frontend: {name}({args})")
             yield {"type": "tool_call", "name": name, "args": args, "result": result}
+            
+            yield {"type": "status", "text": "Action performed..."}
 
             messages.append({
                 "role": "tool", "tool_call_id": tc.id,

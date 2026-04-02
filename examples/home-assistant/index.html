@@ -678,7 +678,19 @@
             try { event = JSON.parse(part.slice(6)); }
             catch { continue; }
 
-            if (event.type === "tool_call") {
+            if (event.type === "status") {
+              let statusEl = typing.querySelector(".typing-status");
+              if (!statusEl) {
+                statusEl = document.createElement("div");
+                statusEl.className = "typing-status";
+                statusEl.style.fontSize = "0.85em";
+                statusEl.style.color = "var(--text-muted, #888)";
+                statusEl.style.marginBottom = "4px";
+                typing.insertBefore(statusEl, typing.firstChild);
+              }
+              statusEl.textContent = event.text;
+
+            } else if (event.type === "tool_call") {
               const displayEvent = { ...event };
               delete displayEvent.state;
               toolEvents.push(displayEvent);

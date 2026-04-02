@@ -527,12 +527,14 @@ def chat_stream(req: ChatRequest):
                 events = []
                 summaries = []
                 for room in _sc_rooms:
+                    yield f"data: {json.dumps({'type': 'status', 'text': 'Performing action...'})}\n\n"
                     args   = {"room": room, "state": target}
                     result = TOOL_HANDLERS["toggle_lights"](**args)
                     events.append({"name": "toggle_lights", "args": args, "result": result})
                     payload = {"type": "tool_call", "name": "toggle_lights",
                                "args": args, "result": result, "state": home_state}
                     yield f"data: {json.dumps(payload)}\n\n"
+                    yield f"data: {json.dumps({'type': 'status', 'text': 'Action performed...'})}\n\n"
                     summaries.append(f"{room.replace('_', ' ').title()} light turned {target}.")
 
                 text = " ".join(summaries)
@@ -542,6 +544,7 @@ def chat_stream(req: ChatRequest):
                 to_cache = [{"name": e["name"], "args": e["args"]} for e in events]
                 set_cached(resolved_message, to_cache, current_snapshot)
                 
+                yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
                 yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': False})}\n\n"
             else:
                 text = f"The other lights are already {target}."
@@ -554,9 +557,12 @@ def chat_stream(req: ChatRequest):
             print(f"[Cache] HIT (stream) for: {resolved_message!r}")
             events, text = _replay_cached_tools(cached)
             for e in events:
+                yield f"data: {json.dumps({'type': 'status', 'text': 'Performing action...'})}\n\n"
                 payload = {"type": "tool_call", "name": e["name"],
                            "args": e["args"], "result": e["result"], "state": home_state}
                 yield f"data: {json.dumps(payload)}\n\n"
+                yield f"data: {json.dumps({'type': 'status', 'text': 'Action performed...'})}\n\n"
+            yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
             yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': True})}\n\n"
 
             chat_turns.append({
