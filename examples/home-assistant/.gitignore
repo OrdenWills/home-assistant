@@ -2,3 +2,5 @@
 benchmark/datasets/
 finetune/train_debug.py
 runners/
+.venv
+benchmark/

@@ -679,7 +679,9 @@
             catch { continue; }
 
             if (event.type === "tool_call") {
-              toolEvents.push(event);
+              const displayEvent = { ...event };
+              delete displayEvent.state;
+              toolEvents.push(displayEvent);
               
               // Update UI immediately with the new state from the tool_call event
               if (event.state) {
