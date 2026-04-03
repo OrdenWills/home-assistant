@@ -373,6 +373,9 @@ def run_agent_stream(
     seen_calls: set[str] = set()
     last_text_response = ""
 
+    # Yield status before we send the user prompt to the model
+    yield {"type": "status", "text": "Performing action"}
+
     # ── Tool execution loop (same logic as run_agent, non-streaming) ──────────
     for i in range(5):
         try:
@@ -463,8 +466,6 @@ def run_agent_stream(
             if call_key in seen_calls:
                 continue
             seen_calls.add(call_key)
-
-            yield {"type": "status", "text": "Performing action..."}
 
             handler = TOOL_HANDLERS.get(name)
             result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
