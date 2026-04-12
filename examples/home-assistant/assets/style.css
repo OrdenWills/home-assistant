@@ -160,6 +160,15 @@ main {
   height: 100%;
 }
 
+#side-panel {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  height: 100%;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--bg);
+}
+
 /* ── House panel: 3-row × 2-col cockpit grid ── */
 #house-panel {
   display: grid;
@@ -499,6 +508,118 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
   grid-template-rows: 48px 1fr auto;
   overflow: hidden;
   background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+#temperature-panel {
+  border-radius: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.dial-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  flex: 1;
+}
+
+.dial-outer {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.dial-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(0deg);
+}
+
+.dial-bg {
+  fill: var(--surface-2);
+  stroke: var(--border-light);
+  stroke-width: 1;
+}
+
+.dial-track {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 8;
+  stroke-linecap: round;
+  opacity: 0.1;
+}
+
+.dial-fill {
+  fill: none;
+  stroke: url(#dial-gradient);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.1s ease;
+}
+
+.dial-knob {
+  fill: #fff;
+  stroke: var(--border);
+  stroke-width: 2;
+  cursor: grab;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+  transition: r 0.2s ease;
+}
+
+.dial-knob:active {
+  cursor: grabbing;
+  r: 14;
+}
+
+.dial-inner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  background: var(--surface);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    inset 0 2px 5px rgba(0,0,0,0.05),
+    0 10px 20px rgba(0,0,0,0.05);
+  border: 1px solid var(--border-light);
+}
+
+.dial-core {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+
+.dial-value {
+  font-size: 48px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  letter-spacing: -2px;
+}
+
+.dial-unit {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: -2px;
+}
+
+#temperature-panel.active-adjust .dial-core {
+  transform: scale(1.1);
 }
 
 .chat-header {

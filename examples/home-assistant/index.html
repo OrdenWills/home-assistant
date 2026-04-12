@@ -290,16 +290,48 @@
 
       </div>
 
-      <!-- Right: chat -->
-      <div id="chat-panel">
-        <div class="chat-header">
-          <span class="chat-title">AI Assistant</span>
-          <span class="assistant-dot" id="assistant-dot"></span>
+      <div id="side-panel">
+        <!-- Top: Temperature Dial -->
+        <div class="panel" id="temperature-panel">
+          <div class="panel-label">House Temperature</div>
+          <div class="panel-body climate-body">
+            <div class="dial-container" id="temp-dial-wrapper">
+              <div class="dial-outer">
+                <svg class="dial-svg" viewBox="0 0 200 200">
+                  <defs>
+                    <linearGradient id="dial-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" style="stop-color:var(--green);stop-opacity:1" />
+                      <stop offset="50%" style="stop-color:var(--amber);stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:var(--red);stop-opacity:1" />
+                    </linearGradient>
+                  </defs>
+                  <circle class="dial-bg" cx="100" cy="100" r="85" />
+                  <path class="dial-track" d="M 100,20 A 80,80 0 1,1 100.01,20" />
+                  <path id="dial-fill" class="dial-fill" d="M 100,20 A 80,80 0 0,1 100,20" />
+                  <circle id="dial-knob" class="dial-knob" cx="100" cy="20" r="12" />
+                </svg>
+                <div class="dial-inner">
+                  <div class="dial-core">
+                    <span id="dial-temp-value" class="dial-value">68</span>
+                    <span class="dial-unit">°F</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div id="messages"></div>
-        <div id="input-bar">
-          <input id="user-input" type="text" placeholder="Type a command…" autocomplete="off" />
-          <button id="send-btn">Send</button>
+
+        <!-- Bottom: Chat -->
+        <div id="chat-panel">
+          <div class="chat-header">
+            <span class="chat-title">AI Assistant</span>
+            <span class="assistant-dot" id="assistant-dot"></span>
+          </div>
+          <div id="messages"></div>
+          <div id="input-bar">
+            <input id="user-input" type="text" placeholder="Type a command…" autocomplete="off" />
+            <button id="send-btn">Send</button>
+          </div>
         </div>
       </div>
     </main>
@@ -430,6 +462,124 @@
       dot.className = "assistant-dot" + (state ? ` ${state}` : "");
     }
 
+    // ── Thermostat Dial ──────────────────────────────────────
+    let isDraggingDial = false;
+    const minTemp = 50;
+    const maxTemp = 90;
+
+    function updateDialUI(temp) {
+      const dialFill = document.getElementById("dial-fill");
+      const dialKnob = document.getElementById("dial-knob");
+      const dialValue = document.getElementById("dial-temp-value");
+      const panel = document.getElementById("temperature-panel");
+
+      const clampedTemp = Math.max(minTemp, Math.min(maxTemp, temp));
+      const percent = (clampedTemp - minTemp) / (maxTemp - minTemp);
+      
+      // Calculate angle (0 to 360 degrees, but we start at top)
+      // We'll use a 360 degree arc for simplicity
+      const angle = percent * 360;
+      const rad = (angle - 90) * (Math.PI / 180);
+      
+      // Update knob position
+      const cx = 100 + 80 * Math.cos(rad);
+      const cy = 100 + 80 * Math.sin(rad);
+      dialKnob.setAttribute("cx", cx);
+      dialKnob.setAttribute("cy", cy);
+
+      // Update SVG path for fill
+      const largeArc = angle > 180 ? 1 : 0;
+      dialFill.setAttribute("d", `M 100,20 A 80,80 0 ${largeArc},1 ${cx},${cy}`);
+      
+      // Update text
+      dialValue.textContent = Math.round(clampedTemp);
+      
+      // Update colors based on temp
+      const red = Math.round(percent * 255);
+      const green = Math.round((1 - percent) * 255);
+      const color = `rgb(${red}, ${green}, 50)`;
+      const glow = `rgba(${red}, ${green}, 50, 0.15)`;
+      
+      dialValue.style.color = color;
+      const core = document.querySelector(".dial-core");
+      if (core) {
+        core.style.background = `radial-gradient(circle, ${glow} 0%, transparent 70%)`;
+      }
+    }
+
+    async function handleDialMove(e) {
+      if (!isDraggingDial) return;
+      
+      const wrapper = document.getElementById("temp-dial-wrapper");
+      const rect = wrapper.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const dx = clientX - centerX;
+      const dy = clientY - centerY;
+      
+      let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+      if (angle < 0) angle += 360;
+      
+      const percent = angle / 360;
+      const temp = minTemp + percent * (maxTemp - minTemp);
+      
+      updateDialUI(temp);
+      
+      // Immediate update to backend (debounced or throttled would be better, but request said "immediate")
+      // We'll use a small throttle to avoid flooding the server
+      throttleSetTemp(Math.round(temp));
+    }
+
+    let throttleTimer = null;
+    function throttleSetTemp(temp) {
+      if (throttleTimer) return;
+      throttleTimer = setTimeout(async () => {
+        try {
+          const res = await fetch("/thermostat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              temperature: temp,
+              mode: "auto"
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            // Optional: update visualization based on returned state
+            updateHouseVisualization(data.state);
+            updateFloorplan(data.state);
+          }
+        } catch (e) {}
+        throttleTimer = null;
+      }, 150); // Slightly slower throttle for stability
+    }
+
+    document.getElementById("dial-knob").addEventListener("mousedown", () => {
+      isDraggingDial = true;
+      document.getElementById("temperature-panel").classList.add("active-adjust");
+    });
+    document.getElementById("dial-knob").addEventListener("touchstart", (e) => {
+      isDraggingDial = true;
+      document.getElementById("temperature-panel").classList.add("active-adjust");
+      e.preventDefault();
+    });
+
+    window.addEventListener("mousemove", handleDialMove);
+    window.addEventListener("touchmove", handleDialMove, { passive: false });
+    
+    window.addEventListener("mouseup", () => {
+      isDraggingDial = false;
+      document.getElementById("temperature-panel").classList.remove("active-adjust");
+    });
+    window.addEventListener("touchend", () => {
+      isDraggingDial = false;
+      document.getElementById("temperature-panel").classList.remove("active-adjust");
+    });
+
     // ── State rendering ───────────────────────────────────────
 
     function updateHouseVisualization(state) {
@@ -448,8 +598,14 @@
     const MODE_ICONS = { heat: "🔥", cool: "❄", auto: "⟳" };
 
     function updateStateCards(state) {
-      // Thermostat — elements may not exist if panel was removed; guard with if
       const t = state.thermostat || {};
+      
+      // Update the new Dial UI
+      if (!isDraggingDial) {
+        updateDialUI(t.temperature || 68);
+      }
+
+      // Keep legacy elements if they still exist elsewhere
       const tempEl = document.getElementById("state-thermostat-temp");
       const modeEl = document.getElementById("state-thermostat-mode");
       const modeIconEl = document.getElementById("state-thermostat-mode-icon");

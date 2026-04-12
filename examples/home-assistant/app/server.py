@@ -230,6 +230,19 @@ def set_backend(req: BackendRequest):
 def get_state():
     return JSONResponse(home_state)
 
+class ThermostatRequest(BaseModel):
+    temperature: int
+    mode: str | None = "auto"
+
+@app.post("/thermostat")
+def set_thermostat_direct(req: ThermostatRequest):
+    home_state["thermostat"]["temperature"] = req.temperature
+    if req.mode:
+        home_state["thermostat"]["mode"] = req.mode
+    from app.state import persist_state
+    persist_state()
+    return JSONResponse({"status": "ok", "state": home_state})
+
 @app.get("/history")
 def get_history():
     """Returns the chat history so the frontend can survive a page refresh."""
