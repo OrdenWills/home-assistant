@@ -305,9 +305,8 @@
                       <stop offset="100%" style="stop-color:var(--red);stop-opacity:1" />
                     </linearGradient>
                   </defs>
-                  <circle class="dial-bg" cx="100" cy="100" r="85" />
-                  <path class="dial-track" d="M 100,20 A 80,80 0 1,1 100.01,20" />
-                  <path id="dial-fill" class="dial-fill" d="M 100,20 A 80,80 0 0,1 100,20" />
+                  <circle class="dial-track" cx="100" cy="100" r="80" />
+                  <circle id="dial-fill" class="dial-fill" cx="100" cy="100" r="80" />
                   <circle id="dial-knob" class="dial-knob" cx="100" cy="20" r="12" />
                 </svg>
                 <div class="dial-inner">
@@ -473,23 +472,25 @@
       const dialValue = document.getElementById("dial-temp-value");
       const panel = document.getElementById("temperature-panel");
 
+      const radius = 80;
+      const circumference = 2 * Math.PI * radius;
+      
       const clampedTemp = Math.max(minTemp, Math.min(maxTemp, temp));
       const percent = (clampedTemp - minTemp) / (maxTemp - minTemp);
       
-      // Calculate angle (0 to 360 degrees, but we start at top)
-      // We'll use a 360 degree arc for simplicity
+      // Update knob position
+      // The SVG is rotated -90deg in CSS, so a 0-360 angle here is correct relative to the rotated coordinate system
       const angle = percent * 360;
       const rad = (angle - 90) * (Math.PI / 180);
       
-      // Update knob position
-      const cx = 100 + 80 * Math.cos(rad);
-      const cy = 100 + 80 * Math.sin(rad);
+      const cx = 100 + radius * Math.cos(rad);
+      const cy = 100 + radius * Math.sin(rad);
       dialKnob.setAttribute("cx", cx);
       dialKnob.setAttribute("cy", cy);
 
-      // Update SVG path for fill
-      const largeArc = angle > 180 ? 1 : 0;
-      dialFill.setAttribute("d", `M 100,20 A 80,80 0 ${largeArc},1 ${cx},${cy}`);
+      // Update circle fill via stroke-dasharray
+      dialFill.style.strokeDasharray = `${circumference} ${circumference}`;
+      dialFill.style.strokeDashoffset = circumference - (percent * circumference);
       
       // Update text
       dialValue.textContent = Math.round(clampedTemp);
