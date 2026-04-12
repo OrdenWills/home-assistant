@@ -469,6 +469,44 @@
     const minTemp = 50;
     const maxTemp = 90;
 
+    let dialAnimFrame = null;
+
+    function animateDialTo(targetTemp, duration = 1000) {
+      if (isDraggingDial) return;
+
+      const dialValueEl = document.getElementById("dial-temp-value");
+      const startTemp = parseFloat(dialValueEl.textContent) || 68;
+
+      // If it's already exactly at the target, just apply it
+      if (Math.round(startTemp) === Math.round(targetTemp)) {
+        updateDialUI(targetTemp);
+        return;
+      }
+
+      const startTime = performance.now();
+
+      function step(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Smooth easing out (decelerates at the end)
+        const easeOut = 1 - Math.pow(1 - progress, 4);
+
+        const currentTemp = startTemp + (targetTemp - startTemp) * easeOut;
+
+        // Update text, ring, and knob
+        updateDialUI(currentTemp);
+
+        if (progress < 1 && !isDraggingDial) {
+          dialAnimFrame = requestAnimationFrame(step);
+        }
+      }
+
+      // Cancel any running animations before starting a new one
+      if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame);
+      dialAnimFrame = requestAnimationFrame(step);
+    }
+
     function updateDialUI(temp) {
       const dialFill = document.getElementById("dial-fill");
       const dialKnob = document.getElementById("dial-knob");
@@ -477,15 +515,15 @@
 
       const radius = 80;
       const circumference = 2 * Math.PI * radius;
-      
+
       const clampedTemp = Math.max(minTemp, Math.min(maxTemp, temp));
       const percent = (clampedTemp - minTemp) / (maxTemp - minTemp);
-      
+
       // Update knob position
       // The SVG is rotated -90deg in CSS, so a 0-360 angle here is correct relative to the rotated coordinate system
       const angle = percent * 360;
       const rad = (angle - 90) * (Math.PI / 180);
-      
+
       const cx = 100 + radius * Math.cos(rad);
       const cy = 100 + radius * Math.sin(rad);
       dialKnob.setAttribute("cx", cx);
@@ -494,16 +532,16 @@
       // Update circle fill via stroke-dasharray
       dialFill.style.strokeDasharray = `${circumference} ${circumference}`;
       dialFill.style.strokeDashoffset = circumference - (percent * circumference);
-      
+
       // Update text
       dialValue.textContent = Math.round(clampedTemp);
-      
+
       // Update colors based on temp
       const red = Math.round(percent * 255);
       const green = Math.round((1 - percent) * 255);
       const color = `rgb(${red}, ${green}, 50)`;
       const glow = `rgba(${red}, ${green}, 50, 0.15)`;
-      
+
       dialValue.style.color = color;
       const core = document.querySelector(".dial-core");
       if (core) {
@@ -513,26 +551,26 @@
 
     async function handleDialMove(e) {
       if (!isDraggingDial) return;
-      
+
       const wrapper = document.getElementById("temp-dial-wrapper");
       const rect = wrapper.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
-      
+
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-      
+
       const dx = clientX - centerX;
       const dy = clientY - centerY;
-      
+
       let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
       if (angle < 0) angle += 360;
-      
+
       const percent = angle / 360;
       const temp = minTemp + percent * (maxTemp - minTemp);
-      
+
       updateDialUI(temp);
-      
+
       // Immediate update to backend (debounced or throttled would be better, but request said "immediate")
       // We'll use a small throttle to avoid flooding the server
       throttleSetTemp(Math.round(temp));
@@ -546,7 +584,7 @@
           const res = await fetch("/thermostat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               temperature: temp,
               mode: "auto"
             }),
@@ -557,16 +595,18 @@
             updateHouseVisualization(data.state);
             updateFloorplan(data.state);
           }
-        } catch (e) {}
+        } catch (e) { }
         throttleTimer = null;
       }, 150); // Slightly slower throttle for stability
     }
 
     document.getElementById("dial-knob").addEventListener("mousedown", () => {
+      if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame); // Add this line
       isDraggingDial = true;
       document.getElementById("temperature-panel").classList.add("active-adjust");
     });
     document.getElementById("dial-knob").addEventListener("touchstart", (e) => {
+      if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame); // Add this line
       isDraggingDial = true;
       document.getElementById("temperature-panel").classList.add("active-adjust");
       e.preventDefault();
@@ -574,7 +614,7 @@
 
     window.addEventListener("mousemove", handleDialMove);
     window.addEventListener("touchmove", handleDialMove, { passive: false });
-    
+
     window.addEventListener("mouseup", () => {
       isDraggingDial = false;
       document.getElementById("temperature-panel").classList.remove("active-adjust");
@@ -603,10 +643,10 @@
 
     function updateStateCards(state) {
       const t = state.thermostat || {};
-      
+
       // Update the new Dial UI
       if (!isDraggingDial) {
-        updateDialUI(t.temperature || 68);
+        animateDialTo(t.temperature || 68, 1000); // 1000ms = 1 second
       }
 
       // Keep legacy elements if they still exist elsewhere
@@ -854,7 +894,7 @@
               const displayEvent = { ...event };
               delete displayEvent.state;
               toolEvents.push(displayEvent);
-              
+
               // Update UI immediately with the new state from the tool_call event
               if (event.state) {
                 updateHouseVisualization(event.state);

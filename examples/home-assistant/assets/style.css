@@ -581,7 +581,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
   stroke: url(#dial-gradient);
   stroke-width: 10;
   stroke-linecap: round;
-  transition: stroke-dashoffset 0.1s ease;
+  /* transition: stroke-dashoffset 0.1s ease; */
   transform: rotate(-90deg);
   transform-origin: center;
 }
