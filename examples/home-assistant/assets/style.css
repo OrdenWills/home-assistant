@@ -526,6 +526,10 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
   
   /* Thin border to outline the curve cleanly */
   border-top: 1px solid var(--border);
+
+  /* ADD THESE TWO LINES to force curved clipping: */
+  transform: translateZ(0);
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
 #temperature-panel {
