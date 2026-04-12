@@ -703,7 +703,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
 #messages {
   flex: 1;
   overflow-y: auto;
-  padding: 60px 16px 16px; /* Space for floating chips */
+  padding: 60px 16px 80px; /* <-- Changed bottom padding to 80px */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -788,17 +788,23 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] { color: #4db8ff; }
 
 /* Input bar */
 #input-bar {
+  position: absolute; /* <-- Detaches it from the stack so text flows behind */
+  bottom: 0;          /* <-- Pins to bottom */
+  left: 0;            /* <-- Pins to left */
+  right: 0;           /* <-- Pins to right */
+  
   display: flex;
   gap: 8px;
   padding: 6px 16px;
-  margin: 12px;
+  margin: 12px;       /* <-- Still dictates the transparent space around it! */
   background: var(--header-glass);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 100px;
   border: 1px solid var(--border-light);
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  box-shadow: 0 -4px 15px rgba(0,0,0,0.03); /* subtle lift */
+  /* shadow note: combined the two box-shadows you had previously */
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 -4px 15px rgba(0,0,0,0.03); 
 }
 
 #input-bar input {
