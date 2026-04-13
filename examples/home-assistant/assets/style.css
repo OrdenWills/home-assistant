@@ -207,7 +207,7 @@ main {
   grid-template-rows: 1fr 1fr;
   height: 100%;
   overflow: hidden;
-  border-left: 1px solid var(--border);
+  /* border-left: 1px solid var(--border); */
   background: var(--bg);
 }
 
@@ -712,28 +712,33 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   /* Layering & Overlap */
   position: relative;
   z-index: 10;
-  /* Puts it on top of the temperature panel */
-  margin-top: -32px;
-  /* Pulls it up to overlap the panel above */
+
+  /* Pulls it up, adds 3px gap on the sides, 1px gap at the bottom */
+  margin: -32px 3px 1.5px 3px;
 
   /* Smooth curves at the top */
   border-top-left-radius: 32px;
   border-top-right-radius: 32px;
 
-  /* The deep shadow cast upwards */
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.15);
+  /* Expanded shadow so it casts to the sides as well as the top */
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.12);
 
-  /* Thin border to outline the curve cleanly */
+  /* Outline the top and sides, but not the bottom */
   border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  /* none; */
 
-  /* ADD THESE TWO LINES to force curved clipping: */
+  /* Force curved clipping */
   transform: translateZ(0);
   -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
 #temperature-panel {
   border-radius: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
+  /* 1px solid var(--border); */
 }
 
 .dial-container {
