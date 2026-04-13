@@ -421,31 +421,31 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label { color: var(--amber); }
 .device-card:has(.door-unlocked) .device-icon { color: var(--green); }
 .device-card:has(.door-unlocked) .device-name { color: var(--green); }
 
-/* ── Doors Grid specific (5-col square) ── */
+/* ── Doors Grid specific (5-col compact) ── */
 #doors-grid {
   grid-template-columns: repeat(5, 1fr);
-  grid-auto-rows: auto;
-  gap: 8px;
+  grid-auto-rows: min-content;
+  gap: 4px;
 }
 
 #doors-grid .device-card {
   flex-direction: column;
   justify-content: center;
-  aspect-ratio: 1 / 1;
-  padding: 8px 4px;
+  padding: 4px 2px;
   text-align: center;
-  gap: 4px;
+  gap: 2px;
+  min-height: 0;
 }
 
 #doors-grid .device-icon {
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
 }
 
 #doors-grid .device-name {
-  font-size: 9px;
+  font-size: 8.5px;
   white-space: nowrap;
-  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
 }
 
 /* ── Thermostat ── */
