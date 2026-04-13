@@ -34,6 +34,11 @@ home_state: dict = {
         "back":   "locked",
         "garage": "locked",
         "side":   "locked",
+        "bedroom":     "locked",
+        "bathroom":    "locked",
+        "office":      "locked",
+        "kitchen":     "locked",
+        "living_room": "locked",
     },
     "active_scene": None,
 }

@@ -284,8 +284,15 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label { color: var(--amber); }
 /* Side: right edge, living room level (same row 3 midpoint) */
 #fp-door-side   { right: 0;  top: 76%;  transform: translateY(-50%); }
 
-/* Horizontal segment: back and front doors sit on top/bottom walls */
-:is(#fp-door-back, #fp-door-front) .fp-door-seg {
+/* Internal doors: connecting rooms to central hallway */
+#fp-door-bedroom     { top: 40%; left: 19%; transform: translate(-50%, -50%); }
+#fp-door-bathroom    { top: 40%; left: 50%; transform: translate(-50%, -50%); }
+#fp-door-office      { top: 40%; left: 81%; transform: translate(-50%, -50%); }
+#fp-door-kitchen     { top: 52%; left: 19%; transform: translate(-50%, -50%); }
+#fp-door-living_room { top: 52%; left: 69%; transform: translate(-50%, -50%); }
+
+/* Horizontal segment: back/front and internal doors sit on horizontal walls */
+:is(#fp-door-back, #fp-door-front, #fp-door-bedroom, #fp-door-bathroom, #fp-door-office, #fp-door-kitchen, #fp-door-living_room) .fp-door-seg {
   width: 36px;
   height: 5px;
 }
@@ -413,6 +420,33 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label { color: var(--amber); }
 .device-card:has(.door-locked)   .device-icon { color: var(--red); }
 .device-card:has(.door-unlocked) .device-icon { color: var(--green); }
 .device-card:has(.door-unlocked) .device-name { color: var(--green); }
+
+/* ── Doors Grid specific (5-col square) ── */
+#doors-grid {
+  grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: auto;
+  gap: 8px;
+}
+
+#doors-grid .device-card {
+  flex-direction: column;
+  justify-content: center;
+  aspect-ratio: 1 / 1;
+  padding: 8px 4px;
+  text-align: center;
+  gap: 4px;
+}
+
+#doors-grid .device-icon {
+  width: 20px;
+  height: 20px;
+}
+
+#doors-grid .device-name {
+  font-size: 9px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 
 /* ── Thermostat ── */
 .climate-body {

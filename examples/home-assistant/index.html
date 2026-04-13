@@ -61,6 +61,21 @@
               <div class="fp-door locked" id="fp-door-front">
                 <div class="fp-door-seg"></div>
               </div>
+              <div class="fp-door locked" id="fp-door-office">
+                <div class="fp-door-seg"></div>
+              </div>
+              <div class="fp-door locked" id="fp-door-bedroom">
+                <div class="fp-door-seg"></div>
+              </div>
+              <div class="fp-door locked" id="fp-door-bathroom">
+                <div class="fp-door-seg"></div>
+              </div>
+              <div class="fp-door locked" id="fp-door-kitchen">
+                <div class="fp-door-seg"></div>
+              </div>
+              <div class="fp-door locked" id="fp-door-living_room">
+                <div class="fp-door-seg"></div>
+              </div>
               <!-- Room grid cells -->
               <div class="fp-room" id="fp-room-bedroom">
                 <span class="fp-room-label">Bedroom</span>
@@ -209,7 +224,7 @@
         <div class="panel">
           <div class="panel-label">Doors</div>
           <div class="panel-body">
-            <div class="device-grid">
+            <div class="device-grid" id="doors-grid">
 
               <div class="device-card" id="door-front">
                 <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -248,6 +263,56 @@
                     d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
                 <span class="device-name">Side</span>
+                <span class="door-badge door-locked">locked</span>
+              </div>
+
+              <div class="device-card" id="door-bedroom">
+                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span class="device-name">Bedroom</span>
+                <span class="door-badge door-locked">locked</span>
+              </div>
+
+              <div class="device-card" id="door-bathroom">
+                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span class="device-name">Bathroom</span>
+                <span class="door-badge door-locked">locked</span>
+              </div>
+
+              <div class="device-card" id="door-office">
+                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span class="device-name">Office</span>
+                <span class="door-badge door-locked">locked</span>
+              </div>
+
+              <div class="device-card" id="door-kitchen">
+                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span class="device-name">Kitchen</span>
+                <span class="door-badge door-locked">locked</span>
+              </div>
+
+              <div class="device-card" id="door-living_room">
+                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <span class="device-name">Living Room</span>
                 <span class="door-badge door-locked">locked</span>
               </div>
 

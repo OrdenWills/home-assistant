@@ -38,7 +38,7 @@ TOOL_SCHEMAS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "door":  {"type": "string", "enum": ["front", "back", "garage", "side"]},
+                    "door":  {"type": "string", "enum": ["front", "back", "garage", "side", "bedroom", "bathroom", "office", "kitchen", "living_room"]},
                     "state": {"type": "string", "enum": ["lock", "unlock"]},
                 },
                 "required": ["door", "state"],
