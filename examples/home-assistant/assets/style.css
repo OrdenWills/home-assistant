@@ -89,6 +89,30 @@ body {
   line-height: 1.5;
 }
 
+/* ── Custom Scrollbar ── */
+* {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--border-light) transparent; /* Firefox */
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 /* ── Layout ── */
 #app {
   display: grid;
