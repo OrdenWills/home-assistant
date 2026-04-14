@@ -76,8 +76,18 @@ def load_state(path: Path = _DB_PATH) -> None:
         return
     try:
         stored = json.loads(row["payload"])
-        home_state.update(stored)
-        print("[State] Restored persisted home state from DB.")
+        
+        # Deep merge for structured device dictionaries to preserve new keys
+        for key in ["lights", "doors"]:
+            if key in stored and isinstance(stored[key], dict):
+                home_state[key].update(stored[key])
+        
+        # Shallow update for other top-level keys
+        for key, value in stored.items():
+            if key not in ["lights", "doors"]:
+                home_state[key] = value
+                
+        print("[State] Restored persisted home state from DB (merged).")
     except Exception as e:
         print(f"[State] Could not restore state ({e}) — using defaults.")
 

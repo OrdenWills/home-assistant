@@ -37,3 +37,4 @@ examples/home-assistant/benchmark/check_duplicates.py
 examples/home-assistant/benchmark/augment_dataset.py
 examples/home-assistant/benchmark/generate_multi_turn.py
 examples/home-assistant/scratch/test_room_hint.py
+examples/home-assistant/scratch/test_verify.db
