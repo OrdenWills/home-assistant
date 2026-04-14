@@ -706,6 +706,9 @@
 
     const MODE_ICONS = { heat: "🔥", cool: "❄", auto: "⟳" };
 
+    const ICON_LOCKED = "M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z";
+    const ICON_UNLOCKED = "M16.5 10.5V6.75a4.5 4.5 0 00-9 0M6.75 11.25h10.5a2.25 2.25 0 012.25 2.25v6.75a2.25 2.25 0 01-2.25 2.25H6.75a2.25 2.25 0 01-2.25-2.25v-6.75a2.25 2.25 0 012.25-2.25z";
+
     function updateStateCards(state) {
       const t = state.thermostat || {};
 
@@ -729,6 +732,12 @@
       for (const [door, doorState] of Object.entries(state.doors || {})) {
         const el = document.getElementById(`door-${door}`);
         if (el) {
+          // Update icon path
+          const iconPath = el.querySelector(".device-icon path");
+          if (iconPath) {
+            iconPath.setAttribute("d", doorState === "locked" ? ICON_LOCKED : ICON_UNLOCKED);
+          }
+
           const badge = el.querySelector(".door-badge");
           if (badge) {
             badge.classList.remove("door-locked", "door-unlocked");
