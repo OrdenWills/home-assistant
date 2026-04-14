@@ -51,6 +51,7 @@ _ROOM_NAMES: set[str] = {
 
 _SPECIFIC_DEVICES: set[str] = {
     "front door", "back door", "garage door", "side door",
+    "bedroom door", "bathroom door", "office door", "kitchen door", "living room door",
     "front", "back", "garage", "side",
     "thermostat",
     "all lights", "all doors", "all rooms",
@@ -73,6 +74,17 @@ _RELATIVE_KEYWORDS: set[str] = {
 }
 
 
+_DOOR_DEVICE_WORDS = {"door", "doors"}
+_DOOR_THIS_WORDS   = {"this door", "the door", "this one", "it"}
+
+def _room_hint(room: str) -> str:
+    room_display = room.replace("_", " ")
+    return (
+        f"Room context: {room}. "
+        f"If they ask to control 'the light', assume they mean the {room_display}. "
+        f"If they ask to control 'the door' or 'this door', assume they mean the {room_display} door."
+    )
+
 def _should_inject_room(message: str) -> bool:
     lower = message.lower()
     if any(r in lower for r in _ROOM_NAMES):
@@ -81,8 +93,10 @@ def _should_inject_room(message: str) -> bool:
         return False
     if any(b in lower for b in _BULK_KEYWORDS):
         return False
-    return any(w in lower for w in _LIGHT_DEVICE_WORDS)
-
+    # Inject for light OR ambiguous door commands
+    has_light = any(w in lower for w in _LIGHT_DEVICE_WORDS)
+    has_door  = any(w in lower for w in _DOOR_THIS_WORDS)
+    return has_light or has_door
 
 def _has_relative_keyword(message: str) -> bool:
     lower = message.lower()
@@ -403,10 +417,7 @@ def chat(req: ChatRequest):
                 )
 
         elif needs_room:
-            parts.append(
-                f"Room context: {req.current_room}. "
-                f"If they ask to control 'the light', assume they mean the {req.current_room}."
-            )
+            parts.append(_room_hint(req.current_room))
 
         if parts:
             note = " ".join(parts)
@@ -521,10 +532,7 @@ def chat_stream(req: ChatRequest):
                     "excluding the user's current room. Issue one toggle_lights call per room."
                 )
         elif needs_room:
-            parts.append(
-                f"Room context: {req.current_room}. "
-                f"If they ask to control 'the light', assume they mean the {req.current_room}."
-            )
+            parts.append(_room_hint(req.current_room))
         if parts:
             resolved_message = f"{req.message}\n[HINT: {' '.join(parts)}]"
             room_injected = True

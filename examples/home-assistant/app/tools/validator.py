@@ -17,7 +17,7 @@ _LOCK_OP = {"lock", "unlock"}
 _THERMO  = {"heat", "cool", "auto"}
 _SCENES  = {"movie_night", "bedtime", "morning", "away", "party"}
 _ROOMS   = {"bedroom", "bathroom", "office", "hallway", "kitchen", "living_room"}
-_DOORS   = {"front", "back", "garage", "side"}
+_DOORS   = {"front", "back", "garage", "side", "bedroom", "bathroom", "office", "kitchen", "living_room"}
 
 # ── Required-param schema ──────────────────────────────────────────────────────
 # Maps tool_name → {param: allowed_values_or_None}
