@@ -59,6 +59,14 @@ SYSTEM_PROMPT = (
     "  - 'lock/unlock all doors'                         → lock_all_doors(state=...)\n"
     "  - 'lock/unlock the [door] door'                   → lock_door(door=..., state=...)\n"
     "\n"
+    "CONTEXT PROVIDED WITH EACH REQUEST:\n"
+    "  - [STATE: ...] shows the CURRENT state of all devices and the user's room.\n"
+    "    Use it to resolve: 'turn off what's on', 'lock what's unlocked', 'open them all'.\n"
+    "    Use current_user_room to resolve 'the light', 'this light', 'this door', 'the door' → they refer to the user's room.\n"
+    "    If current_user_room is empty, the room is unknown — ask or call intent_unclear.\n"
+    "  - [RECENT ACTIONS: ...] shows the last actions performed.\n"
+    "    Use it to resolve: 'undo that', 'do the same for kitchen', 'again', 'revert'.\n"
+    "\n"
     "Call intent_unclear (never plain text) when the request is: ambiguous, off-topic, "
     "incomplete (no target specified), or refers to an unsupported device (brightness, TV, music, etc.)."
 )
@@ -124,96 +132,30 @@ def clean_text_response(text: str) -> str:
     return text.strip()
 
 
-def classify_and_expand_intent(user_message: str) -> str:
-    """Add routing hints so the model picks the right tool."""
-    lower = user_message.lower()
-    
-    # 1. Isolate the user's actual prompt to prevent matching injected system notes
-    # (which might contain strings like "Lights OFF" and artificially trigger the wrong hint).
-    user_part = lower.split("\nuser: ")[-1] if "\nuser: " in lower else lower
-
-    # 2. Avoid overriding single-room commands if it's a relative/bulk request
-    is_relative = any(k in user_part for k in {
-        "other", "rest", "remaining", "except", "apart"
-    })
-
-    if not is_relative:
-        # ── Room-context light commands ────────────────────────────────────────────
-        # Triggered when server.py has already injected "(System note: The user is
-        # currently in the <room>. ...)" into the message.
-        room_match = re.search(r'currently in the (\w+)', lower)
-        if room_match and any(w in user_part for w in ("light", "lights", "lamp", "bulb")):
-            room = room_match.group(1)
-            
-            # Check user_part specifically to avoid false positives from the system note
-            if any(w in user_part for w in ("off", "turn off", "disable", "switch off")):
-                return (f"{user_message}\n"
-                        f"[HINT: Use toggle_lights(room='{room}', state='off') — "
-                        f"room context already resolved, do NOT call intent_unclear.]")
-            if any(w in user_part for w in ("on", "turn on", "enable", "switch on")):
-                return (f"{user_message}\n"
-                        f"[HINT: Use toggle_lights(room='{room}', state='on') — "
-                        f"room context already resolved, do NOT call intent_unclear.]")
-
-    # ── Bulk operations ────────────────────────────────────────────────────────
-    hints = {
-        'all lights':   'Use toggle_all_lights(state=...) — NOT toggle_lights.',
-        'all rooms':    'Use toggle_all_lights(state=...) — NOT toggle_lights.',
-        'entire house': 'Use toggle_all_lights and/or lock_all_doors for bulk operations.',
-        'all doors':    'Use lock_all_doors(state=...) — NOT lock_door.',
-        'everything':   'Use bulk ops: toggle_all_lights and lock_all_doors.',
-    }
-    for kw, hint in hints.items():
-        if kw in user_part:
-            return f"{user_message}\n[HINT: {hint}]"
-    
-    # ── Scene commands ─────────────────────────────────────────────────────────
-    scene_keywords = {
-        'bedtime':     'Use set_scene(scene=\'bedtime\')',
-        'movie night': 'Use set_scene(scene=\'movie_night\')',
-        'morning':     'Use set_scene(scene=\'morning\')',
-        'away':        'Use set_scene(scene=\'away\')',
-        'party':       'Use set_scene(scene=\'party\')',
-    }
-    for scene_kw, scene_hint in scene_keywords.items():
-        if scene_kw in user_part or any(w in user_part for w in ['scene', 'mode', 'activate']):
-            if any(scene in user_part for scene in ['bedtime', 'morning', 'movie', 'away', 'party']):
-                if 'bedtime' in user_part:
-                    return f"{user_message}\n[HINT: Use set_scene(scene='bedtime')]"
-                elif 'morning' in user_part:
-                    return f"{user_message}\n[HINT: Use set_scene(scene='morning')]"
-                elif 'movie' in user_part:
-                    return f"{user_message}\n[HINT: Use set_scene(scene='movie_night')]"
-                elif 'away' in user_part:
-                    return f"{user_message}\n[HINT: Use set_scene(scene='away')]"
-                elif 'party' in user_part:
-                    return f"{user_message}\n[HINT: Use set_scene(scene='party')]"
-            
-    return user_message
 # ── Agent loop ─────────────────────────────────────────────────────────────────
 
 def run_agent(
     user_message: str,
-    history: list[dict] | None = None,
     backend: str = "local",
     on_tool_call=None,
     messages_out: list | None = None,
     temperature: float = 0.0,
 ) -> str:
-    """Runs the agent loop and returns the final text response."""
+    """Runs the agent loop and returns the final text response.
+    
+    user_message should already contain [STATE: ...] and [RECENT ACTIONS: ...]
+    prefixes injected by the server layer.
+    """
 
     backend_cfg = BACKENDS[backend]
     client = backend_cfg["client"]
     model  = backend_cfg["model"]
 
-    expanded_message = classify_and_expand_intent(user_message)
-    print(f"[Agent] Original: {user_message}")
-    print(f"[Agent] Expanded: {expanded_message}")
+    print(f"[Agent] Prompt: {user_message[:200]}...")
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        *(history or []),
-        {"role": "user", "content": expanded_message},
+        {"role": "user", "content": user_message},
     ]
 
     seen_calls: set[str] = set()
@@ -244,16 +186,6 @@ def run_agent(
 
         if not tool_calls_to_use:
             final_response = clean_text_response(message.content or "")
-            
-            # On iteration 1, if no tool calls generated, try clearing history and retry once
-            if iteration == 1 and history:
-                print(f"[Agent] Iteration 1 failed to find tool calls with history present. Clearing history and retrying...")
-                messages = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": expanded_message},
-                ]
-                continue
-            
             messages.append({"role": "assistant", "content": message.content})
             break
 
@@ -349,7 +281,6 @@ def run_agent(
 
 def run_agent_stream(
     user_message: str,
-    history: list[dict] | None = None,
     backend: str = "local",
     temperature: float = 0.0,
     messages_out: list | None = None,
@@ -361,20 +292,19 @@ def run_agent_stream(
       {"type": "token",     "text": ...}
       {"type": "done",      "text": <full_final_text>}
       {"type": "error",     "text": ...}
+
+    user_message should already contain [STATE: ...] and [RECENT ACTIONS: ...]
+    prefixes injected by the server layer.
     """
     backend_cfg = BACKENDS[backend]
     client      = backend_cfg["client"]
     model       = backend_cfg["model"]
 
-    expanded_message = classify_and_expand_intent(user_message)
-    print(f"[Stream] Initial Prompt: {user_message}")
-    if expanded_message != user_message:
-        print(f"[Stream] Expanded HINT: {expanded_message}")
+    print(f"[Stream] Prompt: {user_message[:200]}...")
 
     messages: list[dict] = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        *(history or []),
-        {"role": "user", "content": expanded_message},
+        {"role": "user", "content": user_message},
     ]
 
     seen_calls: set[str] = set()
@@ -412,16 +342,6 @@ def run_agent_stream(
         if not tool_calls_to_use:
             # No more tool calls — break out and stream the accumulated content
             print(f"[Stream] No tool calls detected.")
-            
-            # On iteration 1, if no tool calls generated, try clearing history and retry once
-            if i == 0 and history:
-                print(f"[Stream] Iteration 1 failed to find tool calls with history present. Clearing history and retrying...")
-                messages = [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": expanded_message},
-                ]
-                continue
-            
             messages.append({"role": "assistant", "content": message.content})
             break
 

@@ -119,7 +119,7 @@ def run_task(task, backend: str = "local", n: int = 1, reset_state: bool = True)
             tool_calls_seen.append({"name": name, "args": args})
 
         start = time.time()
-        run_agent(task.prompt, history=getattr(task, "history", []), backend=backend, on_tool_call=capture)
+        run_agent(task.prompt, backend=backend, on_tool_call=capture)
         duration = time.time() - start
 
         final_state = copy.deepcopy(home_state)

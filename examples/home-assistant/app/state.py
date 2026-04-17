@@ -13,6 +13,7 @@ persist_state() at the end of each mutation so the DB stays in sync.
 import json
 import random
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 _DB_PATH = Path("cache.db")
@@ -114,3 +115,65 @@ def randomize_state() -> None:
         home_state["lights"][room]["state"] = random.choice(["on", "off"])
     for door in home_state["doors"]:
         home_state["doors"][door] = random.choice(["locked", "unlocked"])
+
+
+# ── Structured state summary (injected into every LLM request) ────────────────
+
+def build_state_summary(current_room: str | None = None) -> str:
+    """
+    Build a compact structured state string for LLM injection.
+    Includes user's current room position.
+
+    Example output:
+    [STATE: lights={bathroom:off, bedroom:on, ...}, doors={back:locked, ...},
+     thermostat=72°F/auto, scene=none, user_room=bedroom]
+    """
+    lights = ", ".join(
+        f"{r}:{d['state']}" for r, d in sorted(home_state["lights"].items())
+    )
+    doors = ", ".join(
+        f"{d}:{s}" for d, s in sorted(home_state["doors"].items())
+    )
+    therm = home_state["thermostat"]
+    scene = home_state.get("active_scene") or "none"
+    room = current_room or ""
+    return (
+        f"[STATE: lights={{{lights}}}, "
+        f"doors={{{doors}}}, "
+        f"thermostat={therm['temperature']}°F/{therm['mode']}, "
+        f"scene={scene}, "
+        f"current_user_room={room}]"
+    )
+
+
+# ── Action log (replaces raw conversation_history sliding window) ─────────────
+
+action_log: list[dict] = []
+MAX_ACTION_LOG = 7
+
+
+def log_action(action_name: str, args: dict, summary: str) -> None:
+    """Append an action to the log, keeping at most MAX_ACTION_LOG entries."""
+    action_log.append({
+        "time": datetime.now().strftime("%H:%M"),
+        "action": action_name,
+        "args": args,
+        "summary": summary,
+    })
+    if len(action_log) > MAX_ACTION_LOG:
+        action_log[:] = action_log[-MAX_ACTION_LOG:]
+
+
+def build_action_log_context(n: int = 7) -> str:
+    """
+    Return the last N actions as a compact context string.
+    Returns empty string when no actions have been logged.
+    """
+    if not action_log:
+        return ""
+    recent = action_log[-n:]
+    entries = "; ".join(
+        f"{a['time']} {a['action']}({', '.join(f'{k}={v}' for k, v in a['args'].items())}) -> {a['summary']}"
+        for a in recent
+    )
+    return f"[RECENT ACTIONS: {entries}]"
