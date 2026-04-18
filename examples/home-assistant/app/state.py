@@ -149,7 +149,7 @@ def build_state_summary(current_room: str | None = None) -> str:
 # ── Action log (replaces raw conversation_history sliding window) ─────────────
 
 action_log: list[dict] = []
-MAX_ACTION_LOG = 7
+MAX_ACTION_LOG = 3
 
 
 def log_action(action_name: str, args: dict, summary: str) -> None:
@@ -164,7 +164,7 @@ def log_action(action_name: str, args: dict, summary: str) -> None:
         action_log[:] = action_log[-MAX_ACTION_LOG:]
 
 
-def build_action_log_context(n: int = 7) -> str:
+def build_action_log_context(n: int = 3) -> str:
     """
     Return the last N actions as a compact context string.
     Returns empty string when no actions have been logged.

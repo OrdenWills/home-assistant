@@ -31,8 +31,6 @@
   --header-glass: rgba(255, 255, 255, 0.5);
 }
 
-
-
 /* Soft dark mode: manual override via data-theme attribute */
 html[data-theme="soft-dark"] {
   --bg: #1a1a1a;
@@ -91,8 +89,8 @@ body {
 
 /* ── Custom Scrollbar ── */
 * {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: var(--border-light) transparent; /* Firefox */
+  scrollbar-width: thin; 
+  scrollbar-color: var(--border-light) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -207,7 +205,6 @@ main {
   grid-template-rows: 1fr 1fr;
   height: 100%;
   overflow: hidden;
-  /* border-left: 1px solid var(--border); */
   background: var(--bg);
 }
 
@@ -245,7 +242,6 @@ main {
   grid-template-rows: 40% 12% 48%;
   gap: 1px;
   background: #000000;
-  /* shows as 1px room divider lines */
   overflow: hidden;
   border: 2px solid #000000;
   border-radius: var(--radius-md);
@@ -310,7 +306,7 @@ html[data-theme="dark"] .fp-room-label {
   color: #707070;
 }
 
-/* Lit room: solid amber matching the light cards */
+/* Lit room */
 .fp-room.lit {
   background: #fde8c8;
 }
@@ -319,20 +315,12 @@ html[data-theme="dark"] .fp-room-label {
   color: var(--amber);
 }
 
-/* Soft dark lit room */
-html[data-theme="soft-dark"] .fp-room.lit {
-  background: #3a3a2a;
-}
-
-html[data-theme="soft-dark"] .fp-room.lit .fp-room-label {
-  color: var(--amber);
-}
-
-/* High contrast lit room */
+html[data-theme="soft-dark"] .fp-room.lit,
 html[data-theme="dark-hc"] .fp-room.lit {
   background: #3a3a2a;
 }
 
+html[data-theme="soft-dark"] .fp-room.lit .fp-room-label,
 html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   color: var(--amber);
 }
@@ -346,35 +334,30 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   justify-content: center;
 }
 
-/* Back door: top edge, center */
 #fp-door-back {
   top: 0;
   left: 50%;
   transform: translateX(-50%);
 }
 
-/* Front door: bottom edge, center */
 #fp-door-front {
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
 }
 
-/* Garage: left edge, kitchen level (row 3 midpoint ≈ 76% from top) */
 #fp-door-garage {
   left: 0;
   top: 76%;
   transform: translateY(-50%);
 }
 
-/* Side: right edge, living room level (same row 3 midpoint) */
 #fp-door-side {
   right: 0;
   top: 76%;
   transform: translateY(-50%);
 }
 
-/* Internal doors: connecting rooms to central hallway */
 #fp-door-bedroom {
   top: 40%;
   left: 19%;
@@ -405,13 +388,11 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   transform: translate(-50%, -50%);
 }
 
-/* Horizontal segment: back/front and internal doors sit on horizontal walls */
 :is(#fp-door-back, #fp-door-front, #fp-door-bedroom, #fp-door-bathroom, #fp-door-office, #fp-door-kitchen, #fp-door-living_room) .fp-door-seg {
   width: 36px;
   height: 5px;
 }
 
-/* Vertical segment: garage and side doors sit on left/right walls */
 :is(#fp-door-garage, #fp-door-side) .fp-door-seg {
   width: 5px;
   height: 36px;
@@ -472,7 +453,7 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   min-height: 0;
 }
 
-/* ── Device cards (shared by lights + doors) ── */
+/* ── Device cards ── */
 .device-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -510,9 +491,6 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   transition: color 0.3s ease;
 }
 
-/* ── Lights ── */
-
-/* The dot is kept in DOM for JS state tracking but hidden visually */
 .status-dot {
   display: none;
 }
@@ -530,9 +508,6 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   color: var(--text);
 }
 
-/* ── Doors ── */
-
-/* The badge is kept in DOM for JS state tracking but hidden visually */
 .door-badge {
   display: none;
 }
@@ -558,10 +533,9 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   color: var(--green);
 }
 
-/* ── Doors Grid specific (5-col compact) ── */
 #doors-grid {
   grid-template-columns: repeat(5, 1fr);
-  grid-auto-rows: minmax(0, 1fr); /* Changed from min-content so rows shrink to fit */
+  grid-auto-rows: minmax(0, 1fr);
   gap: 4px;
 }
 
@@ -641,7 +615,6 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   .mode-text[data-mode="heat"] {
     color: #ff8a50;
   }
-
   .mode-text[data-mode="cool"] {
     color: #4db8ff;
   }
@@ -650,7 +623,6 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
 html[data-theme="dark"] .mode-text[data-mode="heat"] {
   color: #ff8a50;
 }
-
 html[data-theme="dark"] .mode-text[data-mode="cool"] {
   color: #4db8ff;
 }
@@ -708,29 +680,16 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   flex-direction: column;
   overflow: hidden;
   background: var(--surface);
-
-  /* Layering & Overlap */
   position: relative;
   z-index: 10;
-
-  /* Pulls it up, adds 3px gap on the sides, 1px gap at the bottom */
   margin: -32px 3px 1.5px 3px;
-
-  /* Smooth curves at the top */
   border-top-left-radius: 32px;
   border-top-right-radius: 32px;
-
-  /* Expanded shadow so it casts to the sides as well as the top */
   box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.12);
-
-  /* Outline the top and sides, but not the bottom */
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  /* none; */
-
-  /* Force curved clipping */
   transform: translateZ(0);
   -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
@@ -738,7 +697,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 #temperature-panel {
   border-radius: 0;
   border-bottom: none;
-  /* 1px solid var(--border); */
 }
 
 .dial-container {
@@ -785,7 +743,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   stroke: url(#dial-gradient);
   stroke-width: 10;
   stroke-linecap: round;
-  /* transition: stroke-dashoffset 0.1s ease; */
   transform: rotate(-90deg);
   transform-origin: center;
 }
@@ -853,11 +810,8 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 .chat-header {
   position: absolute;
   top: 16px;
-  /* Pushed down slightly to clear the curve */
   left: 16px;
-  /* Pushed inward to clear the curve */
   right: 16px;
-  /* Pushed inward to clear the curve */
   height: auto;
   display: flex;
   align-items: center;
@@ -920,32 +874,21 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 @keyframes pulse {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.3;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 #messages {
   flex: 1;
   overflow-y: auto;
   padding: 68px 16px 80px;
-  /* <-- Changed top padding from 60px to 68px */
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 #temperature-panel .panel-body {
-  /* This pushes the dial upwards by the exact amount the chat panel overlaps */
   padding-bottom: 32px;
-
-  /* Optional: if the dial feels a bit tight now, we can nudge it slightly more */
   justify-content: center;
 }
 
@@ -1031,29 +974,71 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   color: #581c87;
 }
 
+/* ── Voice Modal Overlay ── */
+#voice-modal {
+  position: absolute;
+  bottom: 68px; /* Positioned just above the input bar */
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--header-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-light);
+  padding: 10px 20px;
+  border-radius: 100px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#voice-modal.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.voice-pulse {
+  width: 10px;
+  height: 10px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: pulse-mic 0.6s infinite alternate;
+}
+
+#voice-text {
+  font-size: 13px;
+  color: var(--text);
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes pulse-mic {
+  0% { transform: scale(0.85); opacity: 0.7; }
+  100% { transform: scale(1.15); opacity: 1; }
+}
+
 /* Input bar */
 #input-bar {
   position: absolute;
-  /* <-- Detaches it from the stack so text flows behind */
   bottom: 0;
-  /* <-- Pins to bottom */
   left: 0;
-  /* <-- Pins to left */
   right: 0;
-  /* <-- Pins to right */
-
   display: flex;
-  gap: 8px;
+  gap: 4px;
+  align-items: center;
   padding: 6px 16px;
   margin: 12px;
-  /* <-- Still dictates the transparent space around it! */
   background: var(--header-glass);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 100px;
   border: 1px solid var(--border-light);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  /* shadow note: combined the two box-shadows you had previously */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 -4px 15px rgba(0, 0, 0, 0.03);
 }
 
@@ -1068,20 +1053,52 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   outline: none;
 }
 
-/* clean transparent focus handled by removing border in parent */
 #input-bar input::placeholder {
   color: var(--text-muted);
 }
 
-#input-bar button {
+/* ── Mic Button ── */
+#input-bar button#mic-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 6px;
+  margin: 0 4px 0 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+#input-bar button#mic-btn:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+#input-bar button#mic-btn.recording {
+  color: var(--red);
+}
+
+#input-bar button#mic-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mic-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ── Send Button ── */
+#input-bar button#send-btn {
   background: var(--gradient);
   color: #fff;
   border: none;
   border-radius: 100px;
-  /* matched pill search */
   padding: 6px 18px;
   margin: 2px -8px 2px 0;
-  /* move inside pill padding */
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -1089,11 +1106,11 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   transition: opacity 0.15s, transform 0.1s;
 }
 
-#input-bar button:hover:not(:disabled) {
+#input-bar button#send-btn:hover:not(:disabled) {
   opacity: 0.85;
 }
 
-#input-bar button:disabled {
+#input-bar button#send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -1127,16 +1144,8 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 @keyframes bounce {
-
-  0%,
-  60%,
-  100% {
-    transform: translateY(0);
-  }
-
-  30% {
-    transform: translateY(-5px);
-  }
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-5px); }
 }
 
 /* ── Model dropdown ── */
@@ -1260,11 +1269,8 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
-
 
 /* ── Room Tracker ─────────────────────────────────────────── */
 
@@ -1307,7 +1313,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   padding: 0 4px;
 }
 
-/* Light is on in this room */
 .room-sq.lit {
   background: var(--amber-glow);
   border-color: rgba(245, 158, 11, 0.35);
@@ -1317,7 +1322,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   color: var(--amber);
 }
 
-/* This is the user's current room */
 .room-sq.active {
   background: var(--green-dim);
   border-color: rgba(34, 197, 94, 0.5);
@@ -1328,7 +1332,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   color: var(--green);
 }
 
-/* Current room AND light is on — blend both signals */
 .room-sq.active.lit {
   background: linear-gradient(135deg, var(--green-dim), var(--amber-glow));
   border-color: rgba(34, 197, 94, 0.45);
@@ -1338,8 +1341,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   color: var(--text);
 }
 
-
-/* Human silhouette in floor plan */
 .fp-person {
   display: none;
   position: absolute;
@@ -1353,7 +1354,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   animation: fp-person-pop 0.2s ease;
 }
 
-/* ── Send button loading spinner ── */
 #send-btn {
   position: relative;
   min-width: 70px;
@@ -1361,7 +1361,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 #send-btn.loading {
   color: transparent !important;
-  /* hide "Send" text */
   pointer-events: none;
 }
 
@@ -1379,9 +1378,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 @keyframes btn-spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 .fp-room.occupied .fp-person {
@@ -1389,18 +1386,10 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 @keyframes fp-person-pop {
-  from {
-    transform: scale(0.4);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.4); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
-/* -- Thinking block -- */
 .msg.thinking {
   font-style: italic;
   color: var(--text-muted);
@@ -1415,22 +1404,8 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 @keyframes thinking-dots {
-
-  0%,
-  20% {
-    content: '';
-  }
-
-  40% {
-    content: '.';
-  }
-
-  60% {
-    content: '..';
-  }
-
-  80%,
-  100% {
-    content: '...';
-  }
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
 }

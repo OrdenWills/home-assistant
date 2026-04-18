@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/style.css?v=10" />
+  <link rel="stylesheet" href="/assets/style.css?v=11" />
 </head>
 
 <body>
@@ -395,8 +395,22 @@
             </div>
           </div>
           <div id="messages"></div>
+
+          <!-- Floating Voice Modal -->
+          <div id="voice-modal">
+            <div class="voice-pulse"></div>
+            <span id="voice-text">Listening...</span>
+          </div>
+
           <div id="input-bar">
             <input id="user-input" type="text" placeholder="Type a command…" autocomplete="off" />
+            <button id="mic-btn" title="Voice Input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mic-icon">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="22"></line>
+              </svg>
+            </button>
             <button id="send-btn">Send</button>
           </div>
         </div>
@@ -454,6 +468,7 @@
     // ── Current room state ────────────────────────────────────
 
     let currentRoom = null;
+    let isRecording = false; // Voice status tracking
 
     function setCurrentRoom(room) {
       currentRoom = room;
@@ -542,7 +557,6 @@
       const dialValueEl = document.getElementById("dial-temp-value");
       const startTemp = parseFloat(dialValueEl.textContent) || 68;
 
-      // If it's already exactly at the target, just apply it
       if (Math.round(startTemp) === Math.round(targetTemp)) {
         updateDialUI(targetTemp);
         return;
@@ -553,13 +567,9 @@
       function step(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
-
-        // Smooth easing out (decelerates at the end)
         const easeOut = 1 - Math.pow(1 - progress, 4);
-
         const currentTemp = startTemp + (targetTemp - startTemp) * easeOut;
 
-        // Update text, ring, and knob
         updateDialUI(currentTemp);
 
         if (progress < 1 && !isDraggingDial) {
@@ -567,7 +577,6 @@
         }
       }
 
-      // Cancel any running animations before starting a new one
       if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame);
       dialAnimFrame = requestAnimationFrame(step);
     }
@@ -584,8 +593,6 @@
       const clampedTemp = Math.max(minTemp, Math.min(maxTemp, temp));
       const percent = (clampedTemp - minTemp) / (maxTemp - minTemp);
 
-      // Update knob position
-      // The SVG is rotated -90deg in CSS, so a 0-360 angle here is correct relative to the rotated coordinate system
       const angle = percent * 360;
       const rad = (angle - 90) * (Math.PI / 180);
 
@@ -594,14 +601,11 @@
       dialKnob.setAttribute("cx", cx);
       dialKnob.setAttribute("cy", cy);
 
-      // Update circle fill via stroke-dasharray
       dialFill.style.strokeDasharray = `${circumference} ${circumference}`;
       dialFill.style.strokeDashoffset = circumference - (percent * circumference);
 
-      // Update text
       dialValue.textContent = Math.round(clampedTemp);
 
-      // Update colors based on temp
       const red = Math.round(percent * 255);
       const green = Math.round((1 - percent) * 255);
       const color = `rgb(${red}, ${green}, 50)`;
@@ -635,9 +639,6 @@
       const temp = minTemp + percent * (maxTemp - minTemp);
 
       updateDialUI(temp);
-
-      // Immediate update to backend (debounced or throttled would be better, but request said "immediate")
-      // We'll use a small throttle to avoid flooding the server
       throttleSetTemp(Math.round(temp));
     }
 
@@ -656,22 +657,21 @@
           });
           if (res.ok) {
             const data = await res.json();
-            // Optional: update visualization based on returned state
             updateHouseVisualization(data.state);
             updateFloorplan(data.state);
           }
         } catch (e) { }
         throttleTimer = null;
-      }, 150); // Slightly slower throttle for stability
+      }, 150);
     }
 
     document.getElementById("dial-knob").addEventListener("mousedown", () => {
-      if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame); // Add this line
+      if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame);
       isDraggingDial = true;
       document.getElementById("temperature-panel").classList.add("active-adjust");
     });
     document.getElementById("dial-knob").addEventListener("touchstart", (e) => {
-      if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame); // Add this line
+      if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame);
       isDraggingDial = true;
       document.getElementById("temperature-panel").classList.add("active-adjust");
       e.preventDefault();
@@ -712,27 +712,13 @@
     function updateStateCards(state) {
       const t = state.thermostat || {};
 
-      // Update the new Dial UI
       if (!isDraggingDial) {
-        animateDialTo(t.temperature || 68, 1000); // 1000ms = 1 second
+        animateDialTo(t.temperature || 68, 1000);
       }
-
-      // Keep legacy elements if they still exist elsewhere
-      const tempEl = document.getElementById("state-thermostat-temp");
-      const modeEl = document.getElementById("state-thermostat-mode");
-      const modeIconEl = document.getElementById("state-thermostat-mode-icon");
-      if (tempEl) tempEl.textContent = t.temperature != null ? `${t.temperature}°F` : "68°F";
-      if (modeEl) {
-        const mode = t.mode || "auto";
-        modeEl.textContent = mode;
-        modeEl.setAttribute("data-mode", mode);
-      }
-      if (modeIconEl) modeIconEl.textContent = MODE_ICONS[t.mode] || "⟳";
 
       for (const [door, doorState] of Object.entries(state.doors || {})) {
         const el = document.getElementById(`door-${door}`);
         if (el) {
-          // Update icon path
           const iconPath = el.querySelector(".device-icon path");
           if (iconPath) {
             iconPath.setAttribute("d", doorState === "locked" ? ICON_LOCKED : ICON_UNLOCKED);
@@ -768,10 +754,8 @@
       }
     }
 
-    // Sync room tracker squares with live light state
     function updateRoomTracker(state) {
       // Room tracker only tracks which room the user is in (green = active).
-      // Light state is NOT reflected here — that belongs to the Lights panel only.
     }
 
     async function refreshState() {
@@ -817,9 +801,17 @@
     function updateInputState() {
       const localActive = document.getElementById("local-btn").classList.contains("active");
       const blocked = localActive && llamaStatus === "starting";
+      
       sendBtn.disabled = blocked;
       inputEl.disabled = blocked;
-      inputEl.placeholder = blocked ? "Model loading, please wait\u2026" : "Type a command\u2026";
+      
+      const micBtn = document.getElementById("mic-btn");
+      if (micBtn) micBtn.disabled = blocked;
+
+      if (!isRecording) {
+        inputEl.placeholder = blocked ? "Model loading, please wait\u2026" : "Type a command\u2026";
+      }
+      
       setAssistantDot(blocked ? "loading" : llamaStatus === "ready" ? "ready" : "");
     }
 
@@ -888,7 +880,93 @@
       if (wrapper && !wrapper.contains(e.target)) toggleDropdown(false);
     });
 
-    // ── Voice ─────────────────────────────────────────────────
+    // ── Voice Input (Speech-to-Text) ──────────────────────────
+    const micBtn = document.getElementById("mic-btn");
+    const voiceModal = document.getElementById("voice-modal");
+    const voiceText = document.getElementById("voice-text");
+
+    let voiceRecognition = null;
+    let voiceTimeout = null;
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      voiceRecognition = new SpeechRecognition();
+      voiceRecognition.continuous = true;
+      voiceRecognition.interimResults = true;
+      voiceRecognition.lang = 'en-US';
+
+      voiceRecognition.onstart = () => {
+        isRecording = true;
+        voiceModal.classList.add("active");
+        voiceText.textContent = "Listening...";
+        micBtn.classList.add("recording");
+        inputEl.placeholder = "Listening...";
+      };
+
+      voiceRecognition.onresult = (event) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const currentText = finalTranscript || interimTranscript;
+        if (currentText.trim()) {
+          voiceText.textContent = currentText;
+        }
+
+        // Stop automatically after 1 second of silence
+        clearTimeout(voiceTimeout);
+        voiceTimeout = setTimeout(() => {
+          if (isRecording) {
+            voiceRecognition.stop();
+          }
+        }, 1000);
+      };
+
+      voiceRecognition.onend = () => {
+        isRecording = false;
+        voiceModal.classList.remove("active");
+        micBtn.classList.remove("recording");
+        updateInputState(); 
+        clearTimeout(voiceTimeout);
+
+        const finalSpokenText = voiceText.textContent.trim();
+        // Send if not empty and not the placeholder message
+        if (finalSpokenText && finalSpokenText !== "Listening...") {
+          inputEl.value = finalSpokenText;
+          sendMessage();
+        }
+      };
+
+      voiceRecognition.onerror = (event) => {
+        console.error("[SpeechRecognition] Error:", event.error);
+        isRecording = false;
+        voiceModal.classList.remove("active");
+        micBtn.classList.remove("recording");
+        updateInputState();
+      };
+
+      micBtn.addEventListener("click", () => {
+        if (isRecording) {
+          voiceRecognition.stop();
+        } else {
+          try {
+            voiceRecognition.start();
+          } catch (e) {
+            console.error("Microphone start error", e);
+          }
+        }
+      });
+    } else {
+      // Hide button if browser doesn't support the SpeechRecognition API
+      micBtn.style.display = "none";
+    }
 
     function speakText(text) {
       if (!window.speechSynthesis) return;
@@ -924,7 +1002,6 @@
           body: JSON.stringify({ message: text, current_room: currentRoom }),
         });
 
-        // Non-200 means the gate fired before streaming started
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
           typing.remove();
@@ -942,9 +1019,8 @@
             buffer += decoder.decode(value, { stream: true });
           }
 
-          // SSE frames are separated by \n\n
           const parts = buffer.split("\n\n");
-          buffer = parts.pop() || "";           // keep any incomplete trailing frame
+          buffer = parts.pop() || "";           
 
           for (const part of parts) {
             if (!part.startsWith("data: ")) continue;
@@ -969,7 +1045,6 @@
               delete displayEvent.state;
               toolEvents.push(displayEvent);
 
-              // Update UI immediately with the new state from the tool_call event
               if (event.state) {
                 updateHouseVisualization(event.state);
                 updateStateCards(event.state);
@@ -988,7 +1063,6 @@
 
             } else if (event.type === "done") {
               typing.remove();
-              // If the model returned nothing via tokens (cache hit), render now
               if (!assistantMsgEl) {
                 assistantMsgEl = appendMessage("assistant", event.text || "(no response)");
               }
@@ -1009,12 +1083,13 @@
         typing.remove();
         appendMessage("assistant", "Error: could not reach the server.");
       } finally {
-        typing.remove(); // Safety cleanup
+        typing.remove(); 
         sendBtn.classList.remove("loading");
         updateInputState();
         if (!sendBtn.disabled) inputEl.focus();
       }
     }
+    
     // ── Event listeners ───────────────────────────────────────
 
     sendBtn.addEventListener("click", sendMessage);
@@ -1087,7 +1162,6 @@
         data.history.forEach(turn => {
           appendMessage("user", turn.user);
           appendMessage("assistant", turn.assistant || "(no response)");
-          // Replay tool calls exactly like live chat does
           if (turn.tool_calls && turn.tool_calls.length > 0) {
             appendToolCalls(turn.tool_calls);
           }
