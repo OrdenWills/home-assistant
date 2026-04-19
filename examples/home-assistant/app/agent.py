@@ -125,10 +125,21 @@ def parse_tool_calls_from_text(text: str) -> list[dict]:
 
 def clean_text_response(text: str) -> str:
     """Remove tool call syntax and JSON objects from a text response."""
-    # Remove tool call syntax: [function_name(...)]
-    text = re.sub(r'\[(\w+)\([^)]*\)\]', '', text)
-    # Remove JSON objects that look like tool results: {...}
-    text = re.sub(r'\{[^{}]*\}', '', text)
+    valid_tools = {
+        "toggle_lights", "toggle_all_lights", "lock_door", 
+        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear"
+    }
+    # 1. Remove tool call syntax like [func(args)], (func(args)), or just func(args)
+    # We build a regex from the valid_tools set for safety.
+    tool_pattern = r'(?:[\(\[]?)\b(' + '|'.join(valid_tools) + r')\([^)]*\)(?:[\)\]]?)'
+    text = re.sub(tool_pattern, '', text)
+
+    # 2. Remove JSON objects that look like tool results: {...}
+    # Using DOTALL to handle multiline JSON leakage
+    text = re.sub(r'\{.*\}', '', text, flags=re.DOTALL)
+    
+    # 3. Final cleanup of excess whitespace
+    text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
 
