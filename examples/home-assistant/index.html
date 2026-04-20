@@ -10,33 +10,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css?v=11" />
-  <style>
-    /* ── Feedback toast ───────────────────────────────────────────── */
-    #feedback-toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(12px);
-      background: var(--surface2, #1e2029);
-      color: var(--text, #e2e4ec);
-      padding: 8px 18px;
-      border-radius: 999px;
-      font-size: 0.82rem;
-      font-weight: 500;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s ease, transform 0.2s ease;
-      z-index: 9999;
-      white-space: nowrap;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-    }
-    #feedback-toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-    #feedback-toast.positive { border-left: 3px solid #22c55e; }
-    #feedback-toast.negative { border-left: 3px solid #ef4444; }
-  </style>
 </head>
 
 <body>
