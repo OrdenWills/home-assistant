@@ -10,6 +10,33 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css?v=11" />
+  <style>
+    /* ── Feedback toast ───────────────────────────────────────────── */
+    #feedback-toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      background: var(--surface2, #1e2029);
+      color: var(--text, #e2e4ec);
+      padding: 8px 18px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 9999;
+      white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    }
+    #feedback-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #feedback-toast.positive { border-left: 3px solid #22c55e; }
+    #feedback-toast.negative { border-left: 3px solid #ef4444; }
+  </style>
 </head>
 
 <body>
@@ -419,6 +446,9 @@
 
   </div>
 
+  <!-- Feedback toast -->
+  <div id="feedback-toast"></div>
+
   <script>
     // ── Theme management ──────────────────────────────────────
 
@@ -468,19 +498,15 @@
     // ── Current room state ────────────────────────────────────
 
     let currentRoom = null;
-    let isRecording = false; // Voice status tracking
+    let isRecording = false;
 
     function setCurrentRoom(room) {
       currentRoom = room;
-
-      // ── Room tracker squares ──
       document.querySelectorAll(".room-sq").forEach(sq => sq.classList.remove("active"));
       if (room) {
         const sq = document.querySelector(`.room-sq[data-room="${room}"]`);
         if (sq) sq.classList.add("active");
       }
-
-      // ── Floor plan silhouette ──
       document.querySelectorAll(".fp-room").forEach(el => el.classList.remove("occupied"));
       if (room) {
         const fp = document.getElementById(`fp-room-${room}`);
@@ -488,7 +514,6 @@
       }
     }
 
-    // Clicking a square selects it; clicking the active square deselects
     document.querySelectorAll(".room-sq").forEach(sq => {
       sq.addEventListener("click", () => {
         const room = sq.dataset.room;
@@ -496,8 +521,60 @@
       });
     });
 
+    // ── Feedback toast ────────────────────────────────────────
+
+    let _toastTimer = null;
+    function showFeedbackToast(message, type) {
+      const toast = document.getElementById("feedback-toast");
+      toast.textContent = message;
+      toast.className = `show ${type}`;
+      if (_toastTimer) clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => { toast.className = ""; }, 2800);
+    }
+
+    // ── Submit feedback to server ─────────────────────────────
+
+    async function submitFeedback(turnId, rating, upBtn, downBtn) {
+      if (turnId === null || turnId === undefined) {
+        showFeedbackToast("⚠ Response not yet linked to a turn — try again in a moment.", "negative");
+        return;
+      }
+      try {
+        const res = await fetch("/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ turn_id: turnId, rating }),
+        });
+        if (res.ok) {
+          if (rating === "positive") {
+            upBtn.classList.add("active");
+            upBtn.classList.remove("grayed-out");
+            downBtn.classList.add("grayed-out");
+            downBtn.classList.remove("active");
+            showFeedbackToast("👍 Saved to golden set", "positive");
+          } else {
+            downBtn.classList.add("active");
+            downBtn.classList.remove("grayed-out");
+            upBtn.classList.add("grayed-out");
+            upBtn.classList.remove("active");
+            showFeedbackToast("👎 Saved to failure set", "negative");
+          }
+        } else {
+          const data = await res.json().catch(() => ({}));
+          showFeedbackToast(`Error: ${data.error || res.status}`, "negative");
+        }
+      } catch (e) {
+        showFeedbackToast("Network error saving feedback", "negative");
+      }
+    }
+
     // ── Helpers ───────────────────────────────────────────────
 
+    /**
+     * Append a message bubble.
+     * Returns { div, container } so callers can later write data-turn-id
+     * onto the container once the server acknowledges the turn.
+     */
     function appendMessage(role, text) {
       const container = document.createElement("div");
       container.className = `msg-container ${role}`;
@@ -519,53 +596,49 @@
 
       footer.appendChild(timestamp);
 
-      // Only add the like/unlike buttons for the Assistant's response
       if (role === "assistant") {
         const feedback = document.createElement("div");
         feedback.className = "msg-feedback";
 
         const upBtn = document.createElement("button");
         upBtn.className = "feedback-btn thumb-up";
-        upBtn.title = "Like this response";
+        upBtn.title = "Good response — save to golden set";
         upBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
 
         const downBtn = document.createElement("button");
         downBtn.className = "feedback-btn thumb-down";
-        downBtn.title = "Unlike this response";
+        downBtn.title = "Bad response — save to failure set";
         downBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>';
 
-        // Toggling interactions
         upBtn.addEventListener("click", () => {
-          upBtn.classList.add("active");
-          upBtn.classList.remove("grayed-out");
-          downBtn.classList.add("grayed-out");
-          downBtn.classList.remove("active");
+          const turnId = container.dataset.turnId !== undefined
+            ? parseInt(container.dataset.turnId, 10) : null;
+          submitFeedback(turnId, "positive", upBtn, downBtn);
         });
 
         downBtn.addEventListener("click", () => {
-          downBtn.classList.add("active");
-          downBtn.classList.remove("grayed-out");
-          upBtn.classList.add("grayed-out");
-          upBtn.classList.remove("active");
+          const turnId = container.dataset.turnId !== undefined
+            ? parseInt(container.dataset.turnId, 10) : null;
+          submitFeedback(turnId, "negative", upBtn, downBtn);
         });
 
         feedback.appendChild(upBtn);
         feedback.appendChild(downBtn);
         footer.appendChild(feedback);
       } else {
-        // Aligns the user timestamp to the right natively since no buttons are present
         footer.style.justifyContent = "flex-end";
       }
 
-      // Assemble everything
       wrapper.appendChild(div);
       wrapper.appendChild(footer);
       container.appendChild(wrapper);
-      
+
       messagesEl.appendChild(container);
       messagesEl.scrollTop = messagesEl.scrollHeight;
-      
-      return div; // Important: Continues returning the text div for the chunked streaming logic
+
+      // Return BOTH the text div (for streaming) AND the outer container
+      // (for later setting data-turn-id once the server sends the turn_id event).
+      return { div, container };
     }
 
     function appendTyping() {
@@ -598,35 +671,22 @@
     let isDraggingDial = false;
     const minTemp = 50;
     const maxTemp = 90;
-
     let dialAnimFrame = null;
 
     function animateDialTo(targetTemp, duration = 1000) {
       if (isDraggingDial) return;
-
       const dialValueEl = document.getElementById("dial-temp-value");
       const startTemp = parseFloat(dialValueEl.textContent) || 68;
-
-      if (Math.round(startTemp) === Math.round(targetTemp)) {
-        updateDialUI(targetTemp);
-        return;
-      }
-
+      if (Math.round(startTemp) === Math.round(targetTemp)) { updateDialUI(targetTemp); return; }
       const startTime = performance.now();
-
       function step(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
         const easeOut = 1 - Math.pow(1 - progress, 4);
         const currentTemp = startTemp + (targetTemp - startTemp) * easeOut;
-
         updateDialUI(currentTemp);
-
-        if (progress < 1 && !isDraggingDial) {
-          dialAnimFrame = requestAnimationFrame(step);
-        }
+        if (progress < 1 && !isDraggingDial) dialAnimFrame = requestAnimationFrame(step);
       }
-
       if (dialAnimFrame) cancelAnimationFrame(dialAnimFrame);
       dialAnimFrame = requestAnimationFrame(step);
     }
@@ -635,59 +695,36 @@
       const dialFill = document.getElementById("dial-fill");
       const dialKnob = document.getElementById("dial-knob");
       const dialValue = document.getElementById("dial-temp-value");
-      const panel = document.getElementById("temperature-panel");
-
       const radius = 80;
       const circumference = 2 * Math.PI * radius;
-
       const clampedTemp = Math.max(minTemp, Math.min(maxTemp, temp));
       const percent = (clampedTemp - minTemp) / (maxTemp - minTemp);
-
       const angle = percent * 360;
       const rad = (angle - 90) * (Math.PI / 180);
-
-      const cx = 100 + radius * Math.cos(rad);
-      const cy = 100 + radius * Math.sin(rad);
-      dialKnob.setAttribute("cx", cx);
-      dialKnob.setAttribute("cy", cy);
-
+      dialKnob.setAttribute("cx", 100 + radius * Math.cos(rad));
+      dialKnob.setAttribute("cy", 100 + radius * Math.sin(rad));
       dialFill.style.strokeDasharray = `${circumference} ${circumference}`;
       dialFill.style.strokeDashoffset = circumference - (percent * circumference);
-
       dialValue.textContent = Math.round(clampedTemp);
-
       const red = Math.round(percent * 255);
       const green = Math.round((1 - percent) * 255);
       const color = `rgb(${red}, ${green}, 50)`;
-      const glow = `rgba(${red}, ${green}, 50, 0.15)`;
-
       dialValue.style.color = color;
       const core = document.querySelector(".dial-core");
-      if (core) {
-        core.style.background = `radial-gradient(circle, ${glow} 0%, transparent 70%)`;
-      }
+      if (core) core.style.background = `radial-gradient(circle, rgba(${red},${green},50,0.15) 0%, transparent 70%)`;
     }
 
     async function handleDialMove(e) {
       if (!isDraggingDial) return;
-
       const wrapper = document.getElementById("temp-dial-wrapper");
       const rect = wrapper.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
-
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
-      const dx = clientX - centerX;
-      const dy = clientY - centerY;
-
-      let angle = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+      let angle = Math.atan2(clientY - centerY, clientX - centerX) * (180 / Math.PI) + 90;
       if (angle < 0) angle += 360;
-
-      const percent = angle / 360;
-      const temp = minTemp + percent * (maxTemp - minTemp);
-
+      const temp = minTemp + (angle / 360) * (maxTemp - minTemp);
       updateDialUI(temp);
       throttleSetTemp(Math.round(temp));
     }
@@ -700,17 +737,14 @@
           const res = await fetch("/thermostat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              temperature: temp,
-              mode: "auto"
-            }),
+            body: JSON.stringify({ temperature: temp, mode: "auto" }),
           });
           if (res.ok) {
             const data = await res.json();
             updateHouseVisualization(data.state);
             updateFloorplan(data.state);
           }
-        } catch (e) { }
+        } catch (e) {}
         throttleTimer = null;
       }, 150);
     }
@@ -726,10 +760,8 @@
       document.getElementById("temperature-panel").classList.add("active-adjust");
       e.preventDefault();
     });
-
     window.addEventListener("mousemove", handleDialMove);
     window.addEventListener("touchmove", handleDialMove, { passive: false });
-
     window.addEventListener("mouseup", () => {
       isDraggingDial = false;
       document.getElementById("temperature-panel").classList.remove("active-adjust");
@@ -754,26 +786,17 @@
       }
     }
 
-    const MODE_ICONS = { heat: "🔥", cool: "❄", auto: "⟳" };
-
     const ICON_LOCKED = "M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z";
     const ICON_UNLOCKED = "M16.5 10.5V6.75a4.5 4.5 0 00-9 0M6.75 11.25h10.5a2.25 2.25 0 012.25 2.25v6.75a2.25 2.25 0 01-2.25 2.25H6.75a2.25 2.25 0 01-2.25-2.25v-6.75a2.25 2.25 0 012.25-2.25z";
 
     function updateStateCards(state) {
       const t = state.thermostat || {};
-
-      if (!isDraggingDial) {
-        animateDialTo(t.temperature || 68, 1000);
-      }
-
+      if (!isDraggingDial) animateDialTo(t.temperature || 68, 1000);
       for (const [door, doorState] of Object.entries(state.doors || {})) {
         const el = document.getElementById(`door-${door}`);
         if (el) {
           const iconPath = el.querySelector(".device-icon path");
-          if (iconPath) {
-            iconPath.setAttribute("d", doorState === "locked" ? ICON_LOCKED : ICON_UNLOCKED);
-          }
-
+          if (iconPath) iconPath.setAttribute("d", doorState === "locked" ? ICON_LOCKED : ICON_UNLOCKED);
           const badge = el.querySelector(".door-badge");
           if (badge) {
             badge.classList.remove("door-locked", "door-unlocked");
@@ -782,7 +805,6 @@
           }
         }
       }
-
       document.querySelectorAll(".scene-item").forEach(el => el.classList.remove("scene-active"));
       if (state.active_scene) {
         const sceneEl = document.getElementById(`scene-${state.active_scene}`);
@@ -804,10 +826,6 @@
       }
     }
 
-    function updateRoomTracker(state) {
-      // Room tracker only tracks which room the user is in (green = active).
-    }
-
     async function refreshState() {
       try {
         const res = await fetch("/state");
@@ -816,7 +834,6 @@
         updateHouseVisualization(state);
         updateStateCards(state);
         updateFloorplan(state);
-        updateRoomTracker(state);
       } catch (e) {
         console.error("[RefreshState] Error:", e);
       }
@@ -851,17 +868,11 @@
     function updateInputState() {
       const localActive = document.getElementById("local-btn").classList.contains("active");
       const blocked = localActive && llamaStatus === "starting";
-      
       sendBtn.disabled = blocked;
       inputEl.disabled = blocked;
-      
       const micBtn = document.getElementById("mic-btn");
       if (micBtn) micBtn.disabled = blocked;
-
-      if (!isRecording) {
-        inputEl.placeholder = blocked ? "Model loading, please wait\u2026" : "Type a command\u2026";
-      }
-      
+      if (!isRecording) inputEl.placeholder = blocked ? "Model loading, please wait\u2026" : "Type a command\u2026";
       setAssistantDot(blocked ? "loading" : llamaStatus === "ready" ? "ready" : "");
     }
 
@@ -879,9 +890,7 @@
         } else {
           if (statusPollTimer) { clearInterval(statusPollTimer); statusPollTimer = null; }
         }
-      } catch (e) {
-        console.error("[FetchLocalModelStatus] Error:", e);
-      }
+      } catch (e) { console.error("[FetchLocalModelStatus] Error:", e); }
     }
 
     async function fetchLocalModels() {
@@ -902,7 +911,7 @@
           div.addEventListener("click", () => selectLocalModel(m.id));
           container.appendChild(div);
         });
-      } catch (e) { }
+      } catch (e) {}
     }
 
     async function selectLocalModel(modelId) {
@@ -930,7 +939,8 @@
       if (wrapper && !wrapper.contains(e.target)) toggleDropdown(false);
     });
 
-    // ── Voice Input (Speech-to-Text) ──────────────────────────
+    // ── Voice Input ───────────────────────────────────────────
+
     const micBtn = document.getElementById("mic-btn");
     const voiceModal = document.getElementById("voice-modal");
     const voiceText = document.getElementById("voice-text");
@@ -956,38 +966,23 @@
       voiceRecognition.onresult = (event) => {
         let interimTranscript = '';
         let finalTranscript = '';
-
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
+          if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+          else interimTranscript += event.results[i][0].transcript;
         }
-
         const currentText = finalTranscript || interimTranscript;
-        if (currentText.trim()) {
-          voiceText.textContent = currentText;
-        }
-
-        // Stop automatically after 1 second of silence
+        if (currentText.trim()) voiceText.textContent = currentText;
         clearTimeout(voiceTimeout);
-        voiceTimeout = setTimeout(() => {
-          if (isRecording) {
-            voiceRecognition.stop();
-          }
-        }, 1000);
+        voiceTimeout = setTimeout(() => { if (isRecording) voiceRecognition.stop(); }, 1000);
       };
 
       voiceRecognition.onend = () => {
         isRecording = false;
         voiceModal.classList.remove("active");
         micBtn.classList.remove("recording");
-        updateInputState(); 
+        updateInputState();
         clearTimeout(voiceTimeout);
-
         const finalSpokenText = voiceText.textContent.trim();
-        // Send if not empty and not the placeholder message
         if (finalSpokenText && finalSpokenText !== "Listening...") {
           inputEl.value = finalSpokenText;
           sendMessage();
@@ -1003,18 +998,10 @@
       };
 
       micBtn.addEventListener("click", () => {
-        if (isRecording) {
-          voiceRecognition.stop();
-        } else {
-          try {
-            voiceRecognition.start();
-          } catch (e) {
-            console.error("Microphone start error", e);
-          }
-        }
+        if (isRecording) voiceRecognition.stop();
+        else { try { voiceRecognition.start(); } catch (e) { console.error("Mic error", e); } }
       });
     } else {
-      // Hide button if browser doesn't support the SpeechRecognition API
       micBtn.style.display = "none";
     }
 
@@ -1041,7 +1028,10 @@
       appendMessage("user", text);
       const typing = appendTyping();
 
-      let assistantMsgEl = null;
+      // Track both the text div (for streaming content) and the container
+      // (for writing the turn_id onto it once the server confirms the turn).
+      let assistantMsgEl = null;       // the <div class="msg assistant"> text node
+      let assistantContainer = null;   // the <div class="msg-container assistant"> wrapper
       let fullText = "";
       let toolEvents = [];
 
@@ -1065,12 +1055,10 @@
 
         while (true) {
           const { done, value } = await reader.read();
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
-          }
+          if (value) buffer += decoder.decode(value, { stream: true });
 
           const parts = buffer.split("\n\n");
-          buffer = parts.pop() || "";           
+          buffer = parts.pop() || "";
 
           for (const part of parts) {
             if (!part.startsWith("data: ")) continue;
@@ -1094,18 +1082,18 @@
               const displayEvent = { ...event };
               delete displayEvent.state;
               toolEvents.push(displayEvent);
-
               if (event.state) {
                 updateHouseVisualization(event.state);
                 updateStateCards(event.state);
                 updateFloorplan(event.state);
-                updateRoomTracker(event.state);
               }
 
             } else if (event.type === "token") {
               typing.remove();
               if (!assistantMsgEl) {
-                assistantMsgEl = appendMessage("assistant", "");
+                const result = appendMessage("assistant", "");
+                assistantMsgEl = result.div;
+                assistantContainer = result.container;
               }
               fullText += event.text;
               assistantMsgEl.textContent = fullText;
@@ -1114,11 +1102,23 @@
             } else if (event.type === "done") {
               typing.remove();
               if (!assistantMsgEl) {
-                assistantMsgEl = appendMessage("assistant", event.text || "(no response)");
+                const result = appendMessage("assistant", event.text || "(no response)");
+                assistantMsgEl = result.div;
+                assistantContainer = result.container;
+              }
+              // Write turn_id if it came bundled in the done event (cache-hit / short-circuit paths)
+              if (event.turn_id !== undefined && assistantContainer) {
+                assistantContainer.dataset.turnId = event.turn_id;
               }
               speakText(event.text || "");
               if (toolEvents.length > 0) appendToolCalls(toolEvents);
               await refreshState();
+
+            } else if (event.type === "turn_id") {
+              // Streamed separately after done for the cache-miss path
+              if (assistantContainer) {
+                assistantContainer.dataset.turnId = event.turn_id;
+              }
 
             } else if (event.type === "error") {
               typing.remove();
@@ -1133,13 +1133,13 @@
         typing.remove();
         appendMessage("assistant", "Error: could not reach the server.");
       } finally {
-        typing.remove(); 
+        typing.remove();
         sendBtn.classList.remove("loading");
         updateInputState();
         if (!sendBtn.disabled) inputEl.focus();
       }
     }
-    
+
     // ── Event listeners ───────────────────────────────────────
 
     sendBtn.addEventListener("click", sendMessage);
@@ -1151,7 +1151,7 @@
       try {
         const d = await fetch("/model").then(r => r.json());
         document.getElementById("model-label").textContent = `Model: ${d.name}`;
-      } catch (e) { }
+      } catch (e) {}
     }
 
     function setActiveBackendBtn(backend) {
@@ -1174,11 +1174,8 @@
         await refreshModel();
         messagesEl.innerHTML = "";
         toggleDropdown(true);
-        if (llamaStatus === "idle" && localModels.length > 0) {
-          selectLocalModel(localModels[0].id);
-        } else {
-          fetchLocalModelStatus();
-        }
+        if (llamaStatus === "idle" && localModels.length > 0) selectLocalModel(localModels[0].id);
+        else fetchLocalModelStatus();
       }
     });
 
@@ -1201,22 +1198,24 @@
         setActiveBackendBtn(d.backend);
         if (d.backend === "openai") setAssistantDot("ready");
       })
-      .catch(() => { });
+      .catch(() => {});
 
     async function fetchHistory() {
       try {
         const res = await fetch("/history");
         if (!res.ok) return;
         const data = await res.json();
-
         data.history.forEach(turn => {
-          appendMessage("user", turn.user);
-          appendMessage("assistant", turn.assistant || "(no response)");
+          const userMsg = appendMessage("user", turn.user);
+          const assistantMsg = appendMessage("assistant", turn.assistant || "(no response)");
+          // Re-link turn_id so feedback buttons work on restored history too
+          if (turn.turn_id !== undefined) {
+            assistantMsg.container.dataset.turnId = turn.turn_id;
+          }
           if (turn.tool_calls && turn.tool_calls.length > 0) {
             appendToolCalls(turn.tool_calls);
           }
         });
-
         if (data.history.length > 0) {
           const divider = document.createElement("div");
           divider.className = "history-divider";
@@ -1224,9 +1223,7 @@
           messagesEl.appendChild(divider);
           messagesEl.scrollTop = messagesEl.scrollHeight;
         }
-      } catch (e) {
-        console.error("[FetchHistory] Error:", e);
-      }
+      } catch (e) { console.error("[FetchHistory] Error:", e); }
     }
 
     refreshModel();

@@ -15,18 +15,18 @@ from huggingface_hub import hf_hub_download
 # Models to download - ORDERED BY SIZE (smallest first for faster initial setup)
 MODELS = [
     {
-        "id": "lfm2-350m-q4",
-        "name": "LFM2-350M Q4",
-        "repo": "LiquidAI/LFM2-350M-GGUF",
-        "file": "LFM2-350M-Q4_0.gguf",
-        "priority": 4,
+        "id": "home-assistant-sft-small-8bit",
+        "name": "Home Assistant SFT (Finetuned 350M)",
+        "repo": "OrdenWills/LFM2.5-350M-home-assistant-sft",
+        "file": "LFM2.5-350M.Q8_0.gguf",             # Changed from Q4_K_M to Q8_0
+        "priority": 0,
     },
     {
     "id": "lfm2-vl-450m-q4",
     "name": "LFM2-VL-450M Q4",
     "repo": "LiquidAI/LFM2-VL-450M-GGUF",
     "file": "LFM2-VL-450M-Q4_0.gguf",
-    "priority": 1,
+    "priority": 4,
 },
     {
         "id": "lfm2.5-350m-q4",
@@ -57,11 +57,11 @@ MODELS = [
         "priority": 5,
     },
     {
-        "id": "home-assistant-sft",
+        "id": "home-assistant-sft(small)",
         "name": "Home Assistant SFT (Finetuned)",
         "repo": "OrdenWills/LFM2.5-350M-home-assistant-sft",
         "file": "LFM2.5-350M.Q4_K_M.gguf",
-        "priority": 0,
+        "priority": 1,
     },
 ]
 

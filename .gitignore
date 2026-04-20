@@ -39,3 +39,5 @@ examples/home-assistant/benchmark/generate_multi_turn.py
 examples/home-assistant/scratch/test_room_hint.py
 examples/home-assistant/scratch/test_verify.db
 examples/home-assistant/app/state-fail-cases.txt
+examples/home-assistant/datasets/failure_set.jsonl
+examples/home-assistant/datasets/golden_set.jsonl

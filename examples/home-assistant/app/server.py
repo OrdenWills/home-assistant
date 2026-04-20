@@ -4,7 +4,9 @@ import threading
 import time
 import urllib.request
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 import json
+import os
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
@@ -12,19 +14,29 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from huggingface_hub import hf_hub_download
 
-from app.agent import local_client, run_agent, run_agent_stream
+from app.agent import local_client, run_agent, run_agent_stream, SYSTEM_PROMPT
 from app.state import (
     home_state, load_state,
     build_state_summary, log_action, build_action_log_context, action_log,
 )
 from app.cache import init_db, get_cached, set_cached, delete_cached, clear_all, list_entries, build_snapshot
 from app.tools.handlers import TOOL_HANDLERS
+
+# ── Dataset directory ──────────────────────────────────────────────────────────
+
+DATASETS_DIR = "datasets"
+GOLDEN_SET_PATH  = os.path.join(DATASETS_DIR, "golden_set.jsonl")
+FAILURE_SET_PATH = os.path.join(DATASETS_DIR, "failure_set.jsonl")
+
+os.makedirs(DATASETS_DIR, exist_ok=True)
+
 # ── Model registry ─────────────────────────────────────────────────────────────
+
 
 LOCAL_MODELS = [
     {"id":"home-assistant-sft","name":"Home Assistant SFT (Finetuned)","hf_repo":"OrdenWills/LFM2.5-1.2B-home-assistant-sft","hf_file":"LFM2.5-1.2B-Instruct.Q4_K_M.gguf","size_label":"714 MB","score_label":"99%"},
     {"id":"home-assistant-sft(small)","name":"Home(small) Assistant SFT (Finetuned)","hf_repo":"OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file":"LFM2.5-350M.Q4_K_M.gguf","size_label":"218 MB","score_label":"98%"},
-    {"id":"lfm2-350m-q4","name":"LFM2-350M-Q4_0.gguf","hf_repo":"LiquidAI/LFM2-350M-GGUF","hf_file":"LFM2-350M-Q4_0.gguf","size_label":"209 MB","score_label":"45%"},
+    {"id": "home-assistant-sft-small-8bit","name": "Home Assistant SFT (Finetuned 350M)","hf_repo": "OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file": "LFM2.5-350M.Q8_0.gguf","size_label":"372 MB","score_label":"99%"},
     {"id":"lfm25-1b-thinking-q4","name":"LFM2.5-1.2B-Thinking-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q4_0.gguf","size_label":"718 MB","score_label":"75%"},
     {"id":"lfm25-1b-thinking-q8","name":"LFM2.5-1.2B-Thinking-Q8_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q8_0.gguf","size_label":"1.28 GB","score_label":"82%"},
     {"id":"lfm25-1b-q4","name":"LFM2.5-1.2B-Instruct-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Instruct-GGUF","hf_file":"LFM2.5-1.2B-Instruct-Q4_0.gguf","size_label":"696 MB","score_label":"68%"},
@@ -34,7 +46,8 @@ LOCAL_MODELS = [
 
 # ── Module-level state ─────────────────────────────────────────────────────────
 
-# Stores complete turns for history replay: {user, assistant, tool_calls}
+# Stores complete turns for history replay AND dataset export.
+# Each entry: {turn_id, user, resolved_message, current_room, assistant, tool_calls}
 chat_turns: list[dict] = []
 active_backend: str = "local"
 
@@ -70,6 +83,42 @@ def _build_resolved_message(raw_message: str, current_room: str | None = None) -
         parts.append(action_str)
     parts.append(raw_message)
     return "\n".join(parts)
+
+
+def _new_turn_id() -> int:
+    """Return the next sequential turn ID (= current length before append)."""
+    return len(chat_turns)
+
+
+# ── Dataset writer ─────────────────────────────────────────────────────────────
+
+def _write_dataset_entry(turn: dict, rating: str) -> str:
+    """
+    Write a full training/debug entry to the appropriate JSONL file.
+    Returns the path it was written to.
+    """
+    entry = {
+        "timestamp":        datetime.now(timezone.utc).isoformat(),
+        "turn_id":          turn["turn_id"],
+        "rating":           rating,                         # "positive" | "negative"
+        "backend":          active_backend,
+        "model":            llama_active_model_id or "openai/gpt-4o-mini",
+        # ── Everything the model actually saw ──
+        "system_prompt":    SYSTEM_PROMPT,
+        "current_room":     turn.get("current_room"),
+        "raw_user_message": turn["user"],
+        "resolved_message": turn.get("resolved_message", ""),
+        # ── What the model did ──
+        "tool_calls":       turn.get("tool_calls", []),
+        "final_response":   turn["assistant"],
+    }
+
+    dest = GOLDEN_SET_PATH if rating == "positive" else FAILURE_SET_PATH
+    with open(dest, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    print(f"[Dataset] Written {rating} entry (turn {turn['turn_id']}) → {dest}")
+    return dest
 
 
 # ── Background thread helper ───────────────────────────────────────────────────
@@ -262,6 +311,46 @@ class CacheDeleteRequest(BaseModel):
 def delete_cache_entry(req: CacheDeleteRequest):
     return JSONResponse({"removed": delete_cached(req.message)})
 
+# ── Feedback / Dataset endpoint ────────────────────────────────────────────────
+
+class FeedbackRequest(BaseModel):
+    turn_id: int
+    rating: str   # "positive" | "negative"
+
+@app.post("/feedback")
+def submit_feedback(req: FeedbackRequest):
+    """
+    Store the full turn context to golden_set.jsonl (👍) or failure_set.jsonl (👎).
+    The stored entry includes the system prompt, resolved message (with [STATE:]
+    and [RECENT ACTIONS:] prefixes), tool calls that were executed, and the final
+    model response — i.e. everything the model saw and did.
+    """
+    if req.rating not in ("positive", "negative"):
+        return JSONResponse({"error": "rating must be 'positive' or 'negative'"}, status_code=400)
+
+    # Find the turn by turn_id (stored on every entry)
+    turn = next((t for t in chat_turns if t.get("turn_id") == req.turn_id), None)
+    if turn is None:
+        return JSONResponse({"error": f"turn_id {req.turn_id} not found"}, status_code=404)
+
+    dest = _write_dataset_entry(turn, req.rating)
+    return JSONResponse({"ok": True, "stored_in": dest})
+
+@app.get("/dataset/stats")
+def dataset_stats():
+    """Quick stats on how many entries are in each dataset file."""
+    def count_lines(path: str) -> int:
+        try:
+            with open(path, encoding="utf-8") as f:
+                return sum(1 for line in f if line.strip())
+        except FileNotFoundError:
+            return 0
+
+    return JSONResponse({
+        "golden_set":  {"path": GOLDEN_SET_PATH,  "entries": count_lines(GOLDEN_SET_PATH)},
+        "failure_set": {"path": FAILURE_SET_PATH, "entries": count_lines(FAILURE_SET_PATH)},
+    })
+
 # ── Cache replay helpers ───────────────────────────────────────────────────────
 
 def _replay_cached_tools(cached_calls: list[dict], on_tool_call=None) -> tuple[list[dict], str]:
@@ -334,7 +423,15 @@ def chat(req: ChatRequest):
                     print(f"[ShortCircuit] toggle_lights(room={room!r}, state={target_state!r}) → {result}")
 
                 text = " ".join(summaries)
-                chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
+                turn_id = _new_turn_id()
+                chat_turns.append({
+                    "turn_id": turn_id,
+                    "user": req.message,
+                    "resolved_message": "",   # short-circuit; no LLM prompt
+                    "current_room": req.current_room,
+                    "assistant": text,
+                    "tool_calls": events,
+                })
 
                 current_snapshot = build_snapshot(home_state)
                 to_cache = [{"name": e["name"], "args": e["args"]} for e in events]
@@ -343,12 +440,21 @@ def chat(req: ChatRequest):
                 return JSONResponse({
                     "text": text,
                     "tool_calls": events,
+                    "turn_id": turn_id,
                     "cached": False,
                 })
             else:
                 text = f"The other lights are already {target_state}."
-                chat_turns.append({"user": req.message, "assistant": text, "tool_calls": []})
-                return JSONResponse({"text": text, "tool_calls": [], "cached": False})
+                turn_id = _new_turn_id()
+                chat_turns.append({
+                    "turn_id": turn_id,
+                    "user": req.message,
+                    "resolved_message": "",
+                    "current_room": req.current_room,
+                    "assistant": text,
+                    "tool_calls": [],
+                })
+                return JSONResponse({"text": text, "tool_calls": [], "turn_id": turn_id, "cached": False})
 
     # 3. Build resolved message with [STATE: ...] + [RECENT ACTIONS: ...] prefix
     resolved_message = _build_resolved_message(req.message, req.current_room)
@@ -360,11 +466,18 @@ def chat(req: ChatRequest):
     if cached:
         print(f"[Cache] HIT for: {req.message!r}")
         events, text = _replay_cached_tools(cached)
-        # Log replayed actions
         for e in events:
             log_action(e["name"], e["args"], _summarise_tool(e["name"], e["args"], e["result"]))
-        chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
-        return JSONResponse({"text": text, "tool_calls": events, "cached": True})
+        turn_id = _new_turn_id()
+        chat_turns.append({
+            "turn_id": turn_id,
+            "user": req.message,
+            "resolved_message": resolved_message,
+            "current_room": req.current_room,
+            "assistant": text,
+            "tool_calls": events,
+        })
+        return JSONResponse({"text": text, "tool_calls": events, "turn_id": turn_id, "cached": True})
 
     # 5. Cache miss — invoke model
     print(f"[Cache] MISS for: {req.message!r} — invoking model")
@@ -373,7 +486,6 @@ def chat(req: ChatRequest):
     def on_tool_call(name, args, result):
         print(f"[Server] Tool: {name}({args}) → {result}")
         events.append({"name": name, "args": args, "result": result})
-        # Log action immediately
         log_action(name, args, _summarise_tool(name, args, result))
 
     try:
@@ -385,8 +497,15 @@ def chat(req: ChatRequest):
     except Exception as e:
         return JSONResponse({"text": f"Error: {e}", "tool_calls": events}, status_code=500)
 
-    # Record this turn for history replay
-    chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
+    turn_id = _new_turn_id()
+    chat_turns.append({
+        "turn_id": turn_id,
+        "user": req.message,
+        "resolved_message": resolved_message,
+        "current_room": req.current_room,
+        "assistant": text,
+        "tool_calls": events,
+    })
 
     # 6. Cache only successful, non-unclear tool calls
     action_events = [
@@ -398,7 +517,7 @@ def chat(req: ChatRequest):
         set_cached(resolved_message, to_cache, current_snapshot)
         print(f"[Cache] STORED {len(to_cache)} call(s) for: {req.message!r}")
 
-    return JSONResponse({"text": text, "tool_calls": events, "cached": False})
+    return JSONResponse({"text": text, "tool_calls": events, "turn_id": turn_id, "cached": False})
 
 @app.post("/chat/stream")
 def chat_stream(req: ChatRequest):
@@ -458,17 +577,33 @@ def chat_stream(req: ChatRequest):
                     log_action("toggle_lights", args, summary)
 
                 text = " ".join(summaries)
-                chat_turns.append({"user": req.message, "assistant": text, "tool_calls": events})
+                turn_id = _new_turn_id()
+                chat_turns.append({
+                    "turn_id": turn_id,
+                    "user": req.message,
+                    "resolved_message": "",
+                    "current_room": req.current_room,
+                    "assistant": text,
+                    "tool_calls": events,
+                })
 
                 to_cache = [{"name": e["name"], "args": e["args"]} for e in events]
                 set_cached(req.message, to_cache, current_snapshot)
 
                 yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
-                yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': False})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'text': text, 'turn_id': turn_id, 'cached': False})}\n\n"
             else:
                 text = f"The other lights are already {target}."
-                chat_turns.append({"user": req.message, "assistant": text, "tool_calls": []})
-                yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': False})}\n\n"
+                turn_id = _new_turn_id()
+                chat_turns.append({
+                    "turn_id": turn_id,
+                    "user": req.message,
+                    "resolved_message": "",
+                    "current_room": req.current_room,
+                    "assistant": text,
+                    "tool_calls": [],
+                })
+                yield f"data: {json.dumps({'type': 'done', 'text': text, 'turn_id': turn_id, 'cached': False})}\n\n"
             return
 
         # ── Cache HIT: replay tools then emit done immediately ────────────────
@@ -482,17 +617,24 @@ def chat_stream(req: ChatRequest):
                 yield f"data: {json.dumps(payload)}\n\n"
                 yield f"data: {json.dumps({'type': 'status', 'text': 'Action performed...'})}\n\n"
                 log_action(e["name"], e["args"], _summarise_tool(e["name"], e["args"], e["result"]))
-            yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'text': text, 'cached': True})}\n\n"
 
+            turn_id = _new_turn_id()
             chat_turns.append({
-                "user": req.message, "assistant": text, "tool_calls": events
+                "turn_id": turn_id,
+                "user": req.message,
+                "resolved_message": resolved_message,
+                "current_room": req.current_room,
+                "assistant": text,
+                "tool_calls": events,
             })
+
+            yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'text': text, 'turn_id': turn_id, 'cached': True})}\n\n"
             return
 
         # ── Cache MISS: stream from model ─────────────────────────────────────
         print(f"[Cache] MISS (stream) for: {req.message!r}")
-        tool_events:  list[dict] = []
+        tool_events: list[dict] = []
 
         for event in run_agent_stream(
             resolved_message,
@@ -504,24 +646,28 @@ def chat_stream(req: ChatRequest):
                     "args":   event["args"],
                     "result": event["result"],
                 })
-                # Add current home state to the event before streaming to frontend
                 event["state"] = home_state
-                # Log the action
                 log_action(
                     event["name"], event["args"],
                     _summarise_tool(event["name"], event["args"], event["result"]),
                 )
             yield f"data: {json.dumps(event)}\n\n"
 
-            # After done, handle cache bookkeeping
             if event["type"] == "done":
                 final_text = event["text"]
-
+                turn_id = _new_turn_id()
                 chat_turns.append({
-                    "user":       req.message,
-                    "assistant":  final_text,
+                    "turn_id": turn_id,
+                    "user": req.message,
+                    "resolved_message": resolved_message,
+                    "current_room": req.current_room,
+                    "assistant": final_text,
                     "tool_calls": tool_events,
                 })
+
+                # Patch the already-yielded done event with turn_id
+                # (frontend reads the LAST done event, so emit a second one with turn_id)
+                yield f"data: {json.dumps({'type': 'turn_id', 'turn_id': turn_id})}\n\n"
 
                 action_events = [
                     e for e in tool_events
@@ -538,6 +684,6 @@ def chat_stream(req: ChatRequest):
         media_type="text/event-stream",
         headers={
             "Cache-Control":    "no-cache",
-            "X-Accel-Buffering": "no",   # disables nginx buffering if behind a proxy
+            "X-Accel-Buffering": "no",
         },
     )
