@@ -502,20 +502,70 @@
       const container = document.createElement("div");
       container.className = `msg-container ${role}`;
 
+      const wrapper = document.createElement("div");
+      wrapper.className = "msg-wrapper";
+
       const div = document.createElement("div");
       div.className = `msg ${role}`;
       div.textContent = text;
+
+      const footer = document.createElement("div");
+      footer.className = "msg-footer";
 
       const timestamp = document.createElement("div");
       timestamp.className = "msg-timestamp";
       const now = new Date();
       timestamp.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-      container.appendChild(div);
-      container.appendChild(timestamp);
+      footer.appendChild(timestamp);
+
+      // Only add the like/unlike buttons for the Assistant's response
+      if (role === "assistant") {
+        const feedback = document.createElement("div");
+        feedback.className = "msg-feedback";
+
+        const upBtn = document.createElement("button");
+        upBtn.className = "feedback-btn thumb-up";
+        upBtn.title = "Like this response";
+        upBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
+
+        const downBtn = document.createElement("button");
+        downBtn.className = "feedback-btn thumb-down";
+        downBtn.title = "Unlike this response";
+        downBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>';
+
+        // Toggling interactions
+        upBtn.addEventListener("click", () => {
+          upBtn.classList.add("active");
+          upBtn.classList.remove("grayed-out");
+          downBtn.classList.add("grayed-out");
+          downBtn.classList.remove("active");
+        });
+
+        downBtn.addEventListener("click", () => {
+          downBtn.classList.add("active");
+          downBtn.classList.remove("grayed-out");
+          upBtn.classList.add("grayed-out");
+          upBtn.classList.remove("active");
+        });
+
+        feedback.appendChild(upBtn);
+        feedback.appendChild(downBtn);
+        footer.appendChild(feedback);
+      } else {
+        // Aligns the user timestamp to the right natively since no buttons are present
+        footer.style.justifyContent = "flex-end";
+      }
+
+      // Assemble everything
+      wrapper.appendChild(div);
+      wrapper.appendChild(footer);
+      container.appendChild(wrapper);
+      
       messagesEl.appendChild(container);
       messagesEl.scrollTop = messagesEl.scrollHeight;
-      return div;
+      
+      return div; // Important: Continues returning the text div for the chunked streaming logic
     }
 
     function appendTyping() {

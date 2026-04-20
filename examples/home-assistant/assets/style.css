@@ -906,8 +906,58 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   align-items: flex-start;
 }
 
-.msg {
+/* --- REPLACE THIS EXISTING CSS BLOCK --- */
+.msg-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   max-width: 85%;
+}
+
+.msg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 120px;
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+
+.msg-feedback {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.feedback-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.feedback-btn:hover:not(.grayed-out) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.feedback-btn.active {
+  color: var(--accent);
+}
+
+.feedback-btn.grayed-out {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.msg {
   padding: 9px 13px;
   border-radius: var(--radius-lg);
   line-height: 1.6;
@@ -920,19 +970,21 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   background: var(--user-bubble);
   border: 1px solid rgba(168, 85, 247, 0.25);
   border-bottom-right-radius: var(--radius-sm);
+  align-self: flex-end;
 }
 
 .msg.assistant {
   background: var(--assistant-bubble);
   border: 1px solid var(--border);
   border-bottom-left-radius: var(--radius-sm);
+  align-self: flex-start;
 }
 
 .msg-timestamp {
   font-size: 11px;
   color: var(--text-muted);
-  padding: 0 8px;
 }
+/* -------------------------------------- */
 
 .msg-placeholder {
   text-align: center;
