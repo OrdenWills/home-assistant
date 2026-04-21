@@ -212,7 +212,7 @@ main {
 #house-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: 2fr 1fr 1fr;
+  grid-template-rows: 1.9fr 1.1fr 1fr;
   gap: 8px;
   background: var(--bg);
   border-right: 1px solid var(--border);
@@ -420,7 +420,7 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 18px 20px 16px;
+  padding: 12px 20px 12px;
   border-radius: var(--radius-md);
 }
 
@@ -430,7 +430,7 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -447,7 +447,8 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
 
 .panel-body {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;   /* <--- Change 'hidden' to 'auto' */
+  overflow-x: hidden; /* <--- Add this line */
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1370,6 +1371,35 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 .light-row {
   cursor: pointer;
+}
+
+/* Make the light/room rows chunkier */
+.device-card.light-row {
+  padding: 6px 12px;
+  /* min-height: 56px; Gives them a nice prominent height */
+}
+
+/* Make the text slightly larger and bolder */
+.device-card.light-row .device-name {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Slightly scale up the icon and circular background to match */
+.device-card.light-row .icon-circle {
+  width: 24px;
+  height: 24px;
+}
+
+.device-card.light-row .device-icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Slightly scale up the person silhouette icon */
+.device-card.light-row .room-occupant {
+  width: 16px;
+  height: 16px;
 }
 
 .light-row:hover {
