@@ -495,7 +495,7 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   display: none;
 }
 
-.device-card:has(.light-on) {
+/* .device-card:has(.light-on) {
   background: var(--amber-glow);
   border-color: rgba(245, 158, 11, 0.35);
 }
@@ -506,8 +506,31 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
 
 .device-card:has(.light-on) .device-name {
   color: var(--text);
+} */
+.icon-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  flex-shrink: 0;
 }
 
+.device-card:has(.light-on) .icon-circle {
+  background: var(--amber-glow);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+.device-card:has(.light-on) .device-icon {
+  color: var(--amber);
+}
+
+.device-card:has(.light-on) .device-name {
+  color: var(--text);
+}
 .door-badge {
   display: none;
 }
@@ -1343,75 +1366,39 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   to { transform: rotate(360deg); }
 }
 
-/* ── Room Tracker ─────────────────────────────────────────── */
+/* ── Current Room & Gadgets ─────────────────────────────────────────── */
 
-.room-tracker-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-auto-rows: minmax(0, 1fr);
-  gap: 6px;
-  flex: 1;
-  min-height: 0;
-}
-
-.room-sq {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.light-row {
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  position: relative;
-  overflow: hidden;
-  user-select: none;
 }
 
-.room-sq:hover {
-  border-color: var(--accent);
+.light-row:hover {
+  border-color: rgba(168, 85, 247, 0.35);
 }
 
-.room-sq-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  transition: color 0.2s ease;
-  pointer-events: none;
-  text-align: center;
-  padding: 0 4px;
+.light-row.active-room {
+  background: var(--accent-dim);
+  border-color: rgba(168, 85, 247, 0.45);
 }
 
-.room-sq.lit {
-  background: var(--amber-glow);
-  border-color: rgba(245, 158, 11, 0.35);
-}
-
-.room-sq.lit .room-sq-label {
-  color: var(--amber);
-}
-
-.room-sq.active {
-  background: var(--green-dim);
-  border-color: rgba(34, 197, 94, 0.5);
-  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.2);
-}
-
-.room-sq.active .room-sq-label {
-  color: var(--green);
-}
-
-.room-sq.active.lit {
-  background: linear-gradient(135deg, var(--green-dim), var(--amber-glow));
-  border-color: rgba(34, 197, 94, 0.45);
-}
-
-.room-sq.active.lit .room-sq-label {
+.light-row.active-room .device-name {
   color: var(--text);
 }
 
+.room-occupant {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  color: var(--accent);
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.light-row.active-room .room-occupant {
+  opacity: 1;
+  transform: scale(1);
+}
 .fp-person {
   display: none;
   position: absolute;

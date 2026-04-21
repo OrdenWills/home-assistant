@@ -110,98 +110,105 @@
           </div>
         </div>
 
-        <!-- Top-left: Lights -->
+         <!-- Top-left: Current Room & Lights -->
         <div class="panel">
-          <div class="panel-label">Lights</div>
+          <div class="panel-label">Current Room & Lights</div>
           <div class="panel-body">
             <div class="device-grid">
 
-              <div class="device-card" id="light-bedroom">
-                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                </svg>
+              <div class="device-card light-row" id="light-bedroom" data-room="bedroom">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                </div>
                 <span class="device-name">Bedroom</span>
                 <span class="status-dot light-off"></span>
+                <svg class="room-occupant" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.5" /><path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" /></svg>
               </div>
 
-              <div class="device-card" id="light-bathroom">
-                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                </svg>
+              <div class="device-card light-row" id="light-bathroom" data-room="bathroom">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                </div>
                 <span class="device-name">Bathroom</span>
                 <span class="status-dot light-off"></span>
+                <svg class="room-occupant" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.5" /><path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" /></svg>
               </div>
 
-              <div class="device-card" id="light-office">
-                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                </svg>
+              <div class="device-card light-row" id="light-office" data-room="office">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                </div>
                 <span class="device-name">Office</span>
                 <span class="status-dot light-off"></span>
+                <svg class="room-occupant" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.5" /><path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" /></svg>
               </div>
 
-              <div class="device-card" id="light-hallway">
-                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                </svg>
+              <div class="device-card light-row" id="light-hallway" data-room="hallway">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                </div>
                 <span class="device-name">Hallway</span>
                 <span class="status-dot light-off"></span>
+                <svg class="room-occupant" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.5" /><path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" /></svg>
               </div>
 
-              <div class="device-card" id="light-kitchen">
-                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                </svg>
+              <div class="device-card light-row" id="light-kitchen" data-room="kitchen">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                </div>
                 <span class="device-name">Kitchen</span>
                 <span class="status-dot light-off"></span>
+                <svg class="room-occupant" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.5" /><path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" /></svg>
               </div>
 
-              <div class="device-card" id="light-living_room">
-                <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-                </svg>
+              <div class="device-card light-row" id="light-living_room" data-room="living_room">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                </div>
                 <span class="device-name">Living Room</span>
                 <span class="status-dot light-off"></span>
+                <svg class="room-occupant" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="6" r="3.5" /><path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" /></svg>
               </div>
 
             </div>
           </div>
         </div>
 
-        <!-- Top-right: Current Room tracker -->
+        <!-- Top-right: Gadgets -->
         <div class="panel">
-          <div class="panel-label">Current Room</div>
+          <div class="panel-label">Gadgets</div>
           <div class="panel-body">
-            <div class="room-tracker-grid" id="room-tracker">
-              <div class="room-sq" data-room="bedroom">
-                <span class="room-sq-label">Bedroom</span>
+            <div class="device-grid" id="gadgets-grid">
+              <div class="device-card" id="gadget-tv">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                    <polyline points="17 2 12 7 7 2"></polyline>
+                  </svg>
+                </div>
+                <span class="device-name">TV</span>
               </div>
-              <div class="room-sq" data-room="bathroom">
-                <span class="room-sq-label">Bathroom</span>
-              </div>
-              <div class="room-sq" data-room="office">
-                <span class="room-sq-label">Office</span>
-              </div>
-              <div class="room-sq" data-room="hallway">
-                <span class="room-sq-label">Hallway</span>
-              </div>
-              <div class="room-sq" data-room="kitchen">
-                <span class="room-sq-label">Kitchen</span>
-              </div>
-              <div class="room-sq" data-room="living_room">
-                <span class="room-sq-label">Living Room</span>
+              <div class="device-card" id="gadget-speaker">
+                <div class="icon-circle">
+                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <circle cx="12" cy="14" r="4"></circle>
+                    <line x1="12" y1="6" x2="12.01" y2="6"></line>
+                  </svg>
+                </div>
+                <span class="device-name">Speaker</span>
               </div>
             </div>
           </div>
@@ -473,10 +480,10 @@
 
     function setCurrentRoom(room) {
       currentRoom = room;
-      document.querySelectorAll(".room-sq").forEach(sq => sq.classList.remove("active"));
+      document.querySelectorAll(".light-row").forEach(row => row.classList.remove("active-room"));
       if (room) {
-        const sq = document.querySelector(`.room-sq[data-room="${room}"]`);
-        if (sq) sq.classList.add("active");
+        const row = document.querySelector(`.light-row[data-room="${room}"]`);
+        if (row) row.classList.add("active-room");
       }
       document.querySelectorAll(".fp-room").forEach(el => el.classList.remove("occupied"));
       if (room) {
@@ -485,9 +492,9 @@
       }
     }
 
-    document.querySelectorAll(".room-sq").forEach(sq => {
-      sq.addEventListener("click", () => {
-        const room = sq.dataset.room;
+    document.querySelectorAll(".light-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const room = row.dataset.room;
         setCurrentRoom(currentRoom === room ? null : room);
       });
     });
