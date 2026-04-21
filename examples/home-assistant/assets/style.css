@@ -1017,6 +1017,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   padding: 4px 0;
   user-select: none;
   font-family: inherit;
+  width: fit-content;
 }
 
 .tool-calls summary:hover {
@@ -1220,25 +1221,35 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   z-index: 100;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   padding: 8px;
   min-width: 300px;
   display: none;
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+  /* Re-enable pointer events so clicks don't pass through to the chat */
+  pointer-events: auto; 
 }
 
 .model-dropdown.open {
   display: flex;
 }
 
+#model-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px; /* Gives the scrollbar a little breathing room */
+}
 .model-option {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   cursor: pointer;
   transition: background 0.15s;
 }
