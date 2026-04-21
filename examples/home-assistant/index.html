@@ -22,20 +22,7 @@
         <span class="brand-app">Home Assistant powered by a local LFM2.5 model</span>
       </div>
       <div class="meta">
-        <span id="model-label">Model: …</span>
         <button class="backend-btn" id="theme-toggle" title="Cycle theme: Light → Soft Dark → High Contrast">🌙</button>
-        <div class="backend-toggle">
-          <div class="local-wrapper">
-            <button class="backend-btn active" id="local-btn" data-backend="local">LFM Local ▾</button>
-            <div class="model-dropdown" id="model-dropdown">
-              <div class="status-row">
-                <span class="status-pill idle" id="status-pill">idle</span>
-              </div>
-              <div id="model-options"></div>
-            </div>
-          </div>
-          <button class="backend-btn" id="openai-btn" data-backend="openai">GPT-4o-mini</button>
-        </div>
       </div>
     </header>
 
@@ -389,7 +376,15 @@
         <!-- Bottom: Chat -->
         <div id="chat-panel">
           <div class="chat-header">
-            <span class="chat-title">AI Assistant</span>
+            <div class="local-wrapper">
+              <span class="chat-title" id="chat-title-btn">AI Assistant ▾</span>
+              <div class="model-dropdown" id="model-dropdown">
+                <div class="status-row">
+                  <span class="status-pill idle" id="status-pill">idle</span>
+                </div>
+                <div id="model-options"></div>
+              </div>
+            </div>
             <div class="chat-status-chip">
               <span class="assistant-dot" id="assistant-dot"></span>
             </div>
@@ -437,7 +432,8 @@
       } else {
         document.documentElement.setAttribute('data-theme', theme);
       }
-      document.getElementById('theme-toggle').textContent = themeIcons[theme];
+      const toggle = document.getElementById('theme-toggle');
+      if (toggle) toggle.textContent = themeIcons[theme];
       localStorage.setItem('theme', theme);
     }
 
@@ -456,10 +452,12 @@
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) toggle.addEventListener('click', toggleTheme);
       });
     } else {
-      document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+      const toggle = document.getElementById('theme-toggle');
+      if (toggle) toggle.addEventListener('click', toggleTheme);
     }
 
     // ── Main app ──────────────────────────────────────────────
@@ -839,8 +837,7 @@
     }
 
     function updateInputState() {
-      const localActive = document.getElementById("local-btn").classList.contains("active");
-      const blocked = localActive && llamaStatus === "starting";
+      const blocked = llamaStatus === "starting";
       sendBtn.disabled = blocked;
       inputEl.disabled = blocked;
       const micBtn = document.getElementById("mic-btn");
@@ -852,12 +849,19 @@
     async function fetchLocalModelStatus() {
       try {
         const d = await fetch("/local-model-status").then(r => r.json());
-        const prevStatus = llamaStatus;
         llamaStatus = d.status;
         updateStatusPill(d.status, d.error);
         updateModelOptions(d.model_id);
+
+        if (d.model_id && localModels.length > 0) {
+          const m = localModels.find(x => x.id === d.model_id);
+          if (m) {
+            const words = m.name.split(' ');
+            document.getElementById("chat-title-btn").textContent = words.slice(0, 2).join(' ') + " ▾";
+          }
+        }
+
         updateInputState();
-        if (d.status === "ready" && prevStatus !== "ready") await refreshModel();
         if (d.status === "starting") {
           if (!statusPollTimer) statusPollTimer = setInterval(fetchLocalModelStatus, 3000);
         } else {
@@ -884,6 +888,7 @@
           div.addEventListener("click", () => selectLocalModel(m.id));
           container.appendChild(div);
         });
+        fetchLocalModelStatus(); // Fetch status after loading elements so title gets initialized
       } catch (e) {}
     }
 
@@ -895,6 +900,13 @@
         body: JSON.stringify({ model_id: modelId }),
       });
       llamaStatus = "starting";
+
+      const selectedModel = localModels.find(m => m.id === modelId);
+      if (selectedModel) {
+        const words = selectedModel.name.split(' ');
+        document.getElementById("chat-title-btn").textContent = words.slice(0, 2).join(' ') + " ▾";
+      }
+
       updateModelOptions(modelId);
       updateStatusPill("starting");
       updateInputState();
@@ -1120,58 +1132,9 @@
 
     // ── Backend toggle ────────────────────────────────────────
 
-    async function refreshModel() {
-      try {
-        const d = await fetch("/model").then(r => r.json());
-        document.getElementById("model-label").textContent = `Model: ${d.name}`;
-      } catch (e) {}
-    }
-
-    function setActiveBackendBtn(backend) {
-      document.querySelectorAll(".backend-btn").forEach(btn => {
-        btn.classList.toggle("active", btn.dataset.backend === backend);
-      });
-    }
-
-    document.getElementById("local-btn").addEventListener("click", async () => {
-      const isActive = document.getElementById("local-btn").classList.contains("active");
-      if (isActive) {
-        toggleDropdown();
-      } else {
-        await fetch("/backend", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ backend: "local" }),
-        });
-        setActiveBackendBtn("local");
-        await refreshModel();
-        messagesEl.innerHTML = "";
-        toggleDropdown(true);
-        if (llamaStatus === "idle" && localModels.length > 0) selectLocalModel(localModels[0].id);
-        else fetchLocalModelStatus();
-      }
+    document.getElementById("chat-title-btn").addEventListener("click", () => {
+      toggleDropdown();
     });
-
-    document.getElementById("openai-btn").addEventListener("click", async () => {
-      toggleDropdown(false);
-      await fetch("/backend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ backend: "openai" }),
-      });
-      setActiveBackendBtn("openai");
-      await refreshModel();
-      messagesEl.innerHTML = "";
-      setAssistantDot("ready");
-    });
-
-    fetch("/backend")
-      .then(r => r.json())
-      .then(d => {
-        setActiveBackendBtn(d.backend);
-        if (d.backend === "openai") setAssistantDot("ready");
-      })
-      .catch(() => {});
 
     async function fetchHistory() {
       try {
@@ -1199,7 +1162,6 @@
       } catch (e) { console.error("[FetchHistory] Error:", e); }
     }
 
-    refreshModel();
     refreshState();
     fetchLocalModels();
     fetchLocalModelStatus();

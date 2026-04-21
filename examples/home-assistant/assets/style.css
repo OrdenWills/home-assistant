@@ -839,6 +839,14 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   border: 1px solid var(--border-light);
   pointer-events: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.chat-title:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--surface-2);
 }
 
 .chat-status-chip {
@@ -1208,7 +1216,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 .model-dropdown {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 0;
   z-index: 100;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1496,4 +1504,4 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 #feedback-toast.negative { 
   border-left: 4px solid var(--red); 
-}
+}
