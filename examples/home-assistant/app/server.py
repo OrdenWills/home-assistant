@@ -633,14 +633,55 @@ def chat_stream(req: ChatRequest):
             return
 
         # ── Cache MISS: stream from model ─────────────────────────────────────
-        print(f"[Cache] MISS (stream) for: {req.message!r}")
-        tool_events: list[dict] = []
+        # The LLM call blocks 2-12 s.  We run the agent in a background
+        # thread so the SSE generator can keep emitting rotating status
+        # messages while we wait, keeping the UI feeling alive.
+        import queue as _q
 
-        for event in run_agent_stream(
-            resolved_message,
-            backend=active_backend,
-        ):
+        print(f"[Cache] MISS (stream) for: {req.message!r}")
+
+        event_q: _q.Queue = _q.Queue()
+
+        def _agent_worker():
+            try:
+                for ev in run_agent_stream(resolved_message, backend=active_backend):
+                    event_q.put(ev)
+            except Exception as exc:
+                event_q.put({"type": "error", "text": str(exc)})
+            finally:
+                event_q.put(None)   # sentinel
+
+        threading.Thread(target=_agent_worker, daemon=True).start()
+
+        _status_msgs = [
+            "Understanding intent...",
+            f"\"{req.message}\"",
+            "Processing request...",
+            "Analyzing command...",
+            "Generating response...",
+        ]
+        _si = 0                       # status index
+        tool_events: list[dict] = []
+        done_seen = False
+
+        # First status fires instantly
+        yield f"data: {json.dumps({'type': 'status', 'text': _status_msgs[0]})}\n\n"
+        _si = 1
+
+        while not done_seen:
+            try:
+                event = event_q.get(timeout=1.5)
+            except _q.Empty:
+                # Model still thinking — rotate to next status message
+                yield f"data: {json.dumps({'type': 'status', 'text': _status_msgs[_si % len(_status_msgs)]})}\n\n"
+                _si += 1
+                continue
+
+            if event is None:
+                break                 # agent thread finished
+
             if event["type"] == "tool_call":
+                yield f"data: {json.dumps({'type': 'status', 'text': 'Performing action...'})}\n\n"
                 tool_events.append({
                     "name":   event["name"],
                     "args":   event["args"],
@@ -651,10 +692,14 @@ def chat_stream(req: ChatRequest):
                     event["name"], event["args"],
                     _summarise_tool(event["name"], event["args"], event["result"]),
                 )
-            yield f"data: {json.dumps(event)}\n\n"
+                yield f"data: {json.dumps(event)}\n\n"
+                yield f"data: {json.dumps({'type': 'status', 'text': 'Action performed ✓'})}\n\n"
 
-            if event["type"] == "done":
+            elif event["type"] == "done":
+                done_seen = True
                 final_text = event["text"]
+                yield f"data: {json.dumps(event)}\n\n"
+
                 turn_id = _new_turn_id()
                 chat_turns.append({
                     "turn_id": turn_id,
@@ -664,9 +709,6 @@ def chat_stream(req: ChatRequest):
                     "assistant": final_text,
                     "tool_calls": tool_events,
                 })
-
-                # Patch the already-yielded done event with turn_id
-                # (frontend reads the LAST done event, so emit a second one with turn_id)
                 yield f"data: {json.dumps({'type': 'turn_id', 'turn_id': turn_id})}\n\n"
 
                 action_events = [
@@ -678,6 +720,10 @@ def chat_stream(req: ChatRequest):
                     to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
                     set_cached(resolved_message, to_cache, current_snapshot)
                     print(f"[Cache] STORED {len(to_cache)} call(s) for: {req.message!r}")
+
+            else:
+                # token, error — forward as-is
+                yield f"data: {json.dumps(event)}\n\n"
 
     return StreamingResponse(
         generate(),

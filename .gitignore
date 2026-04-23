@@ -42,3 +42,4 @@ examples/home-assistant/app/state-fail-cases.txt
 examples/home-assistant/datasets/failure_set.jsonl
 examples/home-assistant/datasets/golden_set.jsonl
 examples/home-assistant/assets/style_backup.css
+examples/home-assistant/app/server_backup.py

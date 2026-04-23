@@ -1063,12 +1063,17 @@
               if (!statusEl) {
                 statusEl = document.createElement("div");
                 statusEl.className = "typing-status";
-                statusEl.style.fontSize = "0.85em";
-                statusEl.style.color = "var(--text-muted, #888)";
-                statusEl.style.marginBottom = "4px";
+                statusEl.style.cssText = "font-size:0.82em;color:var(--text-muted,#888);margin-bottom:4px;transition:opacity 0.25s ease;opacity:0;";
                 typing.insertBefore(statusEl, typing.firstChild);
+                // Trigger fade-in on next frame
+                requestAnimationFrame(() => { statusEl.style.opacity = "1"; });
               }
-              statusEl.textContent = event.text;
+              // Animate text change
+              statusEl.style.opacity = "0";
+              setTimeout(() => {
+                statusEl.textContent = event.text;
+                statusEl.style.opacity = "1";
+              }, 200);
 
             } else if (event.type === "tool_call") {
               const displayEvent = { ...event };

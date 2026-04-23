@@ -321,9 +321,6 @@ def run_agent_stream(
     seen_calls: set[str] = set()
     last_text_response = ""
 
-    # Yield status before we send the user prompt to the model
-    yield {"type": "status", "text": "Performing action"}
-
     # ── Tool execution loop (same logic as run_agent, non-streaming) ──────────
     for i in range(5):
         try:
@@ -412,8 +409,6 @@ def run_agent_stream(
             # ── Emit tool_call event immediately so UI updates in real time ──
             print(f"[Stream] YIELDING tool_call to frontend: {name}({args})")
             yield {"type": "tool_call", "name": name, "args": args, "result": result}
-            
-            yield {"type": "status", "text": "Action performed..."}
 
             messages.append({
                 "role": "tool", "tool_call_id": tc.id,
