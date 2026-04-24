@@ -655,10 +655,12 @@ def chat_stream(req: ChatRequest):
 
         _status_msgs = [
             "Understanding intent...",
-            f"\"{req.message}\"",
+            f"user said \"{req.message}\"",
             "Processing request...",
             "Analyzing command...",
+            "Deciding next action...",
             "Generating response...",
+            ""
         ]
         _si = 0                       # status index
         tool_events: list[dict] = []
