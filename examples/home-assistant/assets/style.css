@@ -1116,29 +1116,38 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   right: 0;
   display: flex;
   gap: 4px;
-  align-items: center;
+  align-items: flex-end; /* Changed from center to flex-end so buttons stay at the bottom */
   padding: 6px 16px;
   margin: 12px;
   background: var(--header-glass);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-radius: 100px;
+  border-radius: 24px; /* Changed from 100px so it looks better when tall */
   border: 1px solid var(--border-light);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 -4px 15px rgba(0, 0, 0, 0.03);
 }
 
-#input-bar input {
+#input-bar textarea {
   flex: 1;
-  background: transparent;
-  border: none;
-  padding: 8px 4px;
+  background: transparent;  /* Removes the white background so it blends perfectly */
+  border: none;             /* Removes the ugly default border */
+  outline: none;            /* Removes the focus ring */
+  box-shadow: none;         /* Prevents any native shadow */
+  resize: none;             /* Removes the draggable handle in the bottom right */
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
-  outline: none;
+  padding: 8px 4px;
+  margin: 0;
+  line-height: 1.5;
+  min-height: 36px;
+  max-height: 120px;        /* Limits how tall it can grow before scrolling */
+  overflow-y: auto;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-#input-bar input::placeholder {
+#input-bar textarea::placeholder {
   color: var(--text-muted);
 }
 
