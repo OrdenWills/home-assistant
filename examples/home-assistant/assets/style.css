@@ -935,7 +935,31 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 .msg-container.assistant {
-  align-items: flex-start;
+  flex-direction: row;
+  align-items: center; /* Centers the avatar perfectly on the mid-left */
+}
+
+/* ── The Image Itself ── */
+.assistant-avatar {
+  width: 32px;          /* Smaller width */
+  height: 32px;         /* Smaller height */
+  border-radius: 50%;   /* Makes it a perfect circle */
+  object-fit: cover;    /* Ensures the image fills the circle without stretching */
+  z-index: 2;
+  margin-right: -12px;  /* Overlaps the message bubble slightly */
+  margin-bottom: 0;     /* Removed to allow true vertical centering */
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); /* Clean shadow suited for a circle */
+}
+
+/* Offset the footer's exact height so the avatar perfectly centers on the text bubble */
+.msg-container.assistant:has(.msg-footer) .assistant-avatar {
+  margin-bottom: 25px; 
+}
+
+.msg-container.assistant .msg-wrapper {
+  position: relative;
+  z-index: 1;
 }
 
 /* --- REPLACE THIS EXISTING CSS BLOCK --- */
@@ -1010,6 +1034,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   border: 1px solid var(--border);
   border-bottom-left-radius: var(--radius-sm);
   align-self: flex-start;
+  padding-left: 20px; /* Compensates for the overlapping image */
 }
 
 .msg-timestamp {
@@ -1116,15 +1141,16 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   right: 0;
   display: flex;
   gap: 4px;
-  align-items: flex-end; /* Changed from center to flex-end so buttons stay at the bottom */
+  align-items: flex-end; 
   padding: 6px 16px;
   margin: 12px;
   background: var(--header-glass);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  border-radius: 24px; /* Changed from 100px so it looks better when tall */
+  border-radius: 24px; 
   border: 1px solid var(--border-light);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 -4px 15px rgba(0, 0, 0, 0.03);
+  z-index: 20; /* Forces the input bar to stay above the scrolling messages */
 }
 
 #input-bar textarea {
@@ -1214,7 +1240,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   align-self: flex-start;
   display: flex;
   gap: 5px;
-  padding: 10px 14px;
+  padding: 10px 14px 10px 20px; /* 20px left padding added here too */
   background: var(--assistant-bubble);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
