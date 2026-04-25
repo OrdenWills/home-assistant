@@ -31,7 +31,7 @@
   --header-glass: rgba(255, 255, 255, 0.5);
 }
 
-/* Soft dark mode: manual override via data-theme attribute */
+/* Soft dark mode */
 html[data-theme="soft-dark"] {
   --bg: #1a1a1a;
   --surface: #262626;
@@ -116,6 +116,7 @@ body {
   display: grid;
   grid-template-rows: 48px 1fr;
   height: 100vh;
+  height: 100dvh; /* Better for mobile viewports */
 }
 
 header {
@@ -447,8 +448,8 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
 
 .panel-body {
   flex: 1;
-  overflow-y: auto;   /* <--- Change 'hidden' to 'auto' */
-  overflow-x: hidden; /* <--- Add this line */
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -496,18 +497,6 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   display: none;
 }
 
-/* .device-card:has(.light-on) {
-  background: var(--amber-glow);
-  border-color: rgba(245, 158, 11, 0.35);
-}
-
-.device-card:has(.light-on) .device-icon {
-  color: var(--amber);
-}
-
-.device-card:has(.light-on) .device-name {
-  color: var(--text);
-} */
 .icon-circle {
   display: flex;
   align-items: center;
@@ -936,23 +925,21 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 .msg-container.assistant {
   flex-direction: row;
-  align-items: center; /* Centers the avatar perfectly on the mid-left */
+  align-items: center; 
 }
 
-/* ── The Image Itself ── */
 .assistant-avatar {
-  width: 32px;          /* Smaller width */
-  height: 32px;         /* Smaller height */
-  border-radius: 50%;   /* Makes it a perfect circle */
-  object-fit: cover;    /* Ensures the image fills the circle without stretching */
+  width: 32px;          
+  height: 32px;         
+  border-radius: 50%;   
+  object-fit: cover;    
   z-index: 2;
-  margin-right: -12px;  /* Overlaps the message bubble slightly */
-  margin-bottom: 0;     /* Removed to allow true vertical centering */
+  margin-right: -12px;  
+  margin-bottom: 0;     
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); /* Clean shadow suited for a circle */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); 
 }
 
-/* Offset the footer's exact height so the avatar perfectly centers on the text bubble */
 .msg-container.assistant:has(.msg-footer) .assistant-avatar {
   margin-bottom: 25px; 
 }
@@ -962,7 +949,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   z-index: 1;
 }
 
-/* --- REPLACE THIS EXISTING CSS BLOCK --- */
 .msg-wrapper {
   display: flex;
   flex-direction: column;
@@ -1034,14 +1020,13 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   border: 1px solid var(--border);
   border-bottom-left-radius: var(--radius-sm);
   align-self: flex-start;
-  padding-left: 20px; /* Compensates for the overlapping image */
+  padding-left: 20px; 
 }
 
 .msg-timestamp {
   font-size: 11px;
   color: var(--text-muted);
 }
-/* -------------------------------------- */
 
 .msg-placeholder {
   text-align: center;
@@ -1087,7 +1072,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 /* ── Voice Modal Overlay ── */
 #voice-modal {
   position: absolute;
-  bottom: 68px; /* Positioned just above the input bar */
+  bottom: 68px; 
   left: 50%;
   transform: translateX(-50%) translateY(10px);
   background: var(--header-glass);
@@ -1150,16 +1135,16 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   border-radius: 24px; 
   border: 1px solid var(--border-light);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 -4px 15px rgba(0, 0, 0, 0.03);
-  z-index: 20; /* Forces the input bar to stay above the scrolling messages */
+  z-index: 20; 
 }
 
 #input-bar textarea {
   flex: 1;
-  background: transparent;  /* Removes the white background so it blends perfectly */
-  border: none;             /* Removes the ugly default border */
-  outline: none;            /* Removes the focus ring */
-  box-shadow: none;         /* Prevents any native shadow */
-  resize: none;             /* Removes the draggable handle in the bottom right */
+  background: transparent;  
+  border: none;             
+  outline: none;            
+  box-shadow: none;         
+  resize: none;             
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
@@ -1167,7 +1152,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   margin: 0;
   line-height: 1.5;
   min-height: 36px;
-  max-height: 120px;        /* Limits how tall it can grow before scrolling */
+  max-height: 120px;        
   overflow-y: auto;
   -webkit-appearance: none;
   appearance: none;
@@ -1240,7 +1225,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   align-self: flex-start;
   display: flex;
   gap: 5px;
-  padding: 10px 14px 10px 20px; /* 20px left padding added here too */
+  padding: 10px 14px 10px 20px; 
   background: var(--assistant-bubble);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -1287,7 +1272,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
-  /* Re-enable pointer events so clicks don't pass through to the chat */
   pointer-events: auto; 
 }
 
@@ -1301,7 +1285,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   gap: 4px;
   max-height: 200px;
   overflow-y: auto;
-  padding-right: 4px; /* Gives the scrollbar a little breathing room */
+  padding-right: 4px; 
 }
 .model-option {
   display: flex;
@@ -1408,19 +1392,15 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   cursor: pointer;
 }
 
-/* Make the light/room rows chunkier */
 .device-card.light-row {
   padding: 6px 12px;
-  /* min-height: 56px; Gives them a nice prominent height */
 }
 
-/* Make the text slightly larger and bolder */
 .device-card.light-row .device-name {
   font-size: 12px;
   font-weight: 600;
 }
 
-/* Slightly scale up the icon and circular background to match */
 .device-card.light-row .icon-circle {
   width: 24px;
   height: 24px;
@@ -1431,7 +1411,6 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   height: 20px;
 }
 
-/* Slightly scale up the person silhouette icon */
 .device-card.light-row .room-occupant {
   width: 16px;
   height: 16px;
@@ -1567,4 +1546,113 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 #feedback-toast.negative { 
   border-left: 4px solid var(--red); 
+}
+
+/* ── Mobile & Tablet Responsiveness ── */
+@media (max-width: 900px) {
+  
+  header {
+    padding: 0 16px;
+  }
+
+  .brand-app {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  /* Unravel the two grids completely, making everything a single scrollable flex container */
+  main {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+    gap: 12px;
+    height: auto; 
+  }
+
+  /* Flatten the inner structures so the individual panels become flex children of 'main' */
+  #house-panel, #side-panel {
+    display: contents; 
+  }
+
+  .panel, #chat-panel {
+    flex: none; 
+  }
+
+  /* Re-order panels to create a logical mobile flow */
+  .panel-floorplan { 
+    order: 1; 
+    min-height: 280px; 
+    padding-bottom: 20px; 
+  }
+  
+  #temperature-panel { 
+    order: 2; 
+    min-height: 280px; 
+    border-radius: var(--radius-md); 
+  }
+  
+  #house-panel > .panel:nth-child(2) { order: 3; } /* Current Room & Lights */
+  #house-panel > .panel:nth-child(4) { order: 4; } /* Doors */
+  #house-panel > .panel:nth-child(3) { order: 5; } /* Gadgets */
+  #house-panel > .panel:nth-child(5) { order: 6; } /* Scenes */
+  
+  /* Provide a large space for the chat at the bottom */
+  #chat-panel {
+    order: 10;
+    margin: 0;
+    margin-top: 8px;
+    border-radius: var(--radius-lg);
+    min-height: 500px;
+    height: 75dvh;
+    -webkit-mask-image: none; /* Remove edge fading from desktop */
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Adjust grids for narrower screens */
+  .house-body {
+    min-height: 220px;
+  }
+  
+  .fp-room-label {
+    font-size: 9px;
+  }
+
+  #doors-grid {
+    grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: minmax(60px, auto);
+    gap: 6px;
+  }
+
+  #doors-grid .device-card {
+    padding: 8px 4px;
+  }
+  
+  .msg-wrapper {
+    max-width: 95%; /* Use more width on mobile chatting */
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-app, .brand-sep {
+    display: none; /* Hide subtitle completely on small phones */
+  }
+  
+  .model-dropdown {
+    min-width: 260px;
+    max-width: calc(100vw - 40px);
+  }
+
+  #doors-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .fp-room-label {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
 }
