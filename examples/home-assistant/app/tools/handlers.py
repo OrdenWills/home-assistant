@@ -107,6 +107,33 @@ def lock_all_doors(state: str) -> dict:
     return {"success": True, "state": target_state, "doors": affected_doors, "count": len(affected_doors)}
 
 
+def control_tv(room: str, state: str) -> dict:
+    if "tv" not in home_state or room not in home_state["tv"]:
+        return {"success": False, "error": f"No TV in {room}"}
+    home_state["tv"][room] = state
+    persist_state()
+    return {"success": True, "room": room, "state": state}
+
+
+def control_speaker(room: str, action: str) -> dict:
+    if "speaker" not in home_state or room not in home_state["speaker"]:
+        return {"success": False, "error": f"No speaker in {room}"}
+    
+    if action == "play":
+        home_state["speaker"][room] = "playing"
+    elif action == "pause":
+        home_state["speaker"][room] = "paused"
+    elif action == "stop":
+        home_state["speaker"][room] = "stopped"
+    # next/previous don't change state from 'playing' (or whatever they were)
+    elif action in ["next", "previous"]:
+        if home_state["speaker"][room] == "stopped":
+            home_state["speaker"][room] = "playing"
+    
+    persist_state()
+    return {"success": True, "room": room, "action": action}
+
+
 TOOL_HANDLERS = {
     "toggle_lights":     toggle_lights,
     "set_thermostat":    set_thermostat,
@@ -116,4 +143,6 @@ TOOL_HANDLERS = {
     "toggle_all_lights": toggle_all_lights,
     "lock_all_doors":    lock_all_doors,
     "intent_unclear":    intent_unclear,
+    "control_tv":        control_tv,
+    "control_speaker":   control_speaker,
 }

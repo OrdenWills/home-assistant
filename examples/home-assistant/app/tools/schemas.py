@@ -105,18 +105,48 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "control_tv",
+            "description": "Turn the TV on or off. Always use room=living_room.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "room":  {"type": "string", "enum": ["living_room", "bedroom"]},
+                    "state": {"type": "string", "enum": ["on", "off"]}
+                },
+                "required": ["room", "state"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "control_speaker",
+            "description": "Control the speaker. Always use room=living_room.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "room":   {"type": "string", "enum": ["living_room", "bedroom", "kitchen", "office", "hallway"]},
+                    "action": {"type": "string", "enum": ["play", "pause", "stop", "next", "previous"]}
+                },
+                "required": ["room", "action"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "intent_unclear",
             "description": (
                 "Call this tool instead of responding with text when the request cannot be fulfilled. "
                 "Reason 'ambiguous': request could mean multiple things. "
                 "Reason 'off_topic': completely outside home automation (ordering food, weather, music, etc.). "
                 "Reason 'incomplete': pronoun or reference with no prior context (e.g. 'turn it on'). "
-                "Reason 'unsupported_device': within home domain but feature unavailable (brightness, TV, cameras)."
+                "Reason 'unsupported_device': within home domain but feature unavailable (brightness, cameras)."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "reason": {"type": "string", "enum": ["ambiguous", "off_topic", "incomplete", "unsupported_device"]},
+                    "reason": {"type": "string", "enum": ["off_topic", "incomplete", "unsupported_device", "unsupported_feature"]},
                 },
                 "required": ["reason"],
             },

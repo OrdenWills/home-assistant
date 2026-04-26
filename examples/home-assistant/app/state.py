@@ -42,6 +42,17 @@ home_state: dict = {
         "living_room": "locked",
     },
     "active_scene": None,
+    "tv": {
+        "living_room": "off",
+        "bedroom": "off",
+    },
+    "speaker": {
+        "living_room": "stopped",
+        "bedroom": "stopped",
+        "kitchen": "stopped",
+        "office": "stopped",
+        "hallway": "stopped",
+    }
 }
 
 
@@ -79,13 +90,13 @@ def load_state(path: Path = _DB_PATH) -> None:
         stored = json.loads(row["payload"])
         
         # Deep merge for structured device dictionaries to preserve new keys
-        for key in ["lights", "doors"]:
+        for key in ["lights", "doors", "tv", "speaker"]:
             if key in stored and isinstance(stored[key], dict):
                 home_state[key].update(stored[key])
         
         # Shallow update for other top-level keys
         for key, value in stored.items():
-            if key not in ["lights", "doors"]:
+            if key not in ["lights", "doors", "tv", "speaker"]:
                 home_state[key] = value
                 
         print("[State] Restored persisted home state from DB (merged).")
@@ -134,14 +145,18 @@ def build_state_summary(current_room: str | None = None) -> str:
     doors = ", ".join(
         f"{d}:{s}" for d, s in sorted(home_state["doors"].items())
     )
+    tv_str = ", ".join(f"{r}:{s}" for r, s in sorted(home_state.get("tv", {}).items())) if home_state.get("tv") else ""
+    sp_str = ", ".join(f"{r}:{s}" for r, s in sorted(home_state.get("speaker", {}).items())) if home_state.get("speaker") else ""
     therm = home_state["thermostat"]
     scene = home_state.get("active_scene") or "none"
     room = current_room or ""
     return (
         f"[STATE: lights={{{lights}}}, "
         f"doors={{{doors}}}, "
-        f"thermostat={therm['temperature']}°F/{therm['mode']}, "
+        f"thermostat={therm['temperature']}F/{therm['mode']}, "
         f"scene={scene}, "
+        f"tv={{{tv_str}}}, "
+        f"speaker={{{sp_str}}}, "
         f"current_user_room={room}]"
     )
 

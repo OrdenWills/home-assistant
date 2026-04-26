@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from huggingface_hub import hf_hub_download
 
-from app.agent import local_client, run_agent, run_agent_stream, SYSTEM_PROMPT
+from app.agent import local_client, run_agent, run_agent_stream, get_system_prompt
 from app.state import (
     home_state, load_state,
     build_state_summary, log_action, build_action_log_context, action_log,
@@ -36,7 +36,7 @@ os.makedirs(DATASETS_DIR, exist_ok=True)
 LOCAL_MODELS = [
     {"id":"home-assistant-sft","name":"Home Assistant SFT (Finetuned)","hf_repo":"OrdenWills/LFM2.5-1.2B-home-assistant-sft","hf_file":"LFM2.5-1.2B-Instruct.Q4_K_M.gguf","size_label":"714 MB","score_label":"99%"},
     {"id":"home-assistant-sft(small)","name":"Home(small) Assistant SFT (Finetuned)","hf_repo":"OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file":"LFM2.5-350M.Q4_K_M.gguf","size_label":"218 MB","score_label":"98%"},
-    {"id": "home-assistant-sft-small-8bit","name": "Home Assistant SFT (Finetuned 350M)","hf_repo": "OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file": "LFM2.5-350M.Q8_0.gguf","size_label":"372 MB","score_label":"99%"},
+    {"id": "home-assistant-sft-small-8bit","name": "Home Assistant SFT (Finetuned 350M)","hf_repo": "OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file": "LFM2.5-350M-home-assistant-sft-stage2.Q8_0.gguf","size_label":"372 MB","score_label":"99%"},
     {"id":"lfm25-1b-thinking-q4","name":"LFM2.5-1.2B-Thinking-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q4_0.gguf","size_label":"718 MB","score_label":"75%"},
     {"id":"lfm25-1b-thinking-q8","name":"LFM2.5-1.2B-Thinking-Q8_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q8_0.gguf","size_label":"1.28 GB","score_label":"82%"},
     {"id":"lfm25-1b-q4","name":"LFM2.5-1.2B-Instruct-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Instruct-GGUF","hf_file":"LFM2.5-1.2B-Instruct-Q4_0.gguf","size_label":"696 MB","score_label":"68%"},
@@ -104,7 +104,7 @@ def _write_dataset_entry(turn: dict, rating: str) -> str:
         "backend":          active_backend,
         "model":            llama_active_model_id or "openai/gpt-4o-mini",
         # ── Everything the model actually saw ──
-        "system_prompt":    SYSTEM_PROMPT,
+        "system_prompt":    turn.get("system_prompt", ""),
         "current_room":     turn.get("current_room"),
         "raw_user_message": turn["user"],
         "resolved_message": turn.get("resolved_message", ""),
@@ -377,6 +377,8 @@ def _summarise_tool(name: str, args: dict, result: dict) -> str:
         return f"All doors {a}."
     if name == "set_thermostat":   return f"Thermostat set to {args['temperature']}°F in {args['mode']} mode."
     if name == "set_scene":        return f"{args['scene'].replace('_',' ').title()} scene activated."
+    if name == "control_tv":       return f"{args['room'].replace('_',' ').title()} TV turned {args['state']}."
+    if name == "control_speaker":  return f"{args['room'].replace('_',' ').title()} speaker: {args['action']}."
     if name == "intent_unclear":   return f"Intent unclear ({args.get('reason','?')})."
     return "Done."
 
@@ -427,6 +429,7 @@ def chat(req: ChatRequest):
                 chat_turns.append({
                     "turn_id": turn_id,
                     "user": req.message,
+                    "system_prompt": "",
                     "resolved_message": "",   # short-circuit; no LLM prompt
                     "current_room": req.current_room,
                     "assistant": text,
@@ -449,6 +452,7 @@ def chat(req: ChatRequest):
                 chat_turns.append({
                     "turn_id": turn_id,
                     "user": req.message,
+                    "system_prompt": "",
                     "resolved_message": "",
                     "current_room": req.current_room,
                     "assistant": text,
@@ -459,6 +463,14 @@ def chat(req: ChatRequest):
     # 3. Build resolved message with [STATE: ...] + [RECENT ACTIONS: ...] prefix
     resolved_message = _build_resolved_message(req.message, req.current_room)
     print(f"[Chat] Resolved message: {resolved_message[:200]}...")
+
+    avail_r = list(home_state["lights"].keys())
+    avail_d = list(home_state["doors"].keys())
+    tv_rooms = list(home_state.get("tv", {}).keys())
+    spk_rooms = list(home_state.get("speaker", {}).keys())
+    tv_str = ", ".join(tv_rooms) if tv_rooms else "none"
+    spk_str = ", ".join(spk_rooms) if spk_rooms else "none"
+    system_prompt = get_system_prompt(avail_r, avail_d, tv_str, spk_str)
 
     # 4. Cache lookup
     current_snapshot = build_snapshot(home_state)
@@ -472,6 +484,7 @@ def chat(req: ChatRequest):
         chat_turns.append({
             "turn_id": turn_id,
             "user": req.message,
+            "system_prompt": system_prompt,
             "resolved_message": resolved_message,
             "current_room": req.current_room,
             "assistant": text,
@@ -490,7 +503,8 @@ def chat(req: ChatRequest):
 
     try:
         text = run_agent(
-            resolved_message,
+            user_message=resolved_message,
+            system_prompt=system_prompt,
             backend=active_backend,
             on_tool_call=on_tool_call,
         )
@@ -501,6 +515,7 @@ def chat(req: ChatRequest):
     chat_turns.append({
         "turn_id": turn_id,
         "user": req.message,
+        "system_prompt": system_prompt,
         "resolved_message": resolved_message,
         "current_room": req.current_room,
         "assistant": text,
@@ -556,6 +571,14 @@ def chat_stream(req: ChatRequest):
     current_snapshot = build_snapshot(home_state)
     cached = get_cached(resolved_message, current_snapshot)
 
+    avail_r = list(home_state["lights"].keys())
+    avail_d = list(home_state["doors"].keys())
+    tv_rooms = list(home_state.get("tv", {}).keys())
+    spk_rooms = list(home_state.get("speaker", {}).keys())
+    tv_str = ", ".join(tv_rooms) if tv_rooms else "none"
+    spk_str = ", ".join(spk_rooms) if spk_rooms else "none"
+    system_prompt = get_system_prompt(avail_r, avail_d, tv_str, spk_str)
+
     def generate():
         # ── Short-circuit path for relative keywords ──────────────────────────
         if is_relative and _sc_rooms is not None:
@@ -581,6 +604,7 @@ def chat_stream(req: ChatRequest):
                 chat_turns.append({
                     "turn_id": turn_id,
                     "user": req.message,
+                    "system_prompt": "",
                     "resolved_message": "",
                     "current_room": req.current_room,
                     "assistant": text,
@@ -598,6 +622,7 @@ def chat_stream(req: ChatRequest):
                 chat_turns.append({
                     "turn_id": turn_id,
                     "user": req.message,
+                    "system_prompt": "",
                     "resolved_message": "",
                     "current_room": req.current_room,
                     "assistant": text,
@@ -622,6 +647,7 @@ def chat_stream(req: ChatRequest):
             chat_turns.append({
                 "turn_id": turn_id,
                 "user": req.message,
+                "system_prompt": system_prompt,
                 "resolved_message": resolved_message,
                 "current_room": req.current_room,
                 "assistant": text,
@@ -644,7 +670,11 @@ def chat_stream(req: ChatRequest):
 
         def _agent_worker():
             try:
-                for ev in run_agent_stream(resolved_message, backend=active_backend):
+                for ev in run_agent_stream(
+                    user_message=resolved_message,
+                    system_prompt=system_prompt,
+                    backend=active_backend
+                ):
                     event_q.put(ev)
             except Exception as exc:
                 event_q.put({"type": "error", "text": str(exc)})

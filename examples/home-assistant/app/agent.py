@@ -18,58 +18,43 @@ BACKENDS = {
     "openai": {"client": openai_client, "model": "gpt-4o-mini"},
 }
 
-# ── Fix 4: Tightened system prompt ────────────────────────────────────────────
-# Key additions vs the old prompt:
-#  - Explicit param names in every tool description
-#  - A ❌ / ✓ bad-vs-good example for the exact failure seen in logs
-#  - Reinforced that state= is always the on/off or lock/unlock parameter
-
-SYSTEM_PROMPT = (
-    "You are a home assistant AI. Use tools to control the home; respond in plain text when no tool is needed.\n"
-    "You can output MULTIPLE tool calls in a single turn if needed.\n"
-    "\n"
-    "ROOMS: bedroom, bathroom, office, hallway, kitchen, living_room\n"
-    "EXTERIOR DOORS: front, back, garage, side\n"
-    "INTERIOR DOORS: bedroom, bathroom, office, kitchen, living_room\n"
-    "\n"
-    "TOOLS — use EXACTLY these parameter names:\n"
-    "  toggle_lights(room=<room>, state='on'|'off')          — control a specific room\n"
-    "  toggle_all_lights(state='on'|'off')                   — ALL rooms at once\n"
-    "  lock_door(door=<door>, state='lock'|'unlock')         — control a specific door\n"
-    "  lock_all_doors(state='lock'|'unlock')                 — ALL doors at once\n"
-    "  set_thermostat(temperature=<60-80>, mode='heat'|'cool'|'auto')\n"
-    "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
-    "  intent_unclear(reason=<string>)\n"
-    "\n"
-    "DOOR NOTES:\n"
-    "  - 'open the bedroom door' → lock_door(door='bedroom', state='unlock')\n"
-    "  - 'open' and 'unlock' are synonyms for state='unlock'\n"
-    "  - 'close' and 'lock' are synonyms for state='lock'\n"
-    "  - Interior doors use the room name as the door identifier\n"
-    "\n"
-    "CRITICAL — parameter names matter:\n"
-    "  ❌ WRONG: [toggle_all_lights(room='off')]    ← 'room' is not a valid param\n"
-    "  ✓ RIGHT:  [toggle_all_lights(state='off')]   ← always use 'state' for on/off\n"
-    "  ❌ WRONG: [lock_all_doors(door='lock')]       ← 'door' is not a valid param here\n"
-    "  ✓ RIGHT:  [lock_all_doors(state='lock')]      ← always use 'state' for lock/unlock\n"
-    "\n"
-    "ROUTING RULES:\n"
-    "  - 'turn on/off all lights' or 'all lights on/off' → toggle_all_lights(state=...)\n"
-    "  - 'turn on/off the light' with a room context     → toggle_lights(room=..., state=...)\n"
-    "  - 'lock/unlock all doors'                         → lock_all_doors(state=...)\n"
-    "  - 'lock/unlock the [door] door'                   → lock_door(door=..., state=...)\n"
-    "\n"
-    "CONTEXT PROVIDED WITH EACH REQUEST:\n"
-    "  - [STATE: ...] shows the CURRENT state of all devices and the user's room.\n"
-    "    Use it to resolve: 'turn off what's on', 'lock what's unlocked', 'open them all'.\n"
-    "    Use current_user_room to resolve 'the light', 'this light', 'this door', 'the door' → they refer to the user's room.\n"
-    "    If current_user_room is empty, the room is unknown — ask or call intent_unclear.\n"
-    "  - [RECENT ACTIONS: ...] shows the last actions performed.\n"
-    "    Use it to resolve: 'undo that', 'do the same for kitchen', 'again', 'revert'.\n"
-    "\n"
-    "Call intent_unclear (never plain text) when the request is: ambiguous, off-topic, "
-    "incomplete (no target specified), or refers to an unsupported device (brightness, TV, music, etc.)."
-)
+def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str) -> str:
+    return (
+        "You are a smart home assistant AI. Use tools to control the home.\n\n"
+        "TOOLS:\n"
+        "  toggle_lights(room, state='on'|'off')\n"
+        "  toggle_all_lights(state='on'|'off')\n"
+        "  lock_door(door, state='lock'|'unlock')\n"
+        "  lock_all_doors(state='lock'|'unlock')\n"
+        "  set_thermostat(temperature=<int>, mode='heat'|'cool'|'auto')\n"
+        "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
+        "  control_tv(room, state='on'|'off')\n"
+        "  control_speaker(room, action='play'|'pause'|'stop'|'next'|'previous')\n"
+        "  intent_unclear(reason='off_topic'|'incomplete'|"
+        "'unsupported_device'|'unsupported_feature')\n\n"
+        f"CONNECTED ROOMS (lights): {', '.join(avail_r)}\n"
+        f"CONNECTED DOORS: {', '.join(avail_d)}\n"
+        f"CONNECTED TVs: {tv_str}\n"
+        f"CONNECTED SPEAKERS: {spk_str}\n\n"
+        "STATE RULES:\n"
+        "  [STATE:] shows all current device states. "
+        "tv={{room:state}} and speaker={{room:state}} list every connected device.\n"
+        "  State already matches request → plain text reply, NO tool call.\n"
+        "  Only rooms listed in tv={{}} have a TV; others → intent_unclear(unsupported_device).\n"
+        "  Only rooms listed in speaker={{}} have a speaker; others → intent_unclear(unsupported_device).\n"
+        "  TV/SPEAKER RESOLUTION (when user says 'the TV'/'the speaker' without naming a room):\n"
+        "    • Exactly one TV/speaker connected → use that room automatically.\n"
+        "    • Multiple connected + current_user_room has the device → use current_user_room.\n"
+        "    • Multiple connected + current_user_room has no device OR is empty → "
+        "intent_unclear(incomplete).\n"
+        "  LIGHT/DOOR RESOLUTION (when user says 'the light'/'the door'):\n"
+        "    • current_user_room set + room is connected → use current_user_room.\n"
+        "    • current_user_room set + room NOT connected → intent_unclear(unsupported_device).\n"
+        "    • current_user_room empty → intent_unclear(incomplete).\n"
+        "  [RECENT ACTIONS:] → resolve 'undo', 'again', 'same for X'.\n"
+        "  SYNONYMS: 'open'='unlock'; 'close'/'shut'='lock'; "
+        "'skip'='next'; 'back'/'go back'='previous'."
+    )
 
 
 def get_model_name(backend: str) -> str:
@@ -92,7 +77,8 @@ def parse_tool_calls_from_text(text: str) -> list[dict]:
     # Restrict parsing to known tools so we don't accidentally parse normal English words
     valid_tools = {
         "toggle_lights", "toggle_all_lights", "lock_door", 
-        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear"
+        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
+        "control_tv", "control_speaker"
     }
     
     # Matches func_name(...) without getting confused by outer brackets.
@@ -127,7 +113,8 @@ def clean_text_response(text: str) -> str:
     """Remove tool call syntax and JSON objects from a text response."""
     valid_tools = {
         "toggle_lights", "toggle_all_lights", "lock_door", 
-        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear"
+        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
+        "control_tv", "control_speaker"
     }
     # 1. Remove tool call syntax like [func(args)], (func(args)), or just func(args)
     # We build a regex from the valid_tools set for safety.
@@ -147,6 +134,7 @@ def clean_text_response(text: str) -> str:
 
 def run_agent(
     user_message: str,
+    system_prompt: str,
     backend: str = "local",
     on_tool_call=None,
     messages_out: list | None = None,
@@ -165,7 +153,7 @@ def run_agent(
     print(f"[Agent] Prompt: {user_message[:200]}...")
 
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
     ]
 
@@ -292,6 +280,7 @@ def run_agent(
 
 def run_agent_stream(
     user_message: str,
+    system_prompt: str,
     backend: str = "local",
     temperature: float = 0.0,
     messages_out: list | None = None,
@@ -314,7 +303,7 @@ def run_agent_stream(
     print(f"[Stream] Prompt: {user_message[:200]}...")
 
     messages: list[dict] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
     ]
 

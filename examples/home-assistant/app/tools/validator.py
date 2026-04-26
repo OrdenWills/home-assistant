@@ -18,6 +18,9 @@ _THERMO  = {"heat", "cool", "auto"}
 _SCENES  = {"movie_night", "bedtime", "morning", "away", "party"}
 _ROOMS   = {"bedroom", "bathroom", "office", "hallway", "kitchen", "living_room"}
 _DOORS   = {"front", "back", "garage", "side", "bedroom", "bathroom", "office", "kitchen", "living_room"}
+_TV_ROOMS = {"living_room", "bedroom"}
+_SPEAKER_ROOMS = {"living_room", "bedroom", "kitchen", "office", "hallway"}
+_SPEAKER_ACTIONS = {"play", "pause", "stop", "next", "previous"}
 
 # ── Required-param schema ──────────────────────────────────────────────────────
 # Maps tool_name → {param: allowed_values_or_None}
@@ -30,6 +33,8 @@ PARAM_SCHEMA: dict[str, dict[str, set | None]] = {
     "lock_all_doors":    {"state": _LOCK_OP},
     "set_thermostat":    {"temperature": None, "mode": _THERMO},
     "set_scene":         {"scene": _SCENES},
+    "control_tv":        {"room": _TV_ROOMS, "state": _ON_OFF},
+    "control_speaker":   {"room": _SPEAKER_ROOMS, "action": _SPEAKER_ACTIONS},
     "intent_unclear":    {"reason": None},
 }
 
