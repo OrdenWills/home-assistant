@@ -1548,6 +1548,22 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   border-left: 4px solid var(--red); 
 }
 
+
+/* ── Mobile Chat UI Elements (Hidden on Desktop by Default) ── */
+#mobile-chat-backdrop,
+#mobile-chat-fab,
+#mobile-chat-close {
+  display: none;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+
 /* ── Mobile & Tablet Responsiveness ── */
 @media (max-width: 900px) {
   
@@ -1574,72 +1590,125 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
     height: auto; 
   }
 
-  /* Flatten the inner structures so the individual panels become flex children of 'main' */
   #house-panel, #side-panel {
     display: contents; 
   }
 
-  .panel, #chat-panel {
+  .panel {
     flex: none; 
   }
 
   /* Re-order panels to create a logical mobile flow */
-  .panel-floorplan { 
-    order: 1; 
-    min-height: 280px; 
-    padding-bottom: 20px; 
-  }
-  
-  #temperature-panel { 
-    order: 2; 
-    min-height: 280px; 
-    border-radius: var(--radius-md); 
-  }
-  
+  .panel-floorplan { order: 1; min-height: 280px; padding-bottom: 20px; }
+  #temperature-panel { order: 2; min-height: 280px; border-radius: var(--radius-md); }
   #house-panel > .panel:nth-child(2) { order: 3; } /* Current Room & Lights */
   #house-panel > .panel:nth-child(4) { order: 4; } /* Doors */
   #house-panel > .panel:nth-child(3) { order: 5; } /* Gadgets */
   #house-panel > .panel:nth-child(5) { order: 6; } /* Scenes */
   
-  /* Provide a large space for the chat at the bottom */
-  #chat-panel {
-    order: 10;
-    margin: 0;
-    margin-top: 8px;
-    border-radius: var(--radius-lg);
-    min-height: 500px;
-    height: 75dvh;
-    -webkit-mask-image: none; /* Remove edge fading from desktop */
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  }
-
   /* Adjust grids for narrower screens */
-  .house-body {
-    min-height: 220px;
-  }
-  
-  .fp-room-label {
-    font-size: 9px;
-  }
+  .house-body { min-height: 220px; }
+  .fp-room-label { font-size: 9px; }
 
   #doors-grid {
     grid-template-columns: repeat(3, 1fr);
     grid-auto-rows: minmax(60px, auto);
     gap: 6px;
   }
+  #doors-grid .device-card { padding: 8px 4px; }
+  .msg-wrapper { max-width: 95%; }
 
-  #doors-grid .device-card {
-    padding: 8px 4px;
+  /* --- MOBILE CHAT MODAL OVERRIDES --- */
+  
+  /* Reveal the floating button on mobile */
+  #mobile-chat-fab {
+    display: flex; 
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--gradient);
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 999;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   
-  .msg-wrapper {
-    max-width: 95%; /* Use more width on mobile chatting */
+  #mobile-chat-fab:active {
+    transform: scale(0.92);
+  }
+
+  /* Reveal the background dimming layer */
+  #mobile-chat-backdrop {
+    display: block; 
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(0.25px);
+    -webkit-backdrop-filter: blur(1px);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  #mobile-chat-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Extract chat panel from layout and make it a bottom sheet */
+  #chat-panel {
+    position: fixed;
+    bottom: 16px; /* Floating slightly off the bottom */
+    right: 16px;  /* Attached to the right side */
+    left: auto;   /* Overrides the stretch to left */
+    width: 78%;   /* ⬇️ Takes up ~75%, leaving left screen visible */
+    min-width: 300px; /* Prevents it from getting too skinny on tiny phones */
+    height: 65dvh; /* ⬇️ Reduced height (was 85dvh) */
+    margin: 0;
+    z-index: 1001;
+    border-radius: 24px; /* Rounded on all corners since it's floating */
+    transform: translateY(120%) scale(0.95); /* Slides up and scales slightly */
+    opacity: 0;
+    pointer-events: none; /* Prevents phantom clicks when hidden */
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1), opacity 0.3s ease;
+    box-shadow: -4px 10px 40px rgba(0, 0, 0, 0.18); /* Shadow shifts to the left */
+    border: 1px solid var(--border-light);
+    -webkit-mask-image: none; 
+  }
+
+  #chat-panel.active {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* Reveal the close 'X' button inside the chat header */
+  #mobile-chat-close {
+    display: flex; 
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border-light);
+    background: var(--surface-2);
+    color: var(--text-muted);
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   }
 }
 
 @media (max-width: 480px) {
   .brand-app, .brand-sep {
-    display: none; /* Hide subtitle completely on small phones */
+    display: none; 
   }
   
   .model-dropdown {
