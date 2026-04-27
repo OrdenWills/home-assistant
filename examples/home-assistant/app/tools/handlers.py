@@ -134,6 +134,16 @@ def control_speaker(room: str, action: str) -> dict:
     return {"success": True, "room": room, "action": action}
 
 
+def control_fan(room: str, state: str, speed: str = None) -> dict:
+    if "fan" not in home_state or room not in home_state["fan"]:
+        return {"success": False, "error": f"No fan in {room}"}
+    home_state["fan"][room]["state"] = state
+    if speed:
+        home_state["fan"][room]["speed"] = speed
+    persist_state()
+    return {"success": True, "room": room, "state": state, "speed": home_state["fan"][room].get("speed")}
+
+
 TOOL_HANDLERS = {
     "toggle_lights":     toggle_lights,
     "set_thermostat":    set_thermostat,
@@ -145,4 +155,5 @@ TOOL_HANDLERS = {
     "intent_unclear":    intent_unclear,
     "control_tv":        control_tv,
     "control_speaker":   control_speaker,
+    "control_fan":       control_fan,
 }

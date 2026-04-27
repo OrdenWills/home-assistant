@@ -135,6 +135,22 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "control_fan",
+            "description": "Turn the fan on or off in a specific room.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "room":  {"type": "string", "enum": ["living_room", "bedroom", "kitchen", "office"]},
+                    "state": {"type": "string", "enum": ["on", "off"]},
+                    "speed": {"type": "string", "enum": ["low", "medium", "high"]}
+                },
+                "required": ["room", "state"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "intent_unclear",
             "description": (
                 "Call this tool instead of responding with text when the request cannot be fulfilled. "

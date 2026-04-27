@@ -18,7 +18,7 @@ BACKENDS = {
     "openai": {"client": openai_client, "model": "gpt-4o-mini"},
 }
 
-def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str) -> str:
+def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, fan_str: str) -> str:
     return (
         "You are a smart home assistant AI. Use tools to control the home.\n\n"
         "TOOLS:\n"
@@ -29,33 +29,33 @@ def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str) -
         "  set_thermostat(temperature=<int>, mode='heat'|'cool'|'auto')\n"
         "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
         "  control_tv(room, state='on'|'off')\n"
+        "  control_fan(room, state='on'|'off'[, speed='low'|'medium'|'high'])\n"
         "  control_speaker(room, action='play'|'pause'|'stop'|'next'|'previous')\n"
         "  intent_unclear(reason='off_topic'|'incomplete'|"
         "'unsupported_device'|'unsupported_feature')\n\n"
         f"CONNECTED ROOMS (lights): {', '.join(avail_r)}\n"
         f"CONNECTED DOORS: {', '.join(avail_d)}\n"
         f"CONNECTED TVs: {tv_str}\n"
-        f"CONNECTED SPEAKERS: {spk_str}\n\n"
+        f"CONNECTED SPEAKERS: {spk_str}\n"
+        f"CONNECTED FANS: {fan_str}\n\n"
         "STATE RULES:\n"
-        "  [STATE:] shows all current device states. "
-        "tv={{room:state}} and speaker={{room:state}} list every connected device.\n"
+        "  [STATE:] shows all current device states.\n"
         "  State already matches request → plain text reply, NO tool call.\n"
-        "  Only rooms listed in tv={{}} have a TV; others → intent_unclear(unsupported_device).\n"
-        "  Only rooms listed in speaker={{}} have a speaker; others → intent_unclear(unsupported_device).\n"
-        "  TV/SPEAKER RESOLUTION (when user says 'the TV'/'the speaker' without naming a room):\n"
-        "    • Exactly one TV/speaker connected → use that room automatically.\n"
-        "    • Multiple connected + current_user_room has the device → use current_user_room.\n"
-        "    • Multiple connected + current_user_room has no device OR is empty → "
-        "intent_unclear(incomplete).\n"
-        "  LIGHT/DOOR RESOLUTION (when user says 'the light'/'the door'):\n"
-        "    • current_user_room set + room is connected → use current_user_room.\n"
-        "    • current_user_room set + room NOT connected → intent_unclear(unsupported_device).\n"
-        "    • current_user_room empty → intent_unclear(incomplete).\n"
+        "  Only rooms listed under CONNECTED TVs/SPEAKERS/FANS have those devices.\n"
+        "  Requesting a device in an unlisted room → intent_unclear(unsupported_device).\n\n"
+        "TV / SPEAKER / FAN RESOLUTION when user says 'the TV'/'the fan'/'the speaker':\n"
+        "  1. Exactly one connected → use that room automatically.\n"
+        "  2. Multiple connected + current_user_room has device → use current_user_room.\n"
+        "  3. Multiple connected + exactly ONE is in the eligible state for the action\n"
+        "     (e.g. only one TV is on and user says 'turn off the TV') → infer that room.\n"
+        "  4. Multiple connected + ambiguous (rule 2 & 3 don't apply) → intent_unclear(incomplete).\n\n"
+        "LIGHT / DOOR RESOLUTION:\n"
+        "  current_user_room set + connected → use current_user_room.\n"
+        "  current_user_room set + NOT connected → intent_unclear(unsupported_device).\n"
+        "  current_user_room empty → intent_unclear(incomplete).\n\n"
         "  [RECENT ACTIONS:] → resolve 'undo', 'again', 'same for X'.\n"
-        "  SYNONYMS: 'open'='unlock'; 'close'/'shut'='lock'; "
-        "'skip'='next'; 'back'/'go back'='previous'."
+        "  SYNONYMS: 'open'='unlock'; 'close'/'shut'='lock'; 'skip'='next'; 'back'='previous'."
     )
-
 
 def get_model_name(backend: str) -> str:
     if backend == "local":
@@ -78,7 +78,7 @@ def parse_tool_calls_from_text(text: str) -> list[dict]:
     valid_tools = {
         "toggle_lights", "toggle_all_lights", "lock_door", 
         "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
-        "control_tv", "control_speaker"
+        "control_tv", "control_speaker", "control_fan"
     }
     
     # Matches func_name(...) without getting confused by outer brackets.
@@ -114,7 +114,7 @@ def clean_text_response(text: str) -> str:
     valid_tools = {
         "toggle_lights", "toggle_all_lights", "lock_door", 
         "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
-        "control_tv", "control_speaker"
+        "control_tv", "control_speaker", "control_fan"
     }
     # 1. Remove tool call syntax like [func(args)], (func(args)), or just func(args)
     # We build a regex from the valid_tools set for safety.
@@ -156,6 +156,8 @@ def run_agent(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
     ]
+
+    print(sys)
 
     seen_calls: set[str] = set()
     max_iter = 5

@@ -229,7 +229,7 @@
           <div class="panel-label">Gadgets</div>
           <div class="panel-body">
             <div class="device-grid" id="gadgets-grid">
-              <div class="device-card" id="gadget-tv">
+              <div class="device-card" id="gadget-tv-living_room" data-room="living_room">
                 <div class="icon-circle">
                   <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -239,7 +239,7 @@
                 </div>
                 <span class="device-name">TV</span>
               </div>
-              <div class="device-card" id="gadget-speaker">
+              <div class="device-card" id="gadget-speaker-living_room" data-room="living_room">
                 <div class="icon-circle">
                   <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -866,6 +866,25 @@
           }
         }
       }
+      
+      // Update TV
+      for (const [room, tvState] of Object.entries(state.tv || {})) {
+        const el = document.getElementById(`gadget-tv-${room}`);
+        if (el) {
+          if (tvState === "on") el.classList.add("active-gadget");
+          else el.classList.remove("active-gadget");
+        }
+      }
+      
+      // Update Speaker
+      for (const [room, spkState] of Object.entries(state.speaker || {})) {
+        const el = document.getElementById(`gadget-speaker-${room}`);
+        if (el) {
+          if (spkState === "playing") el.classList.add("active-gadget");
+          else el.classList.remove("active-gadget");
+        }
+      }
+      
       document.querySelectorAll(".scene-item").forEach(el => el.classList.remove("scene-active"));
       if (state.active_scene) {
         const sceneEl = document.getElementById(`scene-${state.active_scene}`);

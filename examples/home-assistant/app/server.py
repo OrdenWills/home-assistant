@@ -379,6 +379,7 @@ def _summarise_tool(name: str, args: dict, result: dict) -> str:
     if name == "set_scene":        return f"{args['scene'].replace('_',' ').title()} scene activated."
     if name == "control_tv":       return f"{args['room'].replace('_',' ').title()} TV turned {args['state']}."
     if name == "control_speaker":  return f"{args['room'].replace('_',' ').title()} speaker: {args['action']}."
+    if name == "control_fan":      return f"{args['room'].replace('_',' ').title()} fan turned {args['state']}."
     if name == "intent_unclear":   return f"Intent unclear ({args.get('reason','?')})."
     return "Done."
 
@@ -468,9 +469,11 @@ def chat(req: ChatRequest):
     avail_d = list(home_state["doors"].keys())
     tv_rooms = list(home_state.get("tv", {}).keys())
     spk_rooms = list(home_state.get("speaker", {}).keys())
+    fan_rooms = list(home_state.get("fan", {}).keys())
     tv_str = ", ".join(tv_rooms) if tv_rooms else "none"
     spk_str = ", ".join(spk_rooms) if spk_rooms else "none"
-    system_prompt = get_system_prompt(avail_r, avail_d, tv_str, spk_str)
+    fan_str = ", ".join(fan_rooms) if fan_rooms else "none"
+    system_prompt = get_system_prompt(avail_r, avail_d, tv_str, spk_str, fan_str)
 
     # 4. Cache lookup
     current_snapshot = build_snapshot(home_state)
@@ -575,9 +578,11 @@ def chat_stream(req: ChatRequest):
     avail_d = list(home_state["doors"].keys())
     tv_rooms = list(home_state.get("tv", {}).keys())
     spk_rooms = list(home_state.get("speaker", {}).keys())
+    fan_rooms = list(home_state.get("fan", {}).keys())
     tv_str = ", ".join(tv_rooms) if tv_rooms else "none"
     spk_str = ", ".join(spk_rooms) if spk_rooms else "none"
-    system_prompt = get_system_prompt(avail_r, avail_d, tv_str, spk_str)
+    fan_str = ", ".join(fan_rooms) if fan_rooms else "none"
+    system_prompt = get_system_prompt(avail_r, avail_d, tv_str, spk_str, fan_str)
 
     def generate():
         # ── Short-circuit path for relative keywords ──────────────────────────

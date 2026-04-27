@@ -52,6 +52,12 @@ home_state: dict = {
         "kitchen": "stopped",
         "office": "stopped",
         "hallway": "stopped",
+    },
+    "fan": {
+        "living_room": {"state": "off", "speed": "medium"},
+        "bedroom": {"state": "off", "speed": "medium"},
+        "kitchen": {"state": "off", "speed": "medium"},
+        "office": {"state": "off", "speed": "medium"},
     }
 }
 
@@ -90,13 +96,13 @@ def load_state(path: Path = _DB_PATH) -> None:
         stored = json.loads(row["payload"])
         
         # Deep merge for structured device dictionaries to preserve new keys
-        for key in ["lights", "doors", "tv", "speaker"]:
+        for key in ["lights", "doors", "tv", "speaker", "fan"]:
             if key in stored and isinstance(stored[key], dict):
                 home_state[key].update(stored[key])
         
         # Shallow update for other top-level keys
         for key, value in stored.items():
-            if key not in ["lights", "doors", "tv", "speaker"]:
+            if key not in ["lights", "doors", "tv", "speaker", "fan"]:
                 home_state[key] = value
                 
         print("[State] Restored persisted home state from DB (merged).")
@@ -147,6 +153,7 @@ def build_state_summary(current_room: str | None = None) -> str:
     )
     tv_str = ", ".join(f"{r}:{s}" for r, s in sorted(home_state.get("tv", {}).items())) if home_state.get("tv") else ""
     sp_str = ", ".join(f"{r}:{s}" for r, s in sorted(home_state.get("speaker", {}).items())) if home_state.get("speaker") else ""
+    fan_str = ", ".join(f"{r}:{d['state']}({d.get('speed', 'medium')})" for r, d in sorted(home_state.get("fan", {}).items())) if home_state.get("fan") else ""
     therm = home_state["thermostat"]
     scene = home_state.get("active_scene") or "none"
     room = current_room or ""
@@ -157,6 +164,7 @@ def build_state_summary(current_room: str | None = None) -> str:
         f"scene={scene}, "
         f"tv={{{tv_str}}}, "
         f"speaker={{{sp_str}}}, "
+        f"fan={{{fan_str}}}, "
         f"current_user_room={room}]"
     )
 

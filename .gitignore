@@ -43,3 +43,4 @@ examples/home-assistant/datasets/failure_set.jsonl
 examples/home-assistant/datasets/golden_set.jsonl
 examples/home-assistant/assets/style_backup.css
 examples/home-assistant/app/server_backup.py
+examples/home-assistant/stage2_dataset_v4.jsonl
