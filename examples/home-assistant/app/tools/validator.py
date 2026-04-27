@@ -21,6 +21,8 @@ _DOORS   = {"front", "back", "garage", "side", "bedroom", "bathroom", "office", 
 _TV_ROOMS = {"living_room", "bedroom"}
 _SPEAKER_ROOMS = {"living_room", "bedroom", "kitchen", "office", "hallway"}
 _SPEAKER_ACTIONS = {"play", "pause", "stop", "next", "previous"}
+_FAN_ROOMS = {"living_room", "bedroom", "kitchen", "office"}
+_FAN_SPEEDS = {"low", "medium", "high"}
 
 # ── Required-param schema ──────────────────────────────────────────────────────
 # Maps tool_name → {param: allowed_values_or_None}
@@ -35,6 +37,7 @@ PARAM_SCHEMA: dict[str, dict[str, set | None]] = {
     "set_scene":         {"scene": _SCENES},
     "control_tv":        {"room": _TV_ROOMS, "state": _ON_OFF},
     "control_speaker":   {"room": _SPEAKER_ROOMS, "action": _SPEAKER_ACTIONS},
+    "control_fan":       {"room": _FAN_ROOMS, "state": _ON_OFF},
     "intent_unclear":    {"reason": None},
 }
 
@@ -116,6 +119,12 @@ def validate_tool_call(tool_name: str, args: dict[str, Any]) -> str | None:
                 errors.append(f"'temperature' must be 60–80°F, got {t}")
         except (TypeError, ValueError):
             errors.append(f"'temperature' must be a number, got {args['temperature']!r}")
+
+    # Extra check for fan speed (optional)
+    if tool_name == "control_fan" and "speed" in args:
+        val = str(args["speed"]).lower()
+        if val not in _FAN_SPEEDS:
+            errors.append(f"invalid value for 'speed': got {args['speed']!r}, expected one of {sorted(_FAN_SPEEDS)}")
 
     if errors:
         return (

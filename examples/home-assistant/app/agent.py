@@ -157,7 +157,7 @@ def run_agent(
         {"role": "user", "content": user_message},
     ]
 
-    print(sys)
+    # print(sys)
 
     seen_calls: set[str] = set()
     max_iter = 5
