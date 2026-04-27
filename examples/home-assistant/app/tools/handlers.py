@@ -53,6 +53,10 @@ def set_scene(scene: str) -> dict:
 
     if scene == "movie_night":
         lights["living_room"]["state"] = "on"
+        if "tv" in home_state and "living_room" in home_state["tv"]:
+            home_state["tv"]["living_room"] = "on"
+        if "speaker" in home_state and "living_room" in home_state["speaker"]:
+            home_state["speaker"]["living_room"] = "playing"
         therm["temperature"] = 72
         therm["mode"] = "auto"
     elif scene == "bedtime":
@@ -60,6 +64,10 @@ def set_scene(scene: str) -> dict:
             lights[room]["state"] = "off"
         for door in doors:
             doors[door] = "locked"
+        for room in home_state.get("tv", {}):
+            home_state["tv"][room] = "off"
+        for room in home_state.get("speaker", {}):
+            home_state["speaker"][room] = "stopped"
         therm["temperature"] = 68
         therm["mode"] = "auto"
     elif scene == "morning":

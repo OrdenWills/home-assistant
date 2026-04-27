@@ -546,6 +546,19 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   color: var(--green);
 }
 
+.active-gadget {
+  background: var(--accent-dim) !important;
+  border-color: rgba(168, 85, 247, 0.25) !important;
+}
+
+.active-gadget .device-icon {
+  color: var(--accent) !important;
+}
+
+.active-gadget .device-name {
+  color: var(--text) !important;
+}
+
 #doors-grid {
   grid-template-columns: repeat(5, 1fr);
   grid-auto-rows: minmax(0, 1fr);
