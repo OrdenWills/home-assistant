@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from huggingface_hub import hf_hub_download
 
-from app.agent import local_client, run_agent, run_agent_stream, get_system_prompt
+from app.agent import run_agent_stream, get_system_prompt
 from app.state import (
     home_state, load_state,
     build_state_summary, log_action, build_action_log_context, action_log,
@@ -390,152 +390,6 @@ class ChatRequest(BaseModel):
     current_room: str | None = None
 
 
-@app.post("/chat")
-def chat(req: ChatRequest):
-    # 1. Gate
-    if active_backend == "local" and llama_status != "ready":
-        msg = {
-            "starting": "Model is still loading, please wait.",
-            "idle":     "No local model loaded. Select a model from the LFM Local dropdown.",
-            "error":    f"Local model failed to start: {llama_error}",
-        }.get(llama_status, "Local model is not ready.")
-        return JSONResponse({"text": msg, "tool_calls": []}, status_code=503)
-
-    # 2. Short-circuit for relative keywords (performance optimisation)
-    is_relative = _has_relative_keyword(req.message)
-    if is_relative:
-        msg_lower = req.message.lower()
-        target_state = "off" if any(w in msg_lower for w in ("off", "disable")) else \
-                       "on"  if any(w in msg_lower for w in ("on", "enable"))  else None
-
-        if target_state:
-            candidate_rooms = [
-                r for r, data in home_state.get("lights", {}).items()
-                if data.get("state") != target_state and r != req.current_room
-            ]
-            if candidate_rooms:
-                events = []
-                summaries = []
-                for room in candidate_rooms:
-                    args   = {"room": room, "state": target_state}
-                    result = TOOL_HANDLERS["toggle_lights"](**args)
-                    events.append({"name": "toggle_lights", "args": args, "result": result})
-                    summary = f"{room.replace('_', ' ').title()} light turned {target_state}."
-                    summaries.append(summary)
-                    log_action("toggle_lights", args, summary)
-                    print(f"[ShortCircuit] toggle_lights(room={room!r}, state={target_state!r}) → {result}")
-
-                text = " ".join(summaries)
-                turn_id = _new_turn_id()
-                chat_turns.append({
-                    "turn_id": turn_id,
-                    "user": req.message,
-                    "system_prompt": "",
-                    "resolved_message": "",   # short-circuit; no LLM prompt
-                    "current_room": req.current_room,
-                    "assistant": text,
-                    "tool_calls": events,
-                })
-
-                current_snapshot = build_snapshot(home_state)
-                to_cache = [{"name": e["name"], "args": e["args"]} for e in events]
-                set_cached(req.message, to_cache, current_snapshot)
-
-                return JSONResponse({
-                    "text": text,
-                    "tool_calls": events,
-                    "turn_id": turn_id,
-                    "cached": False,
-                })
-            else:
-                text = f"The other lights are already {target_state}."
-                turn_id = _new_turn_id()
-                chat_turns.append({
-                    "turn_id": turn_id,
-                    "user": req.message,
-                    "system_prompt": "",
-                    "resolved_message": "",
-                    "current_room": req.current_room,
-                    "assistant": text,
-                    "tool_calls": [],
-                })
-                return JSONResponse({"text": text, "tool_calls": [], "turn_id": turn_id, "cached": False})
-
-    # 3. Build resolved message with [STATE: ...] + [RECENT ACTIONS: ...] prefix
-    resolved_message = _build_resolved_message(req.message, req.current_room)
-    print(f"[Chat] Resolved message: {resolved_message[:200]}...")
-
-    avail_r = list(home_state["lights"].keys())
-    avail_d = list(home_state["doors"].keys())
-    tv_rooms = list(home_state.get("tv", {}).keys())
-    spk_rooms = list(home_state.get("speaker", {}).keys())
-    fan_rooms = list(home_state.get("fan", {}).keys())
-    tv_str = ", ".join(tv_rooms) if tv_rooms else "none"
-    spk_str = ", ".join(spk_rooms) if spk_rooms else "none"
-    fan_str = ", ".join(fan_rooms) if fan_rooms else "none"
-    system_prompt = get_system_prompt(avail_r, avail_d, tv_str, spk_str, fan_str)
-
-    # 4. Cache lookup
-    current_snapshot = build_snapshot(home_state)
-    cached = get_cached(resolved_message, current_snapshot)
-    if cached:
-        print(f"[Cache] HIT for: {req.message!r}")
-        events, text = _replay_cached_tools(cached)
-        for e in events:
-            log_action(e["name"], e["args"], _summarise_tool(e["name"], e["args"], e["result"]))
-        turn_id = _new_turn_id()
-        chat_turns.append({
-            "turn_id": turn_id,
-            "user": req.message,
-            "system_prompt": system_prompt,
-            "resolved_message": resolved_message,
-            "current_room": req.current_room,
-            "assistant": text,
-            "tool_calls": events,
-        })
-        return JSONResponse({"text": text, "tool_calls": events, "turn_id": turn_id, "cached": True})
-
-    # 5. Cache miss — invoke model
-    print(f"[Cache] MISS for: {req.message!r} — invoking model")
-    events: list[dict] = []
-
-    def on_tool_call(name, args, result):
-        print(f"[Server] Tool: {name}({args}) → {result}")
-        events.append({"name": name, "args": args, "result": result})
-        log_action(name, args, _summarise_tool(name, args, result))
-
-    try:
-        text = run_agent(
-            user_message=resolved_message,
-            system_prompt=system_prompt,
-            backend=active_backend,
-            on_tool_call=on_tool_call,
-        )
-    except Exception as e:
-        return JSONResponse({"text": f"Error: {e}", "tool_calls": events}, status_code=500)
-
-    turn_id = _new_turn_id()
-    chat_turns.append({
-        "turn_id": turn_id,
-        "user": req.message,
-        "system_prompt": system_prompt,
-        "resolved_message": resolved_message,
-        "current_room": req.current_room,
-        "assistant": text,
-        "tool_calls": events,
-    })
-
-    # 6. Cache only successful, non-unclear tool calls
-    action_events = [
-        e for e in events
-        if e["name"] != "intent_unclear" and e.get("result", {}).get("success")
-    ]
-    if action_events:
-        to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
-        set_cached(resolved_message, to_cache, current_snapshot)
-        print(f"[Cache] STORED {len(to_cache)} call(s) for: {req.message!r}")
-
-    return JSONResponse({"text": text, "tool_calls": events, "turn_id": turn_id, "cached": False})
 
 @app.post("/chat/stream")
 def chat_stream(req: ChatRequest):
@@ -741,6 +595,7 @@ def chat_stream(req: ChatRequest):
                 chat_turns.append({
                     "turn_id": turn_id,
                     "user": req.message,
+                    "system_prompt": system_prompt,
                     "resolved_message": resolved_message,
                     "current_room": req.current_room,
                     "assistant": final_text,

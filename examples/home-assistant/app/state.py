@@ -44,14 +44,14 @@ home_state: dict = {
     "active_scene": None,
     "tv": {
         "living_room": "off",
-        "bedroom": "off",
+        # "bedroom": "off",
     },
     "speaker": {
         "living_room": "stopped",
-        "bedroom": "stopped",
-        "kitchen": "stopped",
-        "office": "stopped",
-        "hallway": "stopped",
+        # "bedroom": "stopped",
+        # "kitchen": "stopped",
+        # "office": "stopped",
+        # "hallway": "stopped",
     },
     "fan": {
         "living_room": {"state": "off", "speed": "medium"},
