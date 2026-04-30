@@ -18,7 +18,7 @@ MODELS = [
         "id": "home-assistant-sft-small-8bit",
         "name": "Home Assistant SFT (Finetuned 350M)",
         "repo": "OrdenWills/LFM2.5-350M-home-assistant-sft",
-        "file": "LFM2.5-350M-home-assistant-sft-stage2.Q8_0.gguf",             # Changed from Q4_K_M to Q8_0
+        "file": "LFM2.5-350M.Q8_0.gguf",             # Changed from Q4_K_M to Q8_0
         "priority": 0,
     },
     {
