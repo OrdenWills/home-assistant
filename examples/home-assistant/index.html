@@ -569,6 +569,20 @@
 
     // ── Submit feedback to server ─────────────────────────────
 
+    function applyFeedbackUI(rating, upBtn, downBtn) {
+      if (rating === "positive") {
+        upBtn.classList.add("active");
+        upBtn.classList.remove("grayed-out");
+        downBtn.classList.add("grayed-out");
+        downBtn.classList.remove("active");
+      } else if (rating === "negative") {
+        downBtn.classList.add("active");
+        downBtn.classList.remove("grayed-out");
+        upBtn.classList.add("grayed-out");
+        upBtn.classList.remove("active");
+      }
+    }
+
     async function submitFeedback(turnId, rating, upBtn, downBtn) {
       if (turnId === null || turnId === undefined) {
         showFeedbackToast("⚠ Response not yet linked to a turn — try again in a moment.", "negative");
@@ -581,17 +595,10 @@
           body: JSON.stringify({ turn_id: turnId, rating }),
         });
         if (res.ok) {
+          applyFeedbackUI(rating, upBtn, downBtn);
           if (rating === "positive") {
-            upBtn.classList.add("active");
-            upBtn.classList.remove("grayed-out");
-            downBtn.classList.add("grayed-out");
-            downBtn.classList.remove("active");
             showFeedbackToast("👍 Saved to golden set", "positive");
           } else {
-            downBtn.classList.add("active");
-            downBtn.classList.remove("grayed-out");
-            upBtn.classList.add("grayed-out");
-            upBtn.classList.remove("active");
             showFeedbackToast("👎 Saved to failure set", "negative");
           }
         } else {
@@ -1291,6 +1298,12 @@
           // Re-link turn_id so feedback buttons work on restored history too
           if (turn.turn_id !== undefined) {
             assistantMsg.container.dataset.turnId = turn.turn_id;
+          }
+          // Restore feedback reaction state
+          if (turn.rating) {
+            const upBtn = assistantMsg.container.querySelector(".thumb-up");
+            const downBtn = assistantMsg.container.querySelector(".thumb-down");
+            if (upBtn && downBtn) applyFeedbackUI(turn.rating, upBtn, downBtn);
           }
           if (turn.tool_calls && turn.tool_calls.length > 0) {
             appendToolCalls(turn.tool_calls);

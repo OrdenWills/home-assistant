@@ -339,6 +339,7 @@ def submit_feedback(req: FeedbackRequest):
         return JSONResponse({"error": f"turn_id {req.turn_id} not found"}, status_code=404)
 
     dest = _write_dataset_entry(turn, req.rating)
+    turn["rating"] = req.rating
     return JSONResponse({"ok": True, "stored_in": dest})
 
 @app.get("/dataset/stats")
