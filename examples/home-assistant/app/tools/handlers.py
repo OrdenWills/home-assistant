@@ -1,6 +1,13 @@
 import os
 import random
+import pygame
 from app.state import home_state, persist_state
+
+# Initialize pygame mixer for audio playback
+try:
+    pygame.mixer.init()
+except Exception as e:
+    print(f"Pygame mixer init failed: {e}")
 
 
 def toggle_lights(room: str, state: str) -> dict:
@@ -132,6 +139,8 @@ def control_speaker(room: str, action: str) -> dict:
     if "speaker" not in home_state or room not in home_state["speaker"]:
         return {"success": False, "error": f"No speaker in {room}"}
     
+    current_status = home_state["speaker"][room]
+    
     if action == "play":
         home_state["speaker"][room] = "playing"
     elif action == "pause":
@@ -139,25 +148,54 @@ def control_speaker(room: str, action: str) -> dict:
     elif action == "stop":
         home_state["speaker"][room] = "stopped"
     elif action in ["next", "previous"]:
-        if home_state["speaker"][room] == "stopped":
-            home_state["speaker"][room] = "playing"
+        home_state["speaker"][room] = "playing"
     
     persist_state()
     
     res = {"success": True, "room": room, "action": action, "state": home_state["speaker"][room]}
     
-    # If a music folder is selected, "simulate" media handling
+    # Real audio playback logic
     music_folder = home_state.get("music_folder")
     if music_folder and os.path.exists(music_folder):
         try:
-            files = [f for f in os.listdir(music_folder) if f.lower().endswith(('.mp3', '.wav', '.m4a', '.flac'))]
+            # Filter for common audio files
+            files = sorted([f for f in os.listdir(music_folder) if f.lower().endswith(('.mp3', '.wav', '.ogg'))])
             if files:
                 res["library_count"] = len(files)
+                idx = home_state.get("current_track_index", 0)
+                
+                # Boundary check
+                if idx >= len(files): idx = 0
+                
+                if action == "next":
+                    idx = (idx + 1) % len(files)
+                elif action == "previous":
+                    idx = (idx - 1) % len(files)
+                
+                home_state["current_track_index"] = idx
+                persist_state()
+                
+                track_name = files[idx]
+                track_path = os.path.join(music_folder, track_name)
+                res["current_track"] = track_name
+                
+                # Perform actual audio actions
                 if action in ["play", "next", "previous"]:
-                    # In a real app we'd track current index, here we just pick one to show it's working
-                    res["current_track"] = random.choice(files)
-        except Exception:
-            pass
+                    try:
+                        pygame.mixer.music.load(track_path)
+                        pygame.mixer.music.play()
+                    except Exception as e:
+                        res["playback_error"] = str(e)
+                elif action == "pause":
+                    pygame.mixer.music.pause()
+                elif action == "stop":
+                    pygame.mixer.music.stop()
+                elif action == "resume" or (action == "play" and current_status == "paused"):
+                    pygame.mixer.music.unpause()
+            else:
+                res["info"] = "No supported audio files found in folder."
+        except Exception as e:
+            res["error"] = f"Folder error: {str(e)}"
             
     return res
 
