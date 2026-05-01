@@ -371,6 +371,28 @@ def submit_feedback(req: FeedbackRequest):
     turn["rating"] = req.rating
     if req.comment:
         turn["comment"] = req.comment
+
+    # Store in situational cache if approved (positive feedback)
+    if req.rating == "positive":
+        tool_calls = turn.get("tool_calls", [])
+        action_events = [
+            e for e in tool_calls
+            if e["name"] != "intent_unclear"
+            and e.get("result", {}).get("success")
+        ]
+        if action_events:
+            to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
+            msg = turn.get("resolved_message") or turn.get("user")
+            snap = turn.get("device_snapshot", {})
+            set_cached(msg, to_cache, snap)
+            print(f"[Cache] Approved turn cached: {msg!r}")
+
+    # Remove from cache if disapproved (negative feedback)
+    if req.rating == "negative":
+        msg = turn.get("resolved_message") or turn.get("user")
+        if delete_cached(msg):
+            print(f"[Cache] Disapproved turn removed from cache: {msg!r}")
+
     save_chat_history(chat_turns)
     return JSONResponse({"ok": True, "stored_in": dest})
 
@@ -507,10 +529,11 @@ def chat_stream(req: ChatRequest):
                     "thought": "",
                     "assistant": text,
                     "tool_calls": events,
+                    "device_snapshot": current_snapshot,
                 })
 
-                to_cache = [{"name": e["name"], "args": e["args"]} for e in events]
-                set_cached(req.message, to_cache, current_snapshot)
+                # Automatic caching disabled - only cache on Approval (feedback)
+                # set_cached(req.message, to_cache, current_snapshot)
 
                 yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
                 yield f"data: {json.dumps({'type': 'done', 'text': text, 'turn_id': turn_id, 'cached': False})}\n\n"
@@ -552,6 +575,7 @@ def chat_stream(req: ChatRequest):
                 "thought": "[Cached Reasoning Replayed]",
                 "assistant": text,
                 "tool_calls": events,
+                "device_snapshot": current_snapshot,
             })
 
             yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
@@ -647,19 +671,16 @@ def chat_stream(req: ChatRequest):
                     "thought": thought_trace,
                     "assistant": final_text,
                     "tool_calls": tool_events,
+                    "device_snapshot": current_snapshot,
                 })
                 save_chat_history(chat_turns)
                 yield f"data: {json.dumps({'type': 'turn_id', 'turn_id': turn_id})}\n\n"
 
-                action_events = [
-                    e for e in tool_events
-                    if e["name"] != "intent_unclear"
-                    and e.get("result", {}).get("success")
-                ]
-                if action_events:
-                    to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
-                    set_cached(resolved_message, to_cache, current_snapshot)
-                    print(f"[Cache] STORED {len(to_cache)} call(s) for: {req.message!r}")
+                # Automatic caching disabled - only cache on Approval (feedback)
+                # if action_events:
+                #     to_cache = [{"name": e["name"], "args": e["args"]} for e in action_events]
+                #     set_cached(resolved_message, to_cache, current_snapshot)
+                #     print(f"[Cache] STORED {len(to_cache)} call(s) for: {req.message!r}")
 
             else:
                 # token, error — forward as-is

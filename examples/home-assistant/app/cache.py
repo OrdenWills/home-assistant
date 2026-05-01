@@ -72,20 +72,23 @@ def init_db(path: Path = _DB_PATH) -> None:
 
 def build_snapshot(home_state: dict) -> dict:
     """
-    Extract the device topology (just the keys, not values) from home_state.
-    We care only whether the SET of devices has changed, not their on/off status.
+    Extract the full device state from home_state.
+    This ensures situational cache hits (only hit if the house state is the same).
     """
     return {
-        "rooms": sorted(home_state.get("lights", {}).keys()),
-        "doors": sorted(home_state.get("doors",  {}).keys()),
+        "lights": home_state.get("lights", {}),
+        "doors": home_state.get("doors", {}),
+        "thermostat": home_state.get("thermostat", {}),
+        "tv": home_state.get("tv", {}),
+        "speaker": home_state.get("speaker", {}),
+        "fan": home_state.get("fan", {}),
+        "current_user_room": home_state.get("current_user_room"),
     }
 
 
 def _snapshot_matches(stored_raw: str, current: dict) -> bool:
     """
-    True when stored topology == current topology.
-    A missing / empty stored snapshot is treated as a mismatch so that entries
-    written before this feature was introduced are gracefully invalidated.
+    True when stored state == current state.
     """
     if not stored_raw or stored_raw == "{}":
         return False
@@ -93,11 +96,9 @@ def _snapshot_matches(stored_raw: str, current: dict) -> bool:
         stored = json.loads(stored_raw)
     except (json.JSONDecodeError, TypeError):
         return False
-    return (
-        sorted(stored.get("rooms", [])) == sorted(current.get("rooms", []))
-        and
-        sorted(stored.get("doors", [])) == sorted(current.get("doors", []))
-    )
+    
+    # Direct dictionary comparison for exact situational match
+    return stored == current
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
