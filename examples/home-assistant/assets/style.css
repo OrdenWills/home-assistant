@@ -1577,6 +1577,38 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   pointer-events: auto;
 }
 
+#mute-btn {
+  background: var(--surface-2);
+  border: 1px solid var(--border-light);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+#mute-btn:hover {
+  background: var(--bg);
+  color: var(--text);
+  border-color: var(--border);
+  transform: translateY(-1px);
+}
+
+#mute-btn.muted {
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+#mute-btn.muted:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
 
 /* ── Mobile & Tablet Responsiveness ── */
 @media (max-width: 900px) {
