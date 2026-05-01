@@ -93,7 +93,7 @@ def _new_turn_id() -> int:
 
 # ── Dataset writer ─────────────────────────────────────────────────────────────
 
-def _write_dataset_entry(turn: dict, rating: str) -> str:
+def _write_dataset_entry(turn: dict, rating: str, comment: str = None) -> str:
     """
     Write a full training/debug entry to the appropriate JSONL file.
     Returns the path it was written to.
@@ -102,6 +102,7 @@ def _write_dataset_entry(turn: dict, rating: str) -> str:
         "timestamp":        datetime.now(timezone.utc).isoformat(),
         "turn_id":          turn["turn_id"],
         "rating":           rating,                         # "positive" | "negative"
+        "comment":          comment,
         "backend":          active_backend,
         "model":            llama_active_model_id or "openai/gpt-4o-mini",
         # ── Everything the model actually saw ──
@@ -327,6 +328,7 @@ def delete_cache_entry(req: CacheDeleteRequest):
 class FeedbackRequest(BaseModel):
     turn_id: int
     rating: str   # "positive" | "negative"
+    comment: str | None = None
 
 @app.post("/feedback")
 def submit_feedback(req: FeedbackRequest):
@@ -344,8 +346,10 @@ def submit_feedback(req: FeedbackRequest):
     if turn is None:
         return JSONResponse({"error": f"turn_id {req.turn_id} not found"}, status_code=404)
 
-    dest = _write_dataset_entry(turn, req.rating)
+    dest = _write_dataset_entry(turn, req.rating, req.comment)
     turn["rating"] = req.rating
+    if req.comment:
+        turn["comment"] = req.comment
     save_chat_history(chat_turns)
     return JSONResponse({"ok": True, "stored_in": dest})
 

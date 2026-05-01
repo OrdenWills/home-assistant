@@ -452,6 +452,17 @@
               </button>
             </div>
           </div>
+          
+          <!-- Feedback Popup Modal -->
+          <div id="feedback-popup" class="hidden">
+            <div class="fp-header">
+              <span id="fp-title">Feedback</span>
+              <button id="fp-close">&times;</button>
+            </div>
+            <textarea id="fp-comment" placeholder="Optional: What was good/bad?"></textarea>
+            <button id="fp-save">Save Feedback</button>
+          </div>
+
           <div id="messages"></div>
 
           <!-- Floating Voice Modal -->
@@ -558,6 +569,7 @@
 
     // ── Feedback toast ────────────────────────────────────────
 
+
     let _toastTimer = null;
     function showFeedbackToast(message, type) {
       const toast = document.getElementById("feedback-toast");
@@ -583,7 +595,7 @@
       }
     }
 
-    async function submitFeedback(turnId, rating, upBtn, downBtn) {
+    async function submitFeedback(turnId, rating, upBtn, downBtn, comment = null) {
       if (turnId === null || turnId === undefined) {
         showFeedbackToast("⚠ Response not yet linked to a turn — try again in a moment.", "negative");
         return;
@@ -592,7 +604,7 @@
         const res = await fetch("/feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ turn_id: turnId, rating }),
+          body: JSON.stringify({ turn_id: turnId, rating, comment }),
         });
         if (res.ok) {
           applyFeedbackUI(rating, upBtn, downBtn);
@@ -661,16 +673,12 @@
         downBtn.title = "Bad response — save to failure set";
         downBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>';
 
-        upBtn.addEventListener("click", () => {
-          const turnId = container.dataset.turnId !== undefined
-            ? parseInt(container.dataset.turnId, 10) : null;
-          submitFeedback(turnId, "positive", upBtn, downBtn);
+        upBtn.addEventListener("click", (e) => {
+          showFeedbackPopup(container, "positive", upBtn, downBtn, e.currentTarget);
         });
 
-        downBtn.addEventListener("click", () => {
-          const turnId = container.dataset.turnId !== undefined
-            ? parseInt(container.dataset.turnId, 10) : null;
-          submitFeedback(turnId, "negative", upBtn, downBtn);
+        downBtn.addEventListener("click", (e) => {
+          showFeedbackPopup(container, "negative", upBtn, downBtn, e.currentTarget);
         });
 
         feedback.appendChild(upBtn);
@@ -1376,6 +1384,38 @@
       updateMuteUI();
     });
 
+    // ── Feedback Popup Logic ─────────────────────────────────
+    const fbPopup = document.getElementById("feedback-popup");
+    const fbComment = document.getElementById("fp-comment");
+    const fbSave = document.getElementById("fp-save");
+    const fbClose = document.getElementById("fp-close");
+    let _activeFbTarget = null;
+
+    function showFeedbackPopup(container, rating, upBtn, downBtn, anchor) {
+      _activeFbTarget = { container, rating, upBtn, downBtn };
+      
+      const rect = anchor.getBoundingClientRect();
+      fbPopup.style.top = `${rect.top - 140}px`; // position above
+      fbPopup.style.left = `${Math.max(10, rect.left - 180)}px`;
+      
+      fbComment.value = "";
+      fbPopup.classList.remove("hidden");
+      fbComment.focus();
+      
+      document.getElementById("fp-title").textContent = rating === "positive" ? "Add to Golden Set" : "Add to Failure Set";
+    }
+
+    fbSave.addEventListener("click", () => {
+      if (!_activeFbTarget) return;
+      const { container, rating, upBtn, downBtn } = _activeFbTarget;
+      const turnId = container.dataset.turnId !== undefined ? parseInt(container.dataset.turnId, 10) : null;
+      submitFeedback(turnId, rating, upBtn, downBtn, fbComment.value.trim());
+      fbPopup.classList.add("hidden");
+      _activeFbTarget = null;
+    });
+
+    fbClose.addEventListener("click", () => fbPopup.classList.add("hidden"));
+    
     // Clicking the dimmed background also closes the chat
     if (mobileChatBackdrop) mobileChatBackdrop.addEventListener("click", () => toggleMobileChat(false));
   </script>
