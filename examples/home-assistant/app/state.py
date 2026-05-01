@@ -78,7 +78,12 @@ def init_state_table(path: Path = _DB_PATH) -> None:
             CREATE TABLE IF NOT EXISTS home_state (
                 id      INTEGER PRIMARY KEY CHECK (id = 1),
                 payload TEXT    NOT NULL
-            )
+            );
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                turn_id INTEGER,
+                payload TEXT    NOT NULL
+            );
         """)
 
 
@@ -123,6 +128,31 @@ def persist_state(path: Path = _DB_PATH) -> None:
             VALUES (1, ?)
             ON CONFLICT(id) DO UPDATE SET payload = excluded.payload
         """, (payload,))
+
+
+def load_chat_history(path: Path = _DB_PATH) -> list[dict]:
+    """Load all chat turns from the DB."""
+    init_state_table(path)
+    with _connect(path) as con:
+        rows = con.execute("SELECT payload FROM chat_history ORDER BY id ASC").fetchall()
+    return [json.loads(row["payload"]) for row in rows]
+
+
+def save_chat_history(turns: list[dict], path: Path = _DB_PATH) -> None:
+    """Overwrite the chat_history table with the current list of turns."""
+    init_state_table(path)
+    with _connect(path) as con:
+        con.execute("DELETE FROM chat_history")
+        con.executemany(
+            "INSERT INTO chat_history (turn_id, payload) VALUES (?, ?)",
+            [(t.get("turn_id"), json.dumps(t)) for t in turns]
+        )
+
+
+def clear_chat_history(path: Path = _DB_PATH) -> None:
+    """Wipe the chat history table."""
+    with _connect(path) as con:
+        con.execute("DELETE FROM chat_history")
 
 
 # ── Utility (used for training-data generation) ───────────────────────────────

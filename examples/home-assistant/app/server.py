@@ -18,6 +18,7 @@ from app.agent import run_agent_stream, get_system_prompt
 from app.state import (
     home_state, load_state, persist_state,
     build_state_summary, log_action, build_action_log_context, action_log,
+    load_chat_history, save_chat_history, clear_chat_history,
 )
 from app.cache import init_db, get_cached, set_cached, delete_cached, clear_all, list_entries, build_snapshot
 from app.tools.handlers import TOOL_HANDLERS
@@ -186,6 +187,9 @@ async def lifespan(app_: FastAPI):
     init_db()
     print("[Cache] SQLite tool-call cache initialised.")
     load_state()
+    # Load persisted chat history
+    chat_turns.clear()
+    chat_turns.extend(load_chat_history())
 
     model_id = home_state.get("active_model_id", "home-assistant-sft(small)")
     model = next((m for m in LOCAL_MODELS if m["id"] == model_id), None)
@@ -307,6 +311,8 @@ def list_cache():
 
 @app.delete("/cache")
 def wipe_cache():
+    clear_chat_history()
+    chat_turns.clear()
     return JSONResponse({"deleted": clear_all()})
 
 class CacheDeleteRequest(BaseModel):
@@ -340,6 +346,7 @@ def submit_feedback(req: FeedbackRequest):
 
     dest = _write_dataset_entry(turn, req.rating)
     turn["rating"] = req.rating
+    save_chat_history(chat_turns)
     return JSONResponse({"ok": True, "stored_in": dest})
 
 @app.get("/dataset/stats")
@@ -616,6 +623,7 @@ def chat_stream(req: ChatRequest):
                     "assistant": final_text,
                     "tool_calls": tool_events,
                 })
+                save_chat_history(chat_turns)
                 yield f"data: {json.dumps({'type': 'turn_id', 'turn_id': turn_id})}\n\n"
 
                 action_events = [
