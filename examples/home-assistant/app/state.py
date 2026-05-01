@@ -74,7 +74,7 @@ def _connect(path: Path = _DB_PATH) -> sqlite3.Connection:
 def init_state_table(path: Path = _DB_PATH) -> None:
     """Create the home_state table if it does not exist."""
     with _connect(path) as con:
-        con.execute("""
+        con.executescript("""
             CREATE TABLE IF NOT EXISTS home_state (
                 id      INTEGER PRIMARY KEY CHECK (id = 1),
                 payload TEXT    NOT NULL
