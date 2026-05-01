@@ -16,7 +16,7 @@ from huggingface_hub import hf_hub_download
 
 from app.agent import run_agent_stream, get_system_prompt
 from app.state import (
-    home_state, load_state,
+    home_state, load_state, persist_state,
     build_state_summary, log_action, build_action_log_context, action_log,
 )
 from app.cache import init_db, get_cached, set_cached, delete_cached, clear_all, list_entries, build_snapshot
@@ -186,10 +186,10 @@ async def lifespan(app_: FastAPI):
     print("[Cache] SQLite tool-call cache initialised.")
     load_state()
 
-    default_model_id = "home-assistant-sft(small)"
-    model = next((m for m in LOCAL_MODELS if m["id"] == default_model_id), None)
+    model_id = home_state.get("active_model_id", "home-assistant-sft(small)")
+    model = next((m for m in LOCAL_MODELS if m["id"] == model_id), None)
     if model:
-        print(f"[Startup] Auto-loading default model: {model['name']}")
+        print(f"[Startup] Auto-loading last used model: {model['name']}")
         threading.Thread(target=_start_llama_server_bg, args=(model,), daemon=True).start()
     yield
 
@@ -251,7 +251,6 @@ def set_thermostat_direct(req: ThermostatRequest):
     home_state["thermostat"]["temperature"] = req.temperature
     if req.mode:
         home_state["thermostat"]["mode"] = req.mode
-    from app.state import persist_state
     persist_state()
     return JSONResponse({"status": "ok", "state": home_state})
 
@@ -281,6 +280,11 @@ class LocalModelRequest(BaseModel):
 def start_local_model(req: LocalModelRequest):
     model = next((m for m in LOCAL_MODELS if m["id"] == req.model_id), None)
     if model is None: return JSONResponse({"error": "unknown model_id"}, status_code=400)
+    
+    # Persist the choice
+    home_state["active_model_id"] = req.model_id
+    persist_state()
+    
     threading.Thread(target=_start_llama_server_bg, args=(model,), daemon=True).start()
     return JSONResponse({"status": "starting"})
 

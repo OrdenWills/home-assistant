@@ -58,7 +58,8 @@ home_state: dict = {
         "bedroom": {"state": "off", "speed": "medium"},
         "kitchen": {"state": "off", "speed": "medium"},
         "office": {"state": "off", "speed": "medium"},
-    }
+    },
+    "active_model_id": "home-assistant-sft(small)",
 }
 
 

@@ -80,6 +80,10 @@ def set_scene(scene: str) -> dict:
             lights[room]["state"] = "off"
         for door in doors:
             doors[door] = "locked"
+        for room in home_state.get("tv", {}):
+            home_state["tv"][room] = "off"
+        for room in home_state.get("speaker", {}):
+            home_state["speaker"][room] = "stopped"
         therm["temperature"] = 65
         therm["mode"] = "auto"
     elif scene == "party":
