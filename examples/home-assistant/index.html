@@ -453,7 +453,9 @@
             </div>
           </div>
           
-          <!-- Feedback Popup Modal -->
+          <div id="messages"></div>
+
+          <!-- Single instance of the popup used for all messages -->
           <div id="feedback-popup" class="hidden">
             <div class="fp-header">
               <span id="fp-title">Feedback</span>
@@ -463,7 +465,6 @@
             <button id="fp-save">Save Feedback</button>
           </div>
 
-          <div id="messages"></div>
 
           <!-- Floating Voice Modal -->
           <div id="voice-modal">
@@ -1394,9 +1395,11 @@
     function showFeedbackPopup(container, rating, upBtn, downBtn, anchor) {
       _activeFbTarget = { container, rating, upBtn, downBtn };
       
-      const rect = anchor.getBoundingClientRect();
-      fbPopup.style.top = `${rect.top - 140}px`; // position above
-      fbPopup.style.left = `${Math.max(10, rect.left - 180)}px`;
+      // Move popup to the message's feedback container so it scrolls with it
+      const feedbackContainer = anchor.closest(".msg-feedback");
+      if (feedbackContainer) {
+        feedbackContainer.appendChild(fbPopup);
+      }
       
       fbComment.value = "";
       fbPopup.classList.remove("hidden");
@@ -1420,5 +1423,4 @@
     if (mobileChatBackdrop) mobileChatBackdrop.addEventListener("click", () => toggleMobileChat(false));
   </script>
 </body>
-
 </html>

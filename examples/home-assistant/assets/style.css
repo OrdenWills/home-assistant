@@ -984,6 +984,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   display: flex;
   gap: 4px;
   align-items: center;
+  position: relative;
 }
 
 .feedback-btn {
@@ -1568,23 +1569,25 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 /* ── Feedback Popup ─────────────────────────────────────────── */
 #feedback-popup {
-  position: fixed;
-  z-index: 10000;
+  position: absolute;
+  z-index: 1000;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 16px;
-  width: 280px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  width: 220px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   animation: fp-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  right: 0;
+  bottom: 28px;
 }
 
 @keyframes fp-pop {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+  from { transform: scale(0.95) translateY(5px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .fp-header {
@@ -1592,7 +1595,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1602,21 +1605,21 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 20px;
+  font-size: 16px;
   cursor: pointer;
   line-height: 1;
 }
 
 #fp-comment {
   width: 100%;
-  height: 80px;
-  padding: 10px;
+  height: 50px;
+  padding: 8px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-light);
   background: var(--bg);
   color: var(--text);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   resize: none;
   outline: none;
 }
