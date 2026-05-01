@@ -1,4 +1,5 @@
-#app/tools/handlers.py
+import os
+import random
 from app.state import home_state, persist_state
 
 
@@ -137,13 +138,28 @@ def control_speaker(room: str, action: str) -> dict:
         home_state["speaker"][room] = "paused"
     elif action == "stop":
         home_state["speaker"][room] = "stopped"
-    # next/previous don't change state from 'playing' (or whatever they were)
     elif action in ["next", "previous"]:
         if home_state["speaker"][room] == "stopped":
             home_state["speaker"][room] = "playing"
     
     persist_state()
-    return {"success": True, "room": room, "action": action}
+    
+    res = {"success": True, "room": room, "action": action, "state": home_state["speaker"][room]}
+    
+    # If a music folder is selected, "simulate" media handling
+    music_folder = home_state.get("music_folder")
+    if music_folder and os.path.exists(music_folder):
+        try:
+            files = [f for f in os.listdir(music_folder) if f.lower().endswith(('.mp3', '.wav', '.m4a', '.flac'))]
+            if files:
+                res["library_count"] = len(files)
+                if action in ["play", "next", "previous"]:
+                    # In a real app we'd track current index, here we just pick one to show it's working
+                    res["current_track"] = random.choice(files)
+        except Exception:
+            pass
+            
+    return res
 
 
 def control_fan(room: str, state: str, speed: str = None) -> dict:

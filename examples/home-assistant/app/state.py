@@ -60,6 +60,7 @@ home_state: dict = {
         "office": {"state": "off", "speed": "medium"},
     },
     "active_model_id": "home-assistant-sft(small)",
+    "music_folder": None,
 }
 
 

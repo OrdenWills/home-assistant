@@ -13,6 +13,8 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from huggingface_hub import hf_hub_download
+import tkinter as tk
+from tkinter import filedialog
 
 from app.agent import run_agent_stream, get_system_prompt
 from app.state import (
@@ -243,6 +245,25 @@ def set_backend(req: BackendRequest):
     active_backend = req.backend
     action_log.clear()
     return JSONResponse({"backend": active_backend})
+
+@app.get("/status")
+def get_status():
+    return JSONResponse({"status": "idle"})
+
+@app.post("/select_music_folder")
+def select_music_folder():
+    """Opens a native folder picker on the host machine."""
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes('-topmost', True) # ensure it's on top
+    folder = filedialog.askdirectory(title="Select Music Folder")
+    root.destroy()
+    
+    if folder:
+        home_state["music_folder"] = folder
+        persist_state()
+        return JSONResponse({"ok": True, "folder": folder})
+    return JSONResponse({"ok": False, "error": "No folder selected"})
 
 @app.get("/state")
 def get_state():
