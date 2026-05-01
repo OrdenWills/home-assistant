@@ -45,21 +45,7 @@ TOOL_SCHEMAS = [
             },
         },
     },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_device_status",
-            "description": "Get the current status of home devices.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "device_type": {"type": "string", "enum": ["lights", "thermostat", "door", "all"]},
-                    "room":        {"type": "string", "description": "Optional room name to filter lights status."},
-                },
-                "required": ["device_type"],
-            },
-        },
-    },
+
     {
         "type": "function",
         "function": {
@@ -106,11 +92,11 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "control_tv",
-            "description": "Turn the TV on or off. Always use room=living_room.",
+            "description": "Turn a TV on or off in a specific room.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "room":  {"type": "string", "enum": ["living_room", "bedroom"]},
+                    "room":  {"type": "string", "enum": ["living_room", "bedroom", "office"]},
                     "state": {"type": "string", "enum": ["on", "off"]}
                 },
                 "required": ["room", "state"]
@@ -121,7 +107,7 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "control_speaker",
-            "description": "Control the speaker. Always use room=living_room.",
+            "description": "Control a speaker in a specific room.",
             "parameters": {
                 "type": "object",
                 "properties": {

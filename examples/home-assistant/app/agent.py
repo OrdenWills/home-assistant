@@ -53,7 +53,7 @@ def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, f
         "  current_user_room set + connected → use current_user_room.\n"
         "  current_user_room set + NOT connected → intent_unclear(unsupported_device).\n"
         "  current_user_room empty → intent_unclear(incomplete).\n\n"
-        "  [RECENT ACTIONS:] → resolve 'undo', 'again', 'same for X'.\n"
+        "  [RECENT ACTIONS:] → resolve 'undo', 'again', 'same for X', and pronouns ('it').\n"
         "  SYNONYMS: 'open'='unlock'; 'close'/'shut'='lock'; 'skip'='next'; 'back'='previous'."
     )
 
@@ -69,63 +69,163 @@ def get_model_name(backend: str) -> str:
 
 def parse_tool_calls_from_text(text: str) -> list[dict]:
     """
-    Parse tool calls from text.
-    Handles both [func(args)] and [func(args), func(args)] formats safely.
+    Parse tool calls from model output text.
+
+    Priority order:
+      1. <|tool_call_start|>{"name":..., "parameters":...}<|tool_call_end|>
+         (the format the local model was trained on)
+      2. Bare JSON objects with "name" key (llama-server strips special tokens)
+      3. func_name(key="val", ...) regex fallback (for OpenAI text leakage)
     """
+    if not text:
+        return []
+
     tool_calls = []
-    
-    # Restrict parsing to known tools so we don't accidentally parse normal English words
+
     valid_tools = {
-        "toggle_lights", "toggle_all_lights", "lock_door", 
+        "toggle_lights", "toggle_all_lights", "lock_door",
         "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
         "control_tv", "control_speaker", "control_fan"
     }
-    
-    # Matches func_name(...) without getting confused by outer brackets.
-    # [^)]* ensures we stop exactly at the closing parenthesis of EACH function.
+
+    # ── Priority 1: custom token format (training format) ─────────────────────
+    blocks = re.findall(
+        r'<\|tool_call_start\|>(.*?)<\|tool_call_end\|>', text, re.DOTALL)
+    if blocks:
+        for idx, block in enumerate(blocks):
+            try:
+                obj = json.loads(block.strip())
+                name = obj.get("name", "")
+                args = obj.get("parameters", obj.get("arguments", {}))
+                tool_calls.append({"name": name, "args": args, "id": f"call_{idx}"})
+                print(f"[ParseToolCalls] Token format: {name}({args})")
+            except Exception as e:
+                print(f"[ParseToolCalls] Failed to parse token block: {e}")
+        if tool_calls:
+            return tool_calls
+
+    # ── Priority 2: bare JSON objects (llama-server strips special tokens) ────
+    #    Model outputs: {"name": "tool", "parameters": {"room": "x", "state": "y"}}
+    #    The regex handles one level of nested braces for the parameters dict.
+    json_pattern = r'\{"name"\s*:\s*"(\w+)"[^}]*"(?:parameters|arguments)"\s*:\s*(\{[^}]*\})[^}]*\}'
+    for idx, match in enumerate(re.finditer(json_pattern, text)):
+        try:
+            name = match.group(1)
+            if name not in valid_tools:
+                continue
+            args = json.loads(match.group(2))
+            tool_calls.append({"name": name, "args": args, "id": f"call_{idx}"})
+            print(f"[ParseToolCalls] JSON format: {name}({args})")
+        except (json.JSONDecodeError, Exception) as e:
+            print(f"[ParseToolCalls] JSON parse error: {e}")
+    if tool_calls:
+        return tool_calls
+
+    # ── Priority 2: regex fallback for func(args) style ───────────────────────
+    valid_tools = {
+        "toggle_lights", "toggle_all_lights", "lock_door",
+        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
+        "control_tv", "control_speaker", "control_fan"
+    }
+
     pattern = r'(\w+)\(([^)]*)\)'
-    
     for idx, match in enumerate(re.finditer(pattern, text)):
         func_name = match.group(1)
         args_str  = match.group(2)
-        
+
         if func_name not in valid_tools:
             continue
-            
+
         try:
             args: dict = {}
-            # Match double or single quoted strings: room="kitchen" or room='kitchen'
             for key, val in re.findall(r'(\w+)=["\']([^"\']*)["\']', args_str):
                 args[key] = val
-            # Match unquoted numbers: temperature=72
             for key, val in re.findall(r"(\w+)=([0-9]+(?:\.[0-9]+)?)\b", args_str):
                 if key not in args:
                     args[key] = val
-                    
+
             tool_calls.append({"name": func_name, "args": args, "id": f"call_{idx}"})
-            print(f"[ParseToolCalls] Extracted: {func_name}({args})")
+            print(f"[ParseToolCalls] Regex format: {func_name}({args})")
         except Exception as e:
             print(f"[ParseToolCalls] Failed to parse '{match.group(0)}': {e}")
-            
+
     return tool_calls
 
-def clean_text_response(text: str) -> str:
-    """Remove tool call syntax and JSON objects from a text response."""
+def extract_think_and_response(text: str) -> tuple[str, str]:
+    """
+    Extracts the think trace and the actual response from the raw output.
+    Handles cases where special tokens (<think>, <|tool_call_start|>) are stripped.
+    """
+    think_text = ""
+    response_text = text
+
+    # 1. Try proper token matching
+    think_match = re.search(r'<think>(.*?)</think>', text, re.DOTALL)
+    if think_match:
+        think_text = think_match.group(1).strip()
+        response_text = text[:think_match.start()] + text[think_match.end():]
+        return think_text, response_text
+
+    # 2. Heuristic extraction for stripped tokens
+    # Model outputs: [think trace] {"name": "...", "parameters": {...}} [response text]
     valid_tools = {
-        "toggle_lights", "toggle_all_lights", "lock_door", 
+        "toggle_lights", "toggle_all_lights", "lock_door",
         "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
         "control_tv", "control_speaker", "control_fan"
     }
-    # 1. Remove tool call syntax like [func(args)], (func(args)), or just func(args)
-    # We build a regex from the valid_tools set for safety.
+
+    # Find the first JSON tool call pattern to split on
+    json_pattern = r'\{"name"\s*:\s*"(\w+)"[^}]*"(?:parameters|arguments)"\s*:\s*\{[^}]*\}[^}]*\}'
+    match = re.search(json_pattern, text)
+    if match and match.group(1) in valid_tools:
+        think_text = text[:match.start()].strip()
+        response_text = text[match.end():].strip()
+    else:
+        # Fallback for regex text-based tool calls
+        tool_pattern = r'(?:[\(\[]?)\b(' + '|'.join(valid_tools) + r')\([^)]*\)(?:[\)\]]?)'
+        match = re.search(tool_pattern, text)
+        if match:
+            think_text = text[:match.start()].strip()
+            response_text = text[match.end():].strip()
+        else:
+            response_text = text
+
+    # Clean up known decoding artifacts (<think> and </think> decode to fjärilsart)
+    think_text = think_text.replace("fjärilsart", "").strip()
+    response_text = response_text.replace("fjärilsart", "").strip()
+
+    # Clean up any dangling braces that might be left over from splits
+    think_text = re.sub(r'[\{\}]+$', '', think_text).strip()
+    response_text = re.sub(r'^[\{\}\s,]+', '', response_text).strip()
+
+    return think_text, response_text
+
+def clean_text_response(text: str) -> str:
+    """Remove remaining special tokens and syntax from text."""
+    # 0. Remove <think>...</think> blocks if any survived
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+
+    # 1. Remove <|tool_call_start|>...<|tool_call_end|> blocks
+    text = re.sub(r'<\|tool_call_start\|>.*?<\|tool_call_end\|>', '', text, flags=re.DOTALL)
+
+    # 2. Remove any remaining special tokens
+    text = re.sub(r'<\|[^|]*\|>', '', text)
+
+    valid_tools = {
+        "toggle_lights", "toggle_all_lights", "lock_door",
+        "lock_all_doors", "set_thermostat", "set_scene", "intent_unclear",
+        "control_tv", "control_speaker", "control_fan"
+    }
+    # 3. Remove tool call syntax like [func(args)]
     tool_pattern = r'(?:[\(\[]?)\b(' + '|'.join(valid_tools) + r')\([^)]*\)(?:[\)\]]?)'
     text = re.sub(tool_pattern, '', text)
 
-    # 2. Remove JSON objects that look like tool results: {...}
-    # Using DOTALL to handle multiline JSON leakage
-    text = re.sub(r'\{.*\}', '', text, flags=re.DOTALL)
-    
-    # 3. Final cleanup of excess whitespace
+    # 4. Strip leftover JSON objects (handles one level of nested braces for parameters)
+    json_pattern = r'\{"name"\s*:\s*"[^"]*"[^}]*"(?:parameters|arguments)"\s*:\s*\{[^}]*\}[^}]*\}'
+    text = re.sub(json_pattern, '', text)
+
+    # 5. Final cleanup of excess whitespace and dangling artifact chars at start
+    text = re.sub(r'^[\{\}\s,]+', '', text)
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
@@ -149,6 +249,19 @@ def run_agent_stream(
 
     user_message should already contain [STATE: ...] and [RECENT ACTIONS: ...]
     prefixes injected by the server layer.
+
+    LOCAL BACKEND:
+      The fine-tuned model outputs everything in a single turn:
+        <think>...</think>
+        <|tool_call_start|>{"name":..., "parameters":...}<|tool_call_end|>
+        Response text
+      So we make ONE API call (no tools param — the system prompt already
+      describes tools), parse tool calls from the text, execute them, and
+      stream the response text.
+
+    OPENAI BACKEND:
+      Uses the standard multi-turn tool execution loop with structured
+      tool_calls and tool results.
     """
     backend_cfg = BACKENDS[backend]
     client      = backend_cfg["client"]
@@ -161,10 +274,81 @@ def run_agent_stream(
         {"role": "user", "content": user_message},
     ]
 
+    # ══════════════════════════════════════════════════════════════════════════
+    #  LOCAL BACKEND — single-turn (matches training format exactly)
+    # ══════════════════════════════════════════════════════════════════════════
+    if backend == "local":
+        try:
+            print(f"[Stream-Local] Calling LLM (single-turn, no tools param)...")
+            response = client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=1024,
+            )
+        except Exception as e:
+            yield {"type": "error", "text": str(e)}
+            return
+
+        raw_output = response.choices[0].message.content or ""
+        print(f"[Stream-Local] Raw output: {raw_output[:300]}")
+
+        # ── Parse tool calls from <|tool_call_start|> tokens ──────────────
+        parsed_calls = parse_tool_calls_from_text(raw_output)
+        print(f"[Stream-Local] Parsed {len(parsed_calls)} tool call(s)")
+
+        # ── Extract think and response ────────────────────────────────────
+        think_text, raw_response = extract_think_and_response(raw_output)
+
+        if think_text:
+            yield {"type": "think", "text": think_text}
+
+        # ── Execute tool calls ────────────────────────────────────────────
+        tool_events = []
+        for tc in parsed_calls:
+            name     = tc["name"]
+            raw_args = tc["args"]
+            args     = coerce_args(name, raw_args)
+
+            error_msg = validate_tool_call(name, args)
+            if error_msg:
+                print(f"[Validate] {error_msg}")
+                continue
+
+            handler = TOOL_HANDLERS.get(name)
+            result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
+            print(f"[Stream-Local] Tool '{name}' result: {result}")
+
+            tool_events.append({"name": name, "args": args, "result": result})
+            yield {"type": "tool_call", "name": name, "args": args, "result": result}
+
+        # ── Extract response text (strip think + tool tokens) ─────────────
+        response_text = clean_text_response(raw_response) or "Done."
+
+        # ── Stream the response text word by word ─────────────────────────
+        full_text = ""
+        for word in response_text.split(" "):
+            if not word:
+                continue
+            token = word + " "
+            full_text += token
+            yield {"type": "token", "text": token}
+
+        full_text = full_text.strip() or "Done."
+        messages.append({"role": "assistant", "content": full_text})
+
+        if messages_out is not None:
+            messages_out.extend(messages)
+
+        yield {"type": "done", "text": full_text}
+        return
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  OPENAI BACKEND — multi-turn tool execution loop
+    # ══════════════════════════════════════════════════════════════════════════
     seen_calls: set[str] = set()
     last_text_response = ""
 
-    # ── Tool execution loop (same logic as run_agent, non-streaming) ──────────
     for i in range(5):
         try:
             print(f"[Stream] Iteration {i+1}: Calling LLM for tool/intent detection...")
@@ -191,14 +375,12 @@ def run_agent_stream(
         tool_calls_to_use = message.tool_calls or parsed_tool_calls
 
         if not tool_calls_to_use:
-            # No more tool calls — break out and stream the accumulated content
             print(f"[Stream] No tool calls detected.")
             messages.append({"role": "assistant", "content": message.content})
             break
 
         print(f"[Stream] Found {len(tool_calls_to_use)} tool call(s) to execute.")
 
-        # Wrap text-parsed calls in mock objects
         if parsed_tool_calls:
             class MockToolCall:
                 def __init__(self, d: dict):
@@ -249,7 +431,6 @@ def run_agent_stream(
             result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
             print(f"[Stream] Tool '{name}' result: {result}")
 
-            # ── Emit tool_call event immediately so UI updates in real time ──
             print(f"[Stream] YIELDING tool_call to frontend: {name}({args})")
             yield {"type": "tool_call", "name": name, "args": args, "result": result}
 
@@ -263,15 +444,12 @@ def run_agent_stream(
     last_text_response = clean_text_response(last_text_response)
 
     if last_text_response:
-        # If the loop already produced a text response, stream it directly
-        # without making another LLM call — this eliminates the redundant 40s call
         for word in last_text_response.split(" "):
             if not word: continue
             token = word + " "
             full_text += token
             yield {"type": "token", "text": token}
     else:
-        # Only call the model again if tools were the last thing that ran
         try:
             stream = client.chat.completions.create(
                 model=model,
@@ -287,7 +465,6 @@ def run_agent_stream(
                 delta = chunk.choices[0].delta.content or ""
                 if delta:
                     full_text += delta
-                    # print(f"[Stream] YIELDING token: {delta!r}") # Too noisy?
                     yield {"type": "token", "text": delta}
 
         except Exception as e:

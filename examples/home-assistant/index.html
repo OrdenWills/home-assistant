@@ -1187,6 +1187,22 @@
                 updateFloorplan(event.state);
               }
 
+            } else if (event.type === "think") {
+              const details = document.createElement("details");
+              details.className = "tool-calls";
+              details.style.marginBottom = "8px";
+              details.innerHTML =
+                `<summary>Thought Process</summary>` +
+                `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${event.text}</pre>`;
+              
+              const container = typing.closest(".msg-container");
+              if (container) {
+                messagesEl.insertBefore(details, container);
+              } else {
+                messagesEl.appendChild(details);
+              }
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+
             } else if (event.type === "token") {
               typing.remove();
               if (!assistantMsgEl) {
