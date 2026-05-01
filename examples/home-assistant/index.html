@@ -1459,9 +1459,17 @@
         const data = await res.json();
         if (data.success) {
           updateSpeakerUI(data.state);
-          if (data.current_track) {
-            showFeedbackToast(`Playing: ${data.current_track}`, "positive");
+          let toastMsg = "";
+          if (data.state === "playing") {
+            toastMsg = data.current_track ? `Playing: ${data.current_track}` : "Music started";
+          } else if (data.state === "paused") {
+            toastMsg = "Music paused";
+          } else if (data.state === "stopped") {
+            toastMsg = "Music stopped";
+          } else {
+            toastMsg = action.charAt(0).toUpperCase() + action.slice(1);
           }
+          showFeedbackToast(toastMsg, "positive");
         }
       } catch (err) {
         console.error("Speaker control failed", err);
