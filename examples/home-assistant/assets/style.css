@@ -1529,9 +1529,9 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 /* ── Feedback Toast ─────────────────────────────────────────── */
 #feedback-toast {
   position: fixed;
-  bottom: 24px;
+  top: 60px;
   left: 50%;
-  transform: translateX(-50%) translateY(12px);
+  transform: translateX(-50%) translateY(-12px);
   background: var(--header-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
