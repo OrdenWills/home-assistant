@@ -717,6 +717,19 @@
       return div;
     }
 
+    function appendThought(text) {
+      if (!text) return;
+      const details = document.createElement("details");
+      details.className = "tool-calls"; // using same styling class
+      details.style.marginBottom = "8px";
+      details.innerHTML =
+        `<summary>Thought Process</summary>` +
+        `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${text}</pre>`;
+      messagesEl.appendChild(details);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return details;
+    }
+
     function appendToolCalls(toolCalls) {
       if (!toolCalls || toolCalls.length === 0) return;
       const details = document.createElement("details");
@@ -1194,20 +1207,12 @@
               }
 
             } else if (event.type === "think") {
-              const details = document.createElement("details");
-              details.className = "tool-calls";
-              details.style.marginBottom = "8px";
-              details.innerHTML =
-                `<summary>Thought Process</summary>` +
-                `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${event.text}</pre>`;
-              
               const container = typing.closest(".msg-container");
-              if (container) {
+              const details = appendThought(event.text);
+              if (container && details) {
+                // Move it before the typing indicator if possible
                 messagesEl.insertBefore(details, container);
-              } else {
-                messagesEl.appendChild(details);
               }
-              messagesEl.scrollTop = messagesEl.scrollHeight;
 
             } else if (event.type === "token") {
               typing.remove();
@@ -1278,7 +1283,10 @@
         if (!res.ok) return;
         const data = await res.json();
         data.history.forEach(turn => {
-          const userMsg = appendMessage("user", turn.user);
+          appendMessage("user", turn.user);
+          if (turn.thought) {
+            appendThought(turn.thought);
+          }
           const assistantMsg = appendMessage("assistant", turn.assistant || "(no response)");
           // Re-link turn_id so feedback buttons work on restored history too
           if (turn.turn_id !== undefined) {
