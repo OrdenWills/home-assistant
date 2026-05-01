@@ -246,16 +246,41 @@
                 </div>
                 <span class="device-name">TV</span>
               </div>
-              <div class="device-card" id="gadget-speaker-living_room" data-room="living_room">
-                <div class="icon-circle">
-                  <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
-                    <circle cx="12" cy="14" r="4"></circle>
-                    <line x1="12" y1="6" x2="12.01" y2="6"></line>
-                  </svg>
+              <div class="device-card speaker-card" id="gadget-speaker-living_room" data-room="living_room">
+                <!-- Top Row: Visual & Controls -->
+                <div class="speaker-row top">
+                  <div class="disc-container" id="speaker-disc-container">
+                    <svg class="disc-icon" id="speaker-disc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+                      <path d="M12 2a10 10 0 0 1 10 10" stroke-width="2"></path>
+                    </svg>
+                  </div>
+                  <div class="speaker-controls">
+                    <button class="media-btn" onclick="handleSpeakerAction('previous')" title="Previous">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line></svg>
+                    </button>
+                    <button class="media-btn" id="speaker-play-pause" onclick="handleSpeakerAction('play')" title="Play/Pause">
+                      <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                      <svg id="pause-icon" class="hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    </button>
+                    <button class="media-btn" onclick="handleSpeakerAction('next')" title="Next">
+                      <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+                    </button>
+                  </div>
                 </div>
-                <span class="device-name">Speaker</span>
+                <!-- Bottom Row: Icon & Name -->
+                <div class="speaker-row bottom">
+                  <div class="icon-circle">
+                    <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                      <circle cx="12" cy="14" r="4"></circle>
+                      <line x1="12" y1="6" x2="12.01" y2="6"></line>
+                    </svg>
+                  </div>
+                  <span class="device-name">Speaker</span>
+                </div>
                 <span id="music-folder-display" class="music-folder-path"></span>
               </div>
             </div>
@@ -1395,9 +1420,53 @@
           folderDisplay.textContent = state.music_folder.split(/[/\\]/).pop();
           folderDisplay.title = state.music_folder;
         }
+        // Update speaker visual state
+        updateSpeakerUI(state.speaker?.living_room);
       } catch (e) {}
     }
     fetchInitialFolder();
+
+    // ── Speaker UI Sync ───────────────────────────────────────
+    function updateSpeakerUI(status) {
+      const disc = document.getElementById("speaker-disc");
+      const playBtn = document.getElementById("speaker-play-pause");
+      const playIcon = document.getElementById("play-icon");
+      const pauseIcon = document.getElementById("pause-icon");
+      const speakerCard = document.getElementById("gadget-speaker-living_room");
+
+      if (status === "playing") {
+        if (disc) disc.classList.add("spinning");
+        if (playIcon) playIcon.classList.add("hidden");
+        if (pauseIcon) pauseIcon.classList.remove("hidden");
+        if (playBtn) playBtn.onclick = () => handleSpeakerAction("pause");
+        if (speakerCard) speakerCard.classList.add("active-gadget");
+      } else {
+        if (disc) disc.classList.remove("spinning");
+        if (playIcon) playIcon.classList.remove("hidden");
+        if (pauseIcon) pauseIcon.classList.add("hidden");
+        if (playBtn) playBtn.onclick = () => handleSpeakerAction("play");
+        if (speakerCard) speakerCard.classList.remove("active-gadget");
+      }
+    }
+
+    window.handleSpeakerAction = async function(action) {
+      try {
+        const res = await fetch("/speaker/control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ room: "living_room", action })
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateSpeakerUI(data.state);
+          if (data.current_track) {
+            showFeedbackToast(`Playing: ${data.current_track}`, "positive");
+          }
+        }
+      } catch (err) {
+        console.error("Speaker control failed", err);
+      }
+    };
 
     // ── Mute Toggle ───────────────────────────────────────────
     let isMuted = localStorage.getItem("assistant_muted") === "true";

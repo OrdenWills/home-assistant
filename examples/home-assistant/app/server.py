@@ -344,6 +344,21 @@ class CacheDeleteRequest(BaseModel):
 def delete_cache_entry(req: CacheDeleteRequest):
     return JSONResponse({"removed": delete_cached(req.message)})
 
+# ── UI Device Control ──────────────────────────────────────────────────────────
+
+class SpeakerControlRequest(BaseModel):
+    room: str
+    action: str
+
+@app.post("/speaker/control")
+def ui_control_speaker(req: SpeakerControlRequest):
+    """Manual speaker control from UI. Logs to action log for model context."""
+    res = TOOL_HANDLERS["control_speaker"](req.room, req.action)
+    if res.get("success"):
+        summary = _summarise_tool("control_speaker", {"room": req.room, "action": req.action}, res)
+        log_action("control_speaker", {"room": req.room, "action": req.action}, summary)
+    return JSONResponse(res)
+
 # ── Feedback / Dataset endpoint ────────────────────────────────────────────────
 
 class FeedbackRequest(BaseModel):
