@@ -108,6 +108,7 @@ def _write_dataset_entry(turn: dict, rating: str) -> str:
         "current_room":     turn.get("current_room"),
         "raw_user_message": turn["user"],
         "resolved_message": turn.get("resolved_message", ""),
+        "thought":          turn.get("thought", ""),
         # ── What the model did ──
         "tool_calls":       turn.get("tool_calls", []),
         "final_response":   turn["assistant"],
@@ -470,6 +471,7 @@ def chat_stream(req: ChatRequest):
                     "system_prompt": "",
                     "resolved_message": "",
                     "current_room": req.current_room,
+                    "thought": "",
                     "assistant": text,
                     "tool_calls": events,
                 })
@@ -488,6 +490,7 @@ def chat_stream(req: ChatRequest):
                     "system_prompt": "",
                     "resolved_message": "",
                     "current_room": req.current_room,
+                    "thought": "",
                     "assistant": text,
                     "tool_calls": [],
                 })
@@ -513,6 +516,7 @@ def chat_stream(req: ChatRequest):
                 "system_prompt": system_prompt,
                 "resolved_message": resolved_message,
                 "current_room": req.current_room,
+                "thought": "[Cached Reasoning Replayed]",
                 "assistant": text,
                 "tool_calls": events,
             })
@@ -557,6 +561,7 @@ def chat_stream(req: ChatRequest):
         ]
         _si = 0                       # status index
         tool_events: list[dict] = []
+        thought_trace = ""
         done_seen = False
 
         # First status fires instantly
@@ -575,7 +580,11 @@ def chat_stream(req: ChatRequest):
             if event is None:
                 break                 # agent thread finished
 
-            if event["type"] == "tool_call":
+            if event["type"] == "think":
+                thought_trace += event.get("text", "")
+                yield f"data: {json.dumps(event)}\n\n"
+
+            elif event["type"] == "tool_call":
                 yield f"data: {json.dumps({'type': 'status', 'text': 'Performing action...'})}\n\n"
                 tool_events.append({
                     "name":   event["name"],
@@ -602,6 +611,7 @@ def chat_stream(req: ChatRequest):
                     "system_prompt": system_prompt,
                     "resolved_message": resolved_message,
                     "current_room": req.current_room,
+                    "thought": thought_trace,
                     "assistant": final_text,
                     "tool_calls": tool_events,
                 })
