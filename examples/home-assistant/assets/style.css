@@ -1391,6 +1391,49 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   30% { transform: translateY(-5px); }
 }
 
+/* ── Streaming cursor ── */
+.msg.streaming::after {
+  content: "▎";
+  display: inline;
+  color: var(--accent);
+  animation: blink-cursor 0.7s steps(2) infinite;
+  font-weight: 300;
+  margin-left: 1px;
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Live thinking block (open during generation) */
+.tool-calls.live-thinking {
+  margin-bottom: 4px;
+}
+
+.tool-calls.live-thinking summary {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.tool-calls.live-thinking pre {
+  color: var(--text-muted);
+  font-size: 11px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.tool-calls.live-thinking pre::after {
+  content: "▎";
+  color: var(--accent);
+  animation: blink-cursor 0.7s steps(2) infinite;
+}
+
+.tool-calls.live-thinking.collapsed pre::after {
+  display: none;
+}
+
+
 /* ── Model dropdown ── */
 .local-wrapper {
   position: relative;

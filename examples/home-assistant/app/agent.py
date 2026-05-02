@@ -275,72 +275,172 @@ def run_agent_stream(
     ]
 
     # ══════════════════════════════════════════════════════════════════════════
-    #  LOCAL BACKEND — single-turn (matches training format exactly)
+    #  LOCAL BACKEND — single-turn, TRUE STREAMING
+    # ══════════════════════════════════════════════════════════════════════════
+    #
+    # The model output (after llama-server strips special tokens) follows
+    # this layout:
+    #   [thinking text] {"name":..., "parameters":...} [response text]
+    #
+    # We stream with stream=True and use a real-time state machine to:
+    #   1. Yield pre-tool text as  {"type": "token"}  (the frontend will
+    #      promote it to a thinking block when a tool_call event arrives).
+    #   2. Buffer tool-call JSON silently (brace counting).
+    #   3. Parse + execute tool calls immediately when complete.
+    #   4. Yield post-tool text as  {"type": "token"}.
+    #
+    # If no tool call is found, all tokens are the final response.
     # ══════════════════════════════════════════════════════════════════════════
     if backend == "local":
         try:
-            print(f"[Stream-Local] Calling LLM (single-turn, no tools param)...")
-            response = client.chat.completions.create(
+            print(f"[Stream-Local] Calling LLM (single-turn, stream=True)...")
+            stream = client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=1024,
+                stream=True,
             )
         except Exception as e:
             yield {"type": "error", "text": str(e)}
             return
 
-        raw_output = response.choices[0].message.content or ""
-        print(f"[Stream-Local] Raw output: {raw_output[:300]}")
+        # ── Streaming state machine ───────────────────────────────────────
+        full_output   = ""          # complete raw output for logging
+        pending       = ""          # text waiting to be emitted as tokens
+        tool_buffer   = ""          # accumulates JSON while in TOOL state
+        brace_depth   = 0
+        state         = "streaming" # "streaming" | "tool_buffer"
+        tool_events   = []
+        pre_tool_text = ""          # all text emitted before first tool call
+        saw_tool_call = False
+        artifacts     = {"fjärilsart"}  # decoded <think>/<think> artifacts
 
-        # ── Parse tool calls from <|tool_call_start|> tokens ──────────────
-        parsed_calls = parse_tool_calls_from_text(raw_output)
-        print(f"[Stream-Local] Parsed {len(parsed_calls)} tool call(s)")
+        FLUSH_THRESHOLD = 3         # flush pending tokens every N chars
 
-        # ── Extract think and response ────────────────────────────────────
-        think_text, raw_response = extract_think_and_response(raw_output)
-
-        if think_text:
-            yield {"type": "think", "text": think_text}
-
-        # ── Execute tool calls ────────────────────────────────────────────
-        tool_events = []
-        for tc in parsed_calls:
-            name     = tc["name"]
-            raw_args = tc["args"]
-            args     = coerce_args(name, raw_args)
-
-            error_msg = validate_tool_call(name, args)
-            if error_msg:
-                print(f"[Validate] {error_msg}")
+        for chunk in stream:
+            delta = ""
+            if chunk.choices and chunk.choices[0].delta.content:
+                delta = chunk.choices[0].delta.content
+            if not delta:
                 continue
 
-            handler = TOOL_HANDLERS.get(name)
-            result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
-            print(f"[Stream-Local] Tool '{name}' result: {result}")
+            full_output += delta
 
-            tool_events.append({"name": name, "args": args, "result": result})
-            yield {"type": "tool_call", "name": name, "args": args, "result": result}
+            for char in delta:
+                # ── Filter known decoding artifacts ───────────────────────
+                # (handled after full accumulation below)
 
-        # ── Extract response text (strip think + tool tokens) ─────────────
-        response_text = clean_text_response(raw_response) or "Done."
+                if state == "streaming":
+                    if char == "{":
+                        # Potential tool-call JSON start — flush pending, switch
+                        if pending:
+                            # Clean artifact strings from pending before emitting
+                            cleaned = pending
+                            for art in artifacts:
+                                cleaned = cleaned.replace(art, "")
+                            if cleaned:
+                                if not saw_tool_call:
+                                    pre_tool_text += cleaned
+                                yield {"type": "token", "text": cleaned}
+                            pending = ""
+                        state = "tool_buffer"
+                        tool_buffer = "{"
+                        brace_depth = 1
+                    else:
+                        pending += char
+                        # Flush at word boundaries or threshold for responsiveness
+                        if char in " \n" or len(pending) >= FLUSH_THRESHOLD:
+                            cleaned = pending
+                            for art in artifacts:
+                                cleaned = cleaned.replace(art, "")
+                            if cleaned:
+                                if not saw_tool_call:
+                                    pre_tool_text += cleaned
+                                yield {"type": "token", "text": cleaned}
+                            pending = ""
 
-        # ── Stream the response text word by word ─────────────────────────
-        full_text = ""
-        for word in response_text.split(" "):
-            if not word:
-                continue
-            token = word + " "
-            full_text += token
-            yield {"type": "token", "text": token}
+                elif state == "tool_buffer":
+                    tool_buffer += char
+                    if char == "{":
+                        brace_depth += 1
+                    elif char == "}":
+                        brace_depth -= 1
+                        if brace_depth == 0:
+                            # Complete JSON object — is it a tool call?
+                            if '"name"' in tool_buffer:
+                                saw_tool_call = True
+                                # Tell frontend pre-tool text was thinking
+                                if pre_tool_text.strip():
+                                    yield {"type": "think_done"}
+                                # Parse and execute immediately
+                                parsed = parse_tool_calls_from_text(tool_buffer)
+                                for tc in parsed:
+                                    name     = tc["name"]
+                                    raw_args = tc["args"]
+                                    args     = coerce_args(name, raw_args)
 
-        full_text = full_text.strip() or "Done."
-        messages.append({"role": "assistant", "content": full_text})
+                                    error_msg = validate_tool_call(name, args)
+                                    if error_msg:
+                                        print(f"[Validate] {error_msg}")
+                                        continue
+
+                                    handler = TOOL_HANDLERS.get(name)
+                                    result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
+                                    print(f"[Stream-Local] Tool '{name}' result: {result}")
+
+                                    tool_events.append({"name": name, "args": args, "result": result})
+                                    yield {"type": "tool_call", "name": name, "args": args, "result": result}
+                            else:
+                                # Not a tool call — just a stray JSON object, emit as text
+                                cleaned = tool_buffer
+                                for art in artifacts:
+                                    cleaned = cleaned.replace(art, "")
+                                if cleaned:
+                                    if not saw_tool_call:
+                                        pre_tool_text += cleaned
+                                    yield {"type": "token", "text": cleaned}
+                            tool_buffer = ""
+                            state = "streaming"
+                    # Safety valve: if tool_buffer gets huge, it's not a tool call
+                    elif len(tool_buffer) > 600:
+                        cleaned = tool_buffer
+                        for art in artifacts:
+                            cleaned = cleaned.replace(art, "")
+                        if cleaned:
+                            if not saw_tool_call:
+                                pre_tool_text += cleaned
+                            yield {"type": "token", "text": cleaned}
+                        tool_buffer = ""
+                        state = "streaming"
+
+        # ── Flush any remaining buffered text ─────────────────────────────
+        if pending:
+            cleaned = pending
+            for art in artifacts:
+                cleaned = cleaned.replace(art, "")
+            if cleaned:
+                yield {"type": "token", "text": cleaned}
+        if tool_buffer:
+            # Incomplete tool buffer at end of stream — emit as text
+            cleaned = tool_buffer
+            for art in artifacts:
+                cleaned = cleaned.replace(art, "")
+            if cleaned:
+                yield {"type": "token", "text": cleaned}
+
+        print(f"[Stream-Local] Raw output: {full_output[:300]}")
+        print(f"[Stream-Local] Tool calls found: {len(tool_events)}")
+
+        # ── Build final text from the cleaned full output ─────────────────
+        _, raw_response = extract_think_and_response(full_output)
+        final_text = clean_text_response(raw_response) or "Done."
+        messages.append({"role": "assistant", "content": final_text})
 
         if messages_out is not None:
             messages_out.extend(messages)
 
-        yield {"type": "done", "text": full_text}
+        yield {"type": "done", "text": final_text}
         return
 
     # ══════════════════════════════════════════════════════════════════════════

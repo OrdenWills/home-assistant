@@ -1245,7 +1245,59 @@
                 statusEl.style.opacity = "1";
               }, 200);
 
+            } else if (event.type === "token") {
+              // ── Live token streaming ──
+              // Remove typing indicator on first token
+              typing.remove();
+
+              if (!assistantMsgEl) {
+                const result = appendMessage("assistant", "");
+                assistantMsgEl = result.div;
+                assistantContainer = result.container;
+                assistantMsgEl.classList.add("streaming");
+              }
+              fullText += event.text;
+              assistantMsgEl.textContent = fullText;
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            } else if (event.type === "think_done") {
+              // ── Pre-tool text was thinking — promote to details block ──
+              if (assistantMsgEl && fullText.trim()) {
+                const thinkDetails = document.createElement("details");
+                thinkDetails.className = "tool-calls live-thinking collapsed";
+                thinkDetails.innerHTML =
+                  `<summary>Thought Process</summary>` +
+                  `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${fullText.trim()}</pre>`;
+                // Insert thinking block before the assistant message container
+                if (assistantContainer) {
+                  messagesEl.insertBefore(thinkDetails, assistantContainer);
+                } else {
+                  messagesEl.appendChild(thinkDetails);
+                }
+                // Clear the message bubble for response text
+                fullText = "";
+                assistantMsgEl.textContent = "";
+              }
+
             } else if (event.type === "tool_call") {
+              typing.remove();
+
+              // If we have pre-tool text and haven't promoted it yet, do it now
+              if (assistantMsgEl && fullText.trim() && !document.querySelector(".live-thinking")) {
+                const thinkDetails = document.createElement("details");
+                thinkDetails.className = "tool-calls live-thinking collapsed";
+                thinkDetails.innerHTML =
+                  `<summary>Thought Process</summary>` +
+                  `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${fullText.trim()}</pre>`;
+                if (assistantContainer) {
+                  messagesEl.insertBefore(thinkDetails, assistantContainer);
+                } else {
+                  messagesEl.appendChild(thinkDetails);
+                }
+                fullText = "";
+                assistantMsgEl.textContent = "";
+              }
+
               const displayEvent = { ...event };
               delete displayEvent.state;
               toolEvents.push(displayEvent);
@@ -1256,31 +1308,30 @@
               }
 
             } else if (event.type === "think") {
+              // Legacy full-think event (e.g. OpenAI backend)
               const container = typing.closest(".msg-container");
               const details = appendThought(event.text);
               if (container && details) {
-                // Move it before the typing indicator if possible
                 messagesEl.insertBefore(details, container);
               }
 
-            } else if (event.type === "token") {
-              typing.remove();
-              if (!assistantMsgEl) {
-                const result = appendMessage("assistant", "");
-                assistantMsgEl = result.div;
-                assistantContainer = result.container;
-              }
-              fullText += event.text;
-              assistantMsgEl.textContent = fullText;
-              messagesEl.scrollTop = messagesEl.scrollHeight;
-
             } else if (event.type === "done") {
               typing.remove();
+
+              // Remove streaming cursor
+              if (assistantMsgEl) {
+                assistantMsgEl.classList.remove("streaming");
+              }
+
               if (!assistantMsgEl) {
                 const result = appendMessage("assistant", event.text || "(no response)");
                 assistantMsgEl = result.div;
                 assistantContainer = result.container;
+              } else {
+                // Set the authoritative final text from the server
+                assistantMsgEl.textContent = event.text || fullText || "(no response)";
               }
+
               // Write turn_id if it came bundled in the done event (cache-hit / short-circuit paths)
               if (event.turn_id !== undefined && assistantContainer) {
                 assistantContainer.dataset.turnId = event.turn_id;
@@ -1297,6 +1348,7 @@
 
             } else if (event.type === "error") {
               typing.remove();
+              if (assistantMsgEl) assistantMsgEl.classList.remove("streaming");
               appendMessage("assistant", event.text || "An error occurred.");
             }
           }

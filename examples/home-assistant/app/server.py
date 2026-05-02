@@ -639,21 +639,45 @@ def chat_stream(req: ChatRequest):
         # First status fires instantly
         yield f"data: {json.dumps({'type': 'status', 'text': _status_msgs[0]})}\n\n"
         _si = 1
+        first_token_seen = False     # once tokens flow, stop status rotation
+        pre_tool_tokens  = ""        # accumulate pre-tool text as thought trace
 
         while not done_seen:
+            # Use short timeout once tokens are flowing (responsive),
+            # longer timeout while waiting for first token (status rotation).
+            poll_timeout = 0.15 if first_token_seen else 4.5
+
             try:
-                event = event_q.get(timeout=1.5)
+                event = event_q.get(timeout=poll_timeout)
             except _q.Empty:
-                # Model still thinking — rotate to next status message
-                yield f"data: {json.dumps({'type': 'status', 'text': _status_msgs[_si % len(_status_msgs)]})}\n\n"
-                _si += 1
+                if not first_token_seen:
+                    # Model still loading — rotate status message
+                    yield f"data: {json.dumps({'type': 'status', 'text': _status_msgs[_si % len(_status_msgs)]})}\n\n"
+                    _si += 1
                 continue
 
             if event is None:
                 break                 # agent thread finished
 
             if event["type"] == "think":
+                # Legacy full-think event (OpenAI backend)
                 thought_trace += event.get("text", "")
+                yield f"data: {json.dumps(event)}\n\n"
+
+            elif event["type"] == "think_done":
+                # Signal from streaming state machine: pre-tool text was thinking.
+                # Move accumulated pre_tool_tokens into thought_trace.
+                thought_trace = pre_tool_tokens.strip()
+                yield f"data: {json.dumps(event)}\n\n"
+
+            elif event["type"] == "token":
+                if not first_token_seen:
+                    first_token_seen = True
+                    # Clear the status message on first real token
+                    yield f"data: {json.dumps({'type': 'status', 'text': ''})}\n\n"
+                # Track pre-tool tokens for potential thought trace
+                if not tool_events:
+                    pre_tool_tokens += event.get("text", "")
                 yield f"data: {json.dumps(event)}\n\n"
 
             elif event["type"] == "tool_call":
@@ -698,8 +722,9 @@ def chat_stream(req: ChatRequest):
                 #     print(f"[Cache] STORED {len(to_cache)} call(s) for: {req.message!r}")
 
             else:
-                # token, error — forward as-is
+                # error — forward as-is
                 yield f"data: {json.dumps(event)}\n\n"
+
 
     return StreamingResponse(
         generate(),
