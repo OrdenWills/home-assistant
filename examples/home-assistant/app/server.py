@@ -640,7 +640,6 @@ def chat_stream(req: ChatRequest):
         yield f"data: {json.dumps({'type': 'status', 'text': _status_msgs[0]})}\n\n"
         _si = 1
         first_token_seen = False     # once tokens flow, stop status rotation
-        pre_tool_tokens  = ""        # accumulate pre-tool text as thought trace
 
         while not done_seen:
             # Use short timeout once tokens are flowing (responsive),
@@ -664,10 +663,16 @@ def chat_stream(req: ChatRequest):
                 thought_trace += event.get("text", "")
                 yield f"data: {json.dumps(event)}\n\n"
 
+            elif event["type"] == "think_token":
+                # Live thinking token — accumulate and forward
+                if not first_token_seen:
+                    first_token_seen = True
+                    yield f"data: {json.dumps({'type': 'status', 'text': ''})}\n\n"
+                thought_trace += event.get("text", "")
+                yield f"data: {json.dumps(event)}\n\n"
+
             elif event["type"] == "think_done":
-                # Signal from streaming state machine: pre-tool text was thinking.
-                # Move accumulated pre_tool_tokens into thought_trace.
-                thought_trace = pre_tool_tokens.strip()
+                # Thinking phase complete
                 yield f"data: {json.dumps(event)}\n\n"
 
             elif event["type"] == "token":
@@ -675,9 +680,6 @@ def chat_stream(req: ChatRequest):
                     first_token_seen = True
                     # Clear the status message on first real token
                     yield f"data: {json.dumps({'type': 'status', 'text': ''})}\n\n"
-                # Track pre-tool tokens for potential thought trace
-                if not tool_events:
-                    pre_tool_tokens += event.get("text", "")
                 yield f"data: {json.dumps(event)}\n\n"
 
             elif event["type"] == "tool_call":

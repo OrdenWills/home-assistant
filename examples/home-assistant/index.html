@@ -250,7 +250,8 @@
                 <!-- Top Row: Visual & Controls -->
                 <div class="speaker-row top">
                   <div class="disc-container" id="speaker-disc-container">
-                    <svg class="disc-icon" id="speaker-disc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <svg class="disc-icon" id="speaker-disc" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                      stroke-width="1.5">
                       <circle cx="12" cy="12" r="10"></circle>
                       <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
                       <path d="M12 2a10 10 0 0 1 10 10" stroke-width="2"></path>
@@ -258,14 +259,26 @@
                   </div>
                   <div class="speaker-controls">
                     <button class="media-btn" onclick="handleSpeakerAction('previous')" title="Previous">
-                      <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line></svg>
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                        <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"></line>
+                      </svg>
                     </button>
-                    <button class="media-btn" id="speaker-play-pause" onclick="handleSpeakerAction('play')" title="Play/Pause">
-                      <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-                      <svg id="pause-icon" class="hidden" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+                    <button class="media-btn" id="speaker-play-pause" onclick="handleSpeakerAction('play')"
+                      title="Play/Pause">
+                      <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                      </svg>
+                      <svg id="pause-icon" class="hidden" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="4" width="4" height="16"></rect>
+                        <rect x="14" y="4" width="4" height="16"></rect>
+                      </svg>
                     </button>
                     <button class="media-btn" onclick="handleSpeakerAction('next')" title="Next">
-                      <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"></polygon><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line></svg>
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                        <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"></line>
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -471,7 +484,8 @@
                 <span class="assistant-dot" id="assistant-dot"></span>
               </div>
               <button id="mute-btn" title="Mute/Unmute Assistant Voice">
-                <svg id="mute-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg id="mute-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
                   <path class="volume-waves" d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                 </svg>
@@ -485,7 +499,7 @@
               </button>
             </div>
           </div>
-          
+
           <div id="messages"></div>
 
           <!-- Single instance of the popup used for all messages -->
@@ -934,7 +948,7 @@
           }
         }
       }
-      
+
       // Update TV
       for (const [room, tvState] of Object.entries(state.tv || {})) {
         const el = document.getElementById(`gadget-tv-${room}`);
@@ -943,7 +957,7 @@
           else el.classList.remove("active-gadget");
         }
       }
-      
+
       // Update Speaker
       for (const [room, spkState] of Object.entries(state.speaker || {})) {
         const el = document.getElementById(`gadget-speaker-${room}`);
@@ -952,7 +966,7 @@
           else el.classList.remove("active-gadget");
         }
       }
-      
+
       document.querySelectorAll(".scene-item").forEach(el => el.classList.remove("scene-active"));
       if (state.active_scene) {
         const sceneEl = document.getElementById(`scene-${state.active_scene}`);
@@ -1196,6 +1210,9 @@
       let assistantContainer = null;   // the <div class="msg-container assistant"> wrapper
       let fullText = "";
       let toolEvents = [];
+      let thinkDetailsEl = null;       // live <details> block for thinking
+      let thinkPreEl = null;           // <pre> inside the thinking block
+      let thinkText = "";              // accumulated thinking text
 
       try {
         const response = await fetch("/chat/stream", {
@@ -1235,19 +1252,42 @@
                 statusEl.className = "typing-status";
                 statusEl.style.cssText = "font-size:0.82em;color:var(--text-muted,#888);margin-bottom:4px;transition:opacity 0.25s ease;opacity:0;";
                 typing.insertBefore(statusEl, typing.firstChild);
-                // Trigger fade-in on next frame
                 requestAnimationFrame(() => { statusEl.style.opacity = "1"; });
               }
-              // Animate text change
               statusEl.style.opacity = "0";
               setTimeout(() => {
                 statusEl.textContent = event.text;
                 statusEl.style.opacity = "1";
               }, 200);
 
+            } else if (event.type === "think_token") {
+              // ── Live thinking token — stream into dedicated thinking block ──
+              typing.remove();
+
+              if (!thinkDetailsEl) {
+                // Create live thinking details block (open, with cursor)
+                thinkDetailsEl = document.createElement("details");
+                thinkDetailsEl.className = "tool-calls live-thinking";
+                thinkDetailsEl.open = true;
+                thinkDetailsEl.innerHTML =
+                  `<summary>Thought Process</summary>` +
+                  `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;"></pre>`;
+                thinkPreEl = thinkDetailsEl.querySelector("pre");
+                messagesEl.appendChild(thinkDetailsEl);
+              }
+              thinkText += event.text;
+              thinkPreEl.textContent = thinkText;
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            } else if (event.type === "think_done") {
+              // ── Thinking complete — remove cursor, collapse ──
+              if (thinkDetailsEl) {
+                thinkDetailsEl.classList.add("collapsed");
+                thinkDetailsEl.open = false;
+              }
+
             } else if (event.type === "token") {
-              // ── Live token streaming ──
-              // Remove typing indicator on first token
+              // ── Live response token — stream into message bubble ──
               typing.remove();
 
               if (!assistantMsgEl) {
@@ -1255,48 +1295,17 @@
                 assistantMsgEl = result.div;
                 assistantContainer = result.container;
                 assistantMsgEl.classList.add("streaming");
+                // If we have a thinking block, move it before the assistant container
+                if (thinkDetailsEl && assistantContainer) {
+                  messagesEl.insertBefore(thinkDetailsEl, assistantContainer);
+                }
               }
               fullText += event.text;
               assistantMsgEl.textContent = fullText;
               messagesEl.scrollTop = messagesEl.scrollHeight;
 
-            } else if (event.type === "think_done") {
-              // ── Pre-tool text was thinking — promote to details block ──
-              if (assistantMsgEl && fullText.trim()) {
-                const thinkDetails = document.createElement("details");
-                thinkDetails.className = "tool-calls live-thinking collapsed";
-                thinkDetails.innerHTML =
-                  `<summary>Thought Process</summary>` +
-                  `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${fullText.trim()}</pre>`;
-                // Insert thinking block before the assistant message container
-                if (assistantContainer) {
-                  messagesEl.insertBefore(thinkDetails, assistantContainer);
-                } else {
-                  messagesEl.appendChild(thinkDetails);
-                }
-                // Clear the message bubble for response text
-                fullText = "";
-                assistantMsgEl.textContent = "";
-              }
-
             } else if (event.type === "tool_call") {
               typing.remove();
-
-              // If we have pre-tool text and haven't promoted it yet, do it now
-              if (assistantMsgEl && fullText.trim() && !document.querySelector(".live-thinking")) {
-                const thinkDetails = document.createElement("details");
-                thinkDetails.className = "tool-calls live-thinking collapsed";
-                thinkDetails.innerHTML =
-                  `<summary>Thought Process</summary>` +
-                  `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${fullText.trim()}</pre>`;
-                if (assistantContainer) {
-                  messagesEl.insertBefore(thinkDetails, assistantContainer);
-                } else {
-                  messagesEl.appendChild(thinkDetails);
-                }
-                fullText = "";
-                assistantMsgEl.textContent = "";
-              }
 
               const displayEvent = { ...event };
               delete displayEvent.state;
@@ -1327,6 +1336,10 @@
                 const result = appendMessage("assistant", event.text || "(no response)");
                 assistantMsgEl = result.div;
                 assistantContainer = result.container;
+                // Position thinking block before the final message
+                if (thinkDetailsEl && assistantContainer) {
+                  messagesEl.insertBefore(thinkDetailsEl, assistantContainer);
+                }
               } else {
                 // Set the authoritative final text from the server
                 assistantMsgEl.textContent = event.text || fullText || "(no response)";
@@ -1474,7 +1487,7 @@
         }
         // Update speaker visual state
         updateSpeakerUI(state.speaker?.living_room);
-      } catch (e) {}
+      } catch (e) { }
     }
     fetchInitialFolder();
 
@@ -1501,7 +1514,7 @@
       }
     }
 
-    window.handleSpeakerAction = async function(action) {
+    window.handleSpeakerAction = async function (action) {
       try {
         const res = await fetch("/speaker/control", {
           method: "POST",
@@ -1565,17 +1578,17 @@
 
     function showFeedbackPopup(container, rating, upBtn, downBtn, anchor) {
       _activeFbTarget = { container, rating, upBtn, downBtn };
-      
+
       // Move popup to the message's feedback container so it scrolls with it
       const feedbackContainer = anchor.closest(".msg-feedback");
       if (feedbackContainer) {
         feedbackContainer.appendChild(fbPopup);
       }
-      
+
       fbComment.value = "";
       fbPopup.classList.remove("hidden");
       fbComment.focus();
-      
+
       document.getElementById("fp-title").textContent = rating === "positive" ? "Add to Golden Set" : "Add to Failure Set";
     }
 
@@ -1589,9 +1602,10 @@
     });
 
     fbClose.addEventListener("click", () => fbPopup.classList.add("hidden"));
-    
+
     // Clicking the dimmed background also closes the chat
     if (mobileChatBackdrop) mobileChatBackdrop.addEventListener("click", () => toggleMobileChat(false));
   </script>
 </body>
+
 </html>

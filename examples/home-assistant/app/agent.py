@@ -175,8 +175,16 @@ def extract_think_and_response(text: str) -> tuple[str, str]:
     }
 
     # Find the first JSON tool call pattern to split on
-    json_pattern = r'\{"name"\s*:\s*"(\w+)"[^}]*"(?:parameters|arguments)"\s*:\s*\{[^}]*\}[^}]*\}'
+    # Improved regex to handle one level of nested braces in parameters
+    json_pattern = r'\{"name"\s*:\s*"(\w+)"[^}]*"(?:parameters|arguments)"\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}[^}]*\}'
+    
+    # Also look for the malformed case the user reported (missing leading brace)
+    malformed_pattern = r'"name"\s*:\s*"(\w+)"[^}]*"(?:parameters|arguments)"\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}[^}]*\}'
+    
     match = re.search(json_pattern, text)
+    if not match:
+        match = re.search(malformed_pattern, text)
+
     if match and match.group(1) in valid_tools:
         think_text = text[:match.start()].strip()
         response_text = text[match.end():].strip()
@@ -195,13 +203,15 @@ def extract_think_and_response(text: str) -> tuple[str, str]:
     response_text = response_text.replace("fjärilsart", "").strip()
 
     # Clean up any dangling braces that might be left over from splits
-    think_text = re.sub(r'[\{\}]+$', '', think_text).strip()
-    response_text = re.sub(r'^[\{\}\s,]+', '', response_text).strip()
+    think_text = re.sub(r'[\{\}\s,:]+$', '', think_text).strip()
+    response_text = re.sub(r'^[\{\}\s,:]+', '', response_text).strip()
 
     return think_text, response_text
 
 def clean_text_response(text: str) -> str:
     """Remove remaining special tokens and syntax from text."""
+    if not text: return ""
+    
     # 0. Remove <think>...</think> blocks if any survived
     text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
 
@@ -220,12 +230,17 @@ def clean_text_response(text: str) -> str:
     tool_pattern = r'(?:[\(\[]?)\b(' + '|'.join(valid_tools) + r')\([^)]*\)(?:[\)\]]?)'
     text = re.sub(tool_pattern, '', text)
 
-    # 4. Strip leftover JSON objects (handles one level of nested braces for parameters)
-    json_pattern = r'\{"name"\s*:\s*"[^"]*"[^}]*"(?:parameters|arguments)"\s*:\s*\{[^}]*\}[^}]*\}'
+    # 4. Strip leftover JSON objects
+    # Handle one level of nesting for parameters
+    json_pattern = r'\{"name"\s*:\s*"[^"]*"[^}]*"(?:parameters|arguments)"\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}[^}]*\}'
     text = re.sub(json_pattern, '', text)
+    
+    # Also strip potentially malformed/partial JSON leaks reported by user
+    malformed_pattern = r'"name"\s*:\s*"[^"]*"[^}]*"(?:parameters|arguments)"\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}'
+    text = re.sub(malformed_pattern, '', text)
 
     # 5. Final cleanup of excess whitespace and dangling artifact chars at start
-    text = re.sub(r'^[\{\}\s,]+', '', text)
+    text = re.sub(r'^[\{\}\s,:]+', '', text)
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
 
@@ -278,18 +293,17 @@ def run_agent_stream(
     #  LOCAL BACKEND — single-turn, TRUE STREAMING
     # ══════════════════════════════════════════════════════════════════════════
     #
-    # The model output (after llama-server strips special tokens) follows
-    # this layout:
-    #   [thinking text] {"name":..., "parameters":...} [response text]
+    # The model output (after llama-server strips <think>/<think> into
+    # "fjärilsart") follows this layout:
     #
-    # We stream with stream=True and use a real-time state machine to:
-    #   1. Yield pre-tool text as  {"type": "token"}  (the frontend will
-    #      promote it to a thinking block when a tool_call event arrives).
-    #   2. Buffer tool-call JSON silently (brace counting).
-    #   3. Parse + execute tool calls immediately when complete.
-    #   4. Yield post-tool text as  {"type": "token"}.
+    #   fjärilsart [thinking text] fjärilsart {"name":..., "parameters":...} [response text]
     #
-    # If no tool call is found, all tokens are the final response.
+    # We stream with stream=True and use a state machine keyed on the
+    # fjärilsart marker to separate thinking from response:
+    #   INIT        → looking for first fjärilsart (or { for non-thinking models)
+    #   THINKING    → emit think_token events until second fjärilsart
+    #   STREAMING   → emit token events; detect tool-call JSON via {
+    #   TOOL_BUFFER → brace-count tool-call JSON, parse + execute on close
     # ══════════════════════════════════════════════════════════════════════════
     if backend == "local":
         try:
@@ -306,17 +320,27 @@ def run_agent_stream(
             return
 
         # ── Streaming state machine ───────────────────────────────────────
+        THINK_MARKER  = "fjärilsart"
+        MARKER_LEN    = len(THINK_MARKER)      # 11
+        INIT_PATIENCE = 30   # chars before we give up waiting for marker
+
         full_output   = ""          # complete raw output for logging
-        pending       = ""          # text waiting to be emitted as tokens
+        pending       = ""          # buffered text not yet emitted
         tool_buffer   = ""          # accumulates JSON while in TOOL state
         brace_depth   = 0
-        state         = "streaming" # "streaming" | "tool_buffer"
+        state         = "init"      # "init" | "thinking" | "streaming" | "tool_buffer"
         tool_events   = []
-        pre_tool_text = ""          # all text emitted before first tool call
-        saw_tool_call = False
-        artifacts     = {"fjärilsart"}  # decoded <think>/<think> artifacts
+        marker_count  = 0           # how many fjärilsart we've seen (0, 1, 2)
+        real_response = ""          # accumulate response text (for done event)
+        real_think    = ""          # accumulate thinking text (for logging)
 
-        FLUSH_THRESHOLD = 3         # flush pending tokens every N chars
+        def _safe_flush(text, marker):
+            """Split text into (safe_to_emit, must_hold) to avoid cutting
+            a potential partial marker at the end of text."""
+            for i in range(1, len(marker)):
+                if text.endswith(marker[:i]):
+                    return text[:-i], text[-i:]
+            return text, ""
 
         for chunk in stream:
             delta = ""
@@ -326,115 +350,176 @@ def run_agent_stream(
                 continue
 
             full_output += delta
+            pending += delta
 
-            for char in delta:
-                # ── Filter known decoding artifacts ───────────────────────
-                # (handled after full accumulation below)
+            # ── Process pending buffer ────────────────────────────────────
+            while pending:
 
-                if state == "streaming":
-                    if char == "{":
-                        # Potential tool-call JSON start — flush pending, switch
-                        if pending:
-                            # Clean artifact strings from pending before emitting
-                            cleaned = pending
-                            for art in artifacts:
-                                cleaned = cleaned.replace(art, "")
+                # ── INIT: looking for first fjärilsart or { ───────────────
+                if state == "init":
+                    idx = pending.find(THINK_MARKER)
+                    if idx >= 0:
+                        # Found first marker — discard it, enter THINKING
+                        # (any text before it is pre-think junk, discard)
+                        pending = pending[idx + MARKER_LEN:]
+                        marker_count = 1
+                        state = "thinking"
+                        continue
+
+                    # Check if { appears (non-thinking model, immediate tool call)
+                    brace_idx = pending.find("{")
+                    if brace_idx >= 0:
+                        # Emit any text before { as token (unlikely, but safe)
+                        before = pending[:brace_idx].strip()
+                        if before:
+                            yield {"type": "token", "text": before}
+                        pending = pending[brace_idx:]
+                        state = "streaming"   # will immediately hit { → tool_buffer
+                        continue
+
+                    # No marker, no brace yet — check if we should keep waiting
+                    if len(pending) >= INIT_PATIENCE:
+                        # Enough chars without seeing marker → non-thinking model
+                        # Treat all pending as response text
+                        state = "streaming"
+                        continue  # re-process pending in streaming state
+
+                    # Could be partial marker at end — hold
+                    safe, held = _safe_flush(pending, THINK_MARKER)
+                    if safe:
+                        # In INIT we don't emit yet (waiting to classify)
+                        # But if we have safe text with no marker, it means
+                        # more text arrived without marker — switch to streaming
+                        if len(safe) > MARKER_LEN:
+                            state = "streaming"
+                            continue
+                    break  # wait for more data
+
+                # ── THINKING: emit think_tokens until second fjärilsart ───
+                elif state == "thinking":
+                    idx = pending.find(THINK_MARKER)
+                    if idx >= 0:
+                        # Found closing marker — emit remaining think text
+                        if idx > 0:
+                            yield {"type": "think_token", "text": pending[:idx]}
+                        yield {"type": "think_done"}
+                        pending = pending[idx + MARKER_LEN:]
+                        marker_count = 2
+                        state = "streaming"
+                        continue
+
+                    # No closing marker yet — flush safe portion as think_token
+                    safe, held = _safe_flush(pending, THINK_MARKER)
+                    if safe:
+                        real_think += safe
+                        yield {"type": "think_token", "text": safe}
+                    pending = held
+                    break  # wait for more data
+
+                # ── STREAMING: emit tokens, watch for tool-call { ─────────
+                elif state == "streaming":
+                    brace_idx = pending.find("{")
+                    if brace_idx >= 0:
+                        # Emit text before the brace as response tokens
+                        before = pending[:brace_idx]
+                        if before:
+                            cleaned = before.replace(THINK_MARKER, "")
                             if cleaned:
-                                if not saw_tool_call:
-                                    pre_tool_text += cleaned
+                                real_response += cleaned
                                 yield {"type": "token", "text": cleaned}
-                            pending = ""
+                        # Switch to tool buffering
                         state = "tool_buffer"
                         tool_buffer = "{"
                         brace_depth = 1
+                        pending = pending[brace_idx + 1:]
+                        continue
                     else:
-                        pending += char
-                        # Flush at word boundaries or threshold for responsiveness
-                        if char in " \n" or len(pending) >= FLUSH_THRESHOLD:
-                            cleaned = pending
-                            for art in artifacts:
-                                cleaned = cleaned.replace(art, "")
+                        # No brace — flush safe portion as response tokens
+                        # (hold back chars that could be start of marker or {)
+                        safe, held = _safe_flush(pending, THINK_MARKER)
+                        if safe:
+                            cleaned = safe.replace(THINK_MARKER, "")
                             if cleaned:
-                                if not saw_tool_call:
-                                    pre_tool_text += cleaned
+                                real_response += cleaned
                                 yield {"type": "token", "text": cleaned}
-                            pending = ""
+                        pending = held
+                        break  # wait for more data
 
+                # ── TOOL_BUFFER: count braces, parse on close ─────────────
                 elif state == "tool_buffer":
-                    tool_buffer += char
-                    if char == "{":
-                        brace_depth += 1
-                    elif char == "}":
-                        brace_depth -= 1
-                        if brace_depth == 0:
-                            # Complete JSON object — is it a tool call?
-                            if '"name"' in tool_buffer:
-                                saw_tool_call = True
-                                # Tell frontend pre-tool text was thinking
-                                if pre_tool_text.strip():
-                                    yield {"type": "think_done"}
-                                # Parse and execute immediately
-                                parsed = parse_tool_calls_from_text(tool_buffer)
-                                for tc in parsed:
-                                    name     = tc["name"]
-                                    raw_args = tc["args"]
-                                    args     = coerce_args(name, raw_args)
+                    consumed = 0
+                    for i, char in enumerate(pending):
+                        tool_buffer += char
+                        consumed = i + 1
+                        if char == "{":
+                            brace_depth += 1
+                        elif char == "}":
+                            brace_depth -= 1
+                            if brace_depth == 0:
+                                # Complete JSON — check if it's a tool call
+                                if '"name"' in tool_buffer:
+                                    parsed = parse_tool_calls_from_text(tool_buffer)
+                                    for tc in parsed:
+                                        name     = tc["name"]
+                                        raw_args = tc["args"]
+                                        args     = coerce_args(name, raw_args)
 
-                                    error_msg = validate_tool_call(name, args)
-                                    if error_msg:
-                                        print(f"[Validate] {error_msg}")
-                                        continue
+                                        error_msg = validate_tool_call(name, args)
+                                        if error_msg:
+                                            print(f"[Validate] {error_msg}")
+                                            continue
 
-                                    handler = TOOL_HANDLERS.get(name)
-                                    result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
-                                    print(f"[Stream-Local] Tool '{name}' result: {result}")
+                                        handler = TOOL_HANDLERS.get(name)
+                                        result  = handler(**args) if handler else {"error": f"Unknown tool: {name}"}
+                                        print(f"[Stream-Local] Tool '{name}' result: {result}")
 
-                                    tool_events.append({"name": name, "args": args, "result": result})
-                                    yield {"type": "tool_call", "name": name, "args": args, "result": result}
-                            else:
-                                # Not a tool call — just a stray JSON object, emit as text
-                                cleaned = tool_buffer
-                                for art in artifacts:
-                                    cleaned = cleaned.replace(art, "")
-                                if cleaned:
-                                    if not saw_tool_call:
-                                        pre_tool_text += cleaned
-                                    yield {"type": "token", "text": cleaned}
+                                        tool_events.append({"name": name, "args": args, "result": result})
+                                        yield {"type": "tool_call", "name": name, "args": args, "result": result}
+                                else:
+                                    # Not a tool call — emit as response text
+                                    cleaned = tool_buffer.replace(THINK_MARKER, "")
+                                    if cleaned:
+                                        real_response += cleaned
+                                        yield {"type": "token", "text": cleaned}
+                                tool_buffer = ""
+                                pending = pending[consumed:]
+                                state = "streaming"
+                                break  # break for-loop, continue while-loop
+                    else:
+                        # Consumed all of pending without closing brace
+                        pending = ""
+                        # Safety valve
+                        if len(tool_buffer) > 600:
+                            cleaned = tool_buffer.replace(THINK_MARKER, "")
+                            if cleaned:
+                                yield {"type": "token", "text": cleaned}
                             tool_buffer = ""
                             state = "streaming"
-                    # Safety valve: if tool_buffer gets huge, it's not a tool call
-                    elif len(tool_buffer) > 600:
-                        cleaned = tool_buffer
-                        for art in artifacts:
-                            cleaned = cleaned.replace(art, "")
-                        if cleaned:
-                            if not saw_tool_call:
-                                pre_tool_text += cleaned
-                            yield {"type": "token", "text": cleaned}
-                        tool_buffer = ""
-                        state = "streaming"
+                        break  # wait for more data
 
-        # ── Flush any remaining buffered text ─────────────────────────────
+        # ── Flush remaining buffers ───────────────────────────────────────
         if pending:
-            cleaned = pending
-            for art in artifacts:
-                cleaned = cleaned.replace(art, "")
+            cleaned = pending.replace(THINK_MARKER, "")
             if cleaned:
                 yield {"type": "token", "text": cleaned}
         if tool_buffer:
-            # Incomplete tool buffer at end of stream — emit as text
-            cleaned = tool_buffer
-            for art in artifacts:
-                cleaned = cleaned.replace(art, "")
+            cleaned = tool_buffer.replace(THINK_MARKER, "")
             if cleaned:
+                real_response += cleaned
                 yield {"type": "token", "text": cleaned}
 
         print(f"[Stream-Local] Raw output: {full_output[:300]}")
         print(f"[Stream-Local] Tool calls found: {len(tool_events)}")
 
         # ── Build final text from the cleaned full output ─────────────────
-        _, raw_response = extract_think_and_response(full_output)
-        final_text = clean_text_response(raw_response) or "Done."
+        # Use accumulated response text if available (cleaner), fallback to regex
+        final_text = real_response.strip()
+        if not final_text:
+            _, raw_response = extract_think_and_response(full_output)
+            final_text = clean_text_response(raw_response) or "Done."
+        else:
+            final_text = clean_text_response(final_text)
+            
         messages.append({"role": "assistant", "content": final_text})
 
         if messages_out is not None:
