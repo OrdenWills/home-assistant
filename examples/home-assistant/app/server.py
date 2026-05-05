@@ -19,7 +19,7 @@ from tkinter import filedialog
 from app.agent import run_agent_stream, get_system_prompt
 from app.state import (
     home_state, load_state, persist_state,
-    build_state_summary, log_action, build_action_log_context, action_log,
+    build_state_summary, log_transaction, build_action_log_context, action_log,
     load_chat_history, save_chat_history, clear_chat_history,
 )
 from app.cache import init_db, get_cached, set_cached, delete_cached, clear_all, list_entries, build_snapshot
@@ -356,7 +356,7 @@ def ui_control_speaker(req: SpeakerControlRequest):
     res = TOOL_HANDLERS["control_speaker"](req.room, req.action)
     if res.get("success"):
         summary = _summarise_tool("control_speaker", {"room": req.room, "action": req.action}, res)
-        log_action("control_speaker", {"room": req.room, "action": req.action}, summary)
+        log_transaction([{"name": "control_speaker", "args": {"room": req.room, "action": req.action}}], summary)
     return JSONResponse(res)
 
 # ── Feedback / Dataset endpoint ────────────────────────────────────────────────
@@ -531,9 +531,9 @@ def chat_stream(req: ChatRequest):
                     yield f"data: {json.dumps({'type': 'status', 'text': 'Action performed...'})}\n\n"
                     summary = f"{room.replace('_', ' ').title()} light turned {target}."
                     summaries.append(summary)
-                    log_action("toggle_lights", args, summary)
 
                 text = " ".join(summaries)
+                log_transaction([{"name": "toggle_lights", "args": {"room": r, "state": target}} for r in _sc_rooms], text)
                 turn_id = _new_turn_id()
                 chat_turns.append({
                     "turn_id": turn_id,
@@ -578,7 +578,9 @@ def chat_stream(req: ChatRequest):
                            "args": e["args"], "result": e["result"], "state": home_state}
                 yield f"data: {json.dumps(payload)}\n\n"
                 yield f"data: {json.dumps({'type': 'status', 'text': 'Action performed...'})}\n\n"
-                log_action(e["name"], e["args"], _summarise_tool(e["name"], e["args"], e["result"]))
+
+            if events:
+                log_transaction([{"name": e["name"], "args": e["args"]} for e in events], text)
 
             turn_id = _new_turn_id()
             chat_turns.append({
@@ -690,10 +692,6 @@ def chat_stream(req: ChatRequest):
                     "result": event["result"],
                 })
                 event["state"] = home_state
-                log_action(
-                    event["name"], event["args"],
-                    _summarise_tool(event["name"], event["args"], event["result"]),
-                )
                 yield f"data: {json.dumps(event)}\n\n"
                 yield f"data: {json.dumps({'type': 'status', 'text': 'Action performed ✓'})}\n\n"
 
@@ -701,6 +699,9 @@ def chat_stream(req: ChatRequest):
                 done_seen = True
                 final_text = event["text"]
                 yield f"data: {json.dumps(event)}\n\n"
+                
+                if tool_events:
+                    log_transaction([{"name": e["name"], "args": e["args"]} for e in tool_events], final_text)
 
                 turn_id = _new_turn_id()
                 chat_turns.append({

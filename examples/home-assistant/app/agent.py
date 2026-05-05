@@ -21,6 +21,7 @@ BACKENDS = {
 def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, fan_str: str) -> str:
     return (
         "You are a smart home assistant AI. Use tools to control the home.\n\n"
+        "Output function calls as JSON.\n\n"
         "TOOLS:\n"
         "  toggle_lights(room, state='on'|'off')\n"
         "  toggle_all_lights(state='on'|'off')\n"
@@ -48,13 +49,27 @@ def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, f
         "  2. Multiple connected + current_user_room has device → use current_user_room.\n"
         "  3. Multiple connected + exactly ONE is in the eligible state for the action\n"
         "     (e.g. only one TV is on and user says 'turn off the TV') → infer that room.\n"
-        "  4. Multiple connected + ambiguous (rule 2 & 3 don't apply) → intent_unclear(incomplete).\n\n"
+        "  4. Multiple connected + ambiguous (rule 2 & 3 don't apply) "
+        "→ intent_unclear(incomplete).\n\n"
         "LIGHT / DOOR RESOLUTION:\n"
         "  current_user_room set + connected → use current_user_room.\n"
         "  current_user_room set + NOT connected → intent_unclear(unsupported_device).\n"
         "  current_user_room empty → intent_unclear(incomplete).\n\n"
-        "  [RECENT ACTIONS:] → resolve 'undo', 'again', 'same for X', and pronouns ('it').\n"
-        "  SYNONYMS: 'open'='unlock'; 'close'/'shut'='lock'; 'skip'='next'; 'back'='previous'."
+        "  [RECENT ACTIONS:] → transaction log, newest entry first. Format:\n"
+        "    (X mins ago) [call1, call2, ...] -> summary.\n"
+        "  Each [...] bracket is ONE command the user previously issued.\n"
+        "  For 'undo'/'reverse'/'back': invert ONLY the most recent transaction\n"
+        "    (the FIRST [...] block). Older transactions are always ignored.\n"
+        "  For pronouns ('it'/'them'): refer to the device(s) in the first [...] block.\n"
+        "  Do NOT use recent actions to infer which room 'the light' or 'the door'\n"
+        "  refers to when current_user_room is explicitly set — current_user_room wins.\n"
+        "  For 'all lights' / 'all doors': use toggle_all_lights / lock_all_doors\n"
+        "  regardless of current_user_room.\n"
+        "  SYNONYMS: 'open'='unlock'; 'close'/'shut'='lock'; 'skip'='next';\n"
+        "  'back'='previous' (ONLY for speaker track navigation);\n"
+        "  'continue'/'resume'/'on the music'='play'.\n"
+        "  Relative state clauses ('the light that is on', 'the door that is locked')\n"
+        "  override current_user_room — check STATE and act on the matching device."
     )
 
 def get_model_name(backend: str) -> str:
@@ -508,7 +523,7 @@ def run_agent_stream(
                 real_response += cleaned
                 yield {"type": "token", "text": cleaned}
 
-        print(f"[Stream-Local] Raw output: {full_output[:300]}")
+        print(f"[Stream-Local] Raw output: {full_output}")
         print(f"[Stream-Local] Tool calls found: {len(tool_events)}")
 
         # ── Build final text from the cleaned full output ─────────────────

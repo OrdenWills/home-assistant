@@ -13,7 +13,7 @@ persist_state() at the end of each mutation so the DB stays in sync.
 import json
 import random
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 _DB_PATH = Path("cache.db")
@@ -208,12 +208,11 @@ action_log: list[dict] = []
 MAX_ACTION_LOG = 3
 
 
-def log_action(action_name: str, args: dict, summary: str) -> None:
-    """Append an action to the log, keeping at most MAX_ACTION_LOG entries."""
+def log_transaction(calls: list[dict], summary: str) -> None:
+    """Append a transaction to the log, keeping at most MAX_ACTION_LOG entries."""
     action_log.append({
-        "time": datetime.now().strftime("%H:%M"),
-        "action": action_name,
-        "args": args,
+        "timestamp": datetime.now(timezone.utc).timestamp(),
+        "calls": calls,
         "summary": summary,
     })
     if len(action_log) > MAX_ACTION_LOG:
@@ -228,8 +227,18 @@ def build_action_log_context(n: int = 3) -> str:
     if not action_log:
         return ""
     recent = action_log[-n:]
-    entries = "; ".join(
-        f"{a['time']} {a['action']}({', '.join(f'{k}={v}' for k, v in a['args'].items())}) -> {a['summary']}"
-        for a in recent
-    )
-    return f"[RECENT ACTIONS: {entries}]"
+    recent = list(reversed(recent))
+    now = datetime.now(timezone.utc).timestamp()
+    
+    entries = []
+    for a in recent:
+        mins_ago = max(1, int((now - a['timestamp']) / 60))
+        t = f"({mins_ago} min{'s' if mins_ago > 1 else ''} ago)"
+        call_strs = []
+        for call in a['calls']:
+            args_str = ', '.join(f"{k}={v}" for k, v in call.get('args', {}).items())
+            call_strs.append(f"{call['name']}({args_str})")
+        calls_str = ", ".join(call_strs)
+        entries.append(f"{t} [{calls_str}] -> {a['summary']}")
+        
+    return "[RECENT ACTIONS:\n" + "\n".join(entries) + "]"
