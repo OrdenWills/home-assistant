@@ -2,9 +2,15 @@
 
 This document tracks potential improvements, architectural changes, and "situations" encountered during development that warrant future attention.
 
+
+
+## Questions:
+**Situation:**In the real world what do i want to happen when i say on the speaker when am in the bathroom ? do i want the hallway(which share boundary with all the rooms) speaker to play when there is no speaker in the bathroom.
+
+
 ## Proposed Upgrades
 
-### 1. Action Log Limit & Multi-Turn Reasoning
+### 1. Action Log Limit & Multi-Turn Reasoning (Done used transaction logging)
 **Situation:** When the user issues a command that triggers multiple tool calls (e.g., "turn off all the lights that are on"), the system currently logs each tool call as a separate entry in the `action_log`. 
 **Current State:** `MAX_ACTION_LOG` is set to 3. If 4 lights are toggled, the first one is pushed out of the reasoning context for the next turn.
 **Proposed Fix:** 
