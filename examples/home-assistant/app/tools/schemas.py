@@ -112,7 +112,8 @@ TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {
                     "room":   {"type": "string", "enum": ["living_room", "bedroom", "kitchen", "office", "hallway"]},
-                    "action": {"type": "string", "enum": ["play", "pause", "stop", "next", "previous"]}
+                    "action": {"type": "string", "enum": ["play", "pause", "stop", "next", "previous"]},
+                    "media":  {"type": "string", "description": "Specific song, artist, or media to play (optional)."}
                 },
                 "required": ["room", "action"]
             }

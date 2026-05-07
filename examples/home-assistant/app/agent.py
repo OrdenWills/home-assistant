@@ -31,7 +31,7 @@ def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, f
         "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
         "  control_tv(room, state='on'|'off')\n"
         "  control_fan(room, state='on'|'off'[, speed='low'|'medium'|'high'])\n"
-        "  control_speaker(room, action='play'|'pause'|'stop'|'next'|'previous')\n"
+        "  control_speaker(room, action='play'|'pause'|'stop'|'next'|'previous'[, media='<str>'])\n"
         "  intent_unclear(reason='off_topic'|'incomplete'|"
         "'unsupported_device'|'unsupported_feature')\n\n"
         f"CONNECTED ROOMS (lights): {', '.join(avail_r)}\n"
@@ -68,7 +68,7 @@ def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, f
         "  SYNONYMS: 'open'='unlock'; 'close'/'shut'='lock'; 'skip'='next';\n"
         "  'back'='previous' (for speaker track navigation), but can also mean 'undo' for\n"
         "  reverting device states based on [RECENT ACTIONS].\n"
-        "  'continue'/'resume'/'on the music'='play'.\n"
+        "  'continue'/'resume'/'on the music'='play'; 'play <song/artist>' = action='play' + media='<str>'.\n"
         "  Relative state clauses ('the light that is on', 'the door that is locked')\n"
         "  override current_user_room — check STATE and act on the matching device."
     )

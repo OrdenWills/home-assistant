@@ -36,7 +36,7 @@ PARAM_SCHEMA: dict[str, dict[str, set | None]] = {
     "set_thermostat":    {"temperature": None, "mode": _THERMO},
     "set_scene":         {"scene": _SCENES},
     "control_tv":        {"room": _TV_ROOMS, "state": _ON_OFF},
-    "control_speaker":   {"room": _SPEAKER_ROOMS, "action": _SPEAKER_ACTIONS},
+    "control_speaker":   {"room": _SPEAKER_ROOMS, "action": _SPEAKER_ACTIONS, "media": None},
     "control_fan":       {"room": _FAN_ROOMS, "state": _ON_OFF},
     "intent_unclear":    {"reason": None},
 }

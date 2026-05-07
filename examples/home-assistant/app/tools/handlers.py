@@ -135,7 +135,7 @@ def control_tv(room: str, state: str) -> dict:
     return {"success": True, "room": room, "state": state}
 
 
-def control_speaker(room: str, action: str) -> dict:
+def control_speaker(room: str, action: str, media: str = None) -> dict:
     if "speaker" not in home_state or room not in home_state["speaker"]:
         return {"success": False, "error": f"No speaker in {room}"}
     
@@ -153,6 +153,8 @@ def control_speaker(room: str, action: str) -> dict:
     persist_state()
     
     res = {"success": True, "room": room, "action": action, "state": home_state["speaker"][room]}
+    if media:
+        res["media"] = media
     
     # Real audio playback logic
     music_folder = home_state.get("music_folder")

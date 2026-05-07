@@ -25,3 +25,5 @@ This document tracks potential improvements, architectural changes, and "situati
 ### 3. Voice Input Enhancements
 **Situation:** Basic Web Speech API implementation.
 **Proposed Fix:** Add wake-word detection ("Hey Assistant") and better noise cancellation handling.
+
+### 4. Improve handling user location currently the thoughts have things like user location is ''
