@@ -1471,6 +1471,16 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   display: none;
 }
 
+/* ── NEW: Status Mode (Waiting for model) ── */
+.tool-calls.status-mode summary {
+  pointer-events: none; /* Disables clicking to open */
+  cursor: default;
+  animation: pulse 1.5s infinite; /* Gentle fade indicating background process */
+}
+
+.tool-calls.status-mode pre {
+  display: none !important; /* Forces content to remain hidden */
+}
 
 /* ── Model dropdown ── */
 .local-wrapper {
