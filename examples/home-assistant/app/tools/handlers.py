@@ -226,10 +226,12 @@ _FUZZY_THRESHOLD = 50  # minimum score (0-100) to accept a match
 def _fuzzy_match_track(query: str, files: list[str], fallback_idx: int) -> int:
     """
     Score *query* against every filename (extension stripped) using
-    rapidfuzz token_set_ratio.  Returns the index of the best match
-    above _FUZZY_THRESHOLD.  If several files tie at the top score,
-    one is chosen at random.  Falls back to *fallback_idx* when nothing
-    matches well enough.
+    rapidfuzz WRatio (weighted ratio).  WRatio automatically picks the
+    best algorithm based on string-length ratios, so short queries like
+    "lsd for me" still match long filenames like "LSD - Thunderclouds...".
+    Returns the index of the best match above _FUZZY_THRESHOLD.  If
+    several files tie at the top score, one is chosen at random.
+    Falls back to *fallback_idx* when nothing matches well enough.
     """
     try:
         from rapidfuzz import fuzz
@@ -243,9 +245,9 @@ def _fuzzy_match_track(query: str, files: list[str], fallback_idx: int) -> int:
     for i, fname in enumerate(files):
         # Strip extension for cleaner matching
         name = os.path.splitext(fname)[0].lower()
-        # token_set_ratio handles partial + reordered tokens well
-        # e.g. "lucky dube" matches "Lucky Dube - Together As One.mp3"
-        score = fuzz.token_set_ratio(query_lower, name)
+        # WRatio handles short queries vs long filenames well
+        # e.g. "lsd for me" → 85.5 on "LSD - Thunderclouds..."
+        score = fuzz.WRatio(query_lower, name)
         if score >= _FUZZY_THRESHOLD:
             scored.append((i, score))
 

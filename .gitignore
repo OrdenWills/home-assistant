@@ -45,3 +45,4 @@ examples/home-assistant/assets/style_backup.css
 examples/home-assistant/app/server_backup.py
 examples/home-assistant/stage2_dataset_v4.jsonl
 examples/home-assistant/jot.txt
+examples/home-assistant/_test_fuzz.py
