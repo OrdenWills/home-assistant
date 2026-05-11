@@ -1001,6 +1001,14 @@
         updateHouseVisualization(state);
         updateStateCards(state);
         updateFloorplan(state);
+        // Music folder display (was fetchInitialFolder)
+        const folderEl = document.getElementById("music-folder-display");
+        if (folderEl && state.music_folder) {
+          folderEl.textContent = state.music_folder.split(/[/\\]/).pop();
+          folderEl.title = state.music_folder;
+        }
+        // Speaker UI sync
+        updateSpeakerUI(state.speaker?.living_room);
       } catch (e) {
         console.error("[RefreshState] Error:", e);
       }
@@ -1490,7 +1498,6 @@
 
     refreshState();
     fetchLocalModels();
-    fetchLocalModelStatus();
     fetchHistory();
     // ── Mobile Chat Toggle ────────────────────────────────────
 
@@ -1538,20 +1545,7 @@
       });
     }
 
-    // Update initial folder display
-    async function fetchInitialFolder() {
-      try {
-        const res = await fetch("/state");
-        const state = await res.json();
-        if (state.music_folder) {
-          folderDisplay.textContent = state.music_folder.split(/[/\\]/).pop();
-          folderDisplay.title = state.music_folder;
-        }
-        // Update speaker visual state
-        updateSpeakerUI(state.speaker?.living_room);
-      } catch (e) { }
-    }
-    fetchInitialFolder();
+    // fetchInitialFolder removed — refreshState() now handles music folder + speaker UI
 
     // ── Speaker UI Sync ───────────────────────────────────────
     function updateSpeakerUI(status) {

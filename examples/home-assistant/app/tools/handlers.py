@@ -1,13 +1,25 @@
 import os
 import random
-import pygame
 from app.state import home_state, persist_state
 
-# Initialize pygame mixer for audio playback
-try:
-    pygame.mixer.init()
-except Exception as e:
-    print(f"Pygame mixer init failed: {e}")
+# ── Lazy pygame mixer init ─────────────────────────────────────────────────────
+# pygame.mixer.init() is slow (~2-5 s) and blocks the event loop.
+# We defer it until the first actual speaker action so server reloads are instant.
+_mixer_ready = False
+
+def _ensure_mixer():
+    global _mixer_ready
+    if _mixer_ready:
+        return True
+    try:
+        import pygame
+        pygame.mixer.init()
+        _mixer_ready = True
+        print("[Audio] pygame mixer initialised (lazy).")
+        return True
+    except Exception as e:
+        print(f"[Audio] pygame mixer init failed: {e}")
+        return False
 
 
 def toggle_lights(room: str, state: str) -> dict:
@@ -169,7 +181,11 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                 # Boundary check
                 if idx >= len(files): idx = 0
                 
-                if action == "next":
+                # ── Fuzzy match when media query is provided ───────────────
+                if media and action in ["play"]:
+                    idx = _fuzzy_match_track(media, files, idx)
+                    res["fuzzy_query"] = media
+                elif action == "next":
                     idx = (idx + 1) % len(files)
                 elif action == "previous":
                     idx = (idx - 1) % len(files)
@@ -182,24 +198,70 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                 res["current_track"] = track_name
                 
                 # Perform actual audio actions
-                if action in ["play", "next", "previous"]:
-                    try:
-                        pygame.mixer.music.load(track_path)
-                        pygame.mixer.music.play()
-                    except Exception as e:
-                        res["playback_error"] = str(e)
-                elif action == "pause":
-                    pygame.mixer.music.pause()
-                elif action == "stop":
-                    pygame.mixer.music.stop()
-                elif action == "resume" or (action == "play" and current_status == "paused"):
-                    pygame.mixer.music.unpause()
+                if _ensure_mixer():
+                    import pygame
+                    if action in ["play", "next", "previous"]:
+                        try:
+                            pygame.mixer.music.load(track_path)
+                            pygame.mixer.music.play()
+                        except Exception as e:
+                            res["playback_error"] = str(e)
+                    elif action == "pause":
+                        pygame.mixer.music.pause()
+                    elif action == "stop":
+                        pygame.mixer.music.stop()
+                    elif action == "resume" or (action == "play" and current_status == "paused"):
+                        pygame.mixer.music.unpause()
             else:
                 res["info"] = "No supported audio files found in folder."
         except Exception as e:
             res["error"] = f"Folder error: {str(e)}"
             
     return res
+
+
+# ── Fuzzy track matching ───────────────────────────────────────────────────────
+_FUZZY_THRESHOLD = 50  # minimum score (0-100) to accept a match
+
+def _fuzzy_match_track(query: str, files: list[str], fallback_idx: int) -> int:
+    """
+    Score *query* against every filename (extension stripped) using
+    rapidfuzz token_set_ratio.  Returns the index of the best match
+    above _FUZZY_THRESHOLD.  If several files tie at the top score,
+    one is chosen at random.  Falls back to *fallback_idx* when nothing
+    matches well enough.
+    """
+    try:
+        from rapidfuzz import fuzz
+    except ImportError:
+        print("[Audio] rapidfuzz not installed — skipping fuzzy match.")
+        return fallback_idx
+
+    query_lower = query.lower().strip()
+    scored: list[tuple[int, float]] = []  # (index, score)
+
+    for i, fname in enumerate(files):
+        # Strip extension for cleaner matching
+        name = os.path.splitext(fname)[0].lower()
+        # token_set_ratio handles partial + reordered tokens well
+        # e.g. "lucky dube" matches "Lucky Dube - Together As One.mp3"
+        score = fuzz.token_set_ratio(query_lower, name)
+        if score >= _FUZZY_THRESHOLD:
+            scored.append((i, score))
+
+    if not scored:
+        print(f"[Audio] No fuzzy match above {_FUZZY_THRESHOLD}% for: {query!r}")
+        return fallback_idx
+
+    # Find the highest score, then collect all ties
+    best_score = max(s for _, s in scored)
+    top_matches = [i for i, s in scored if s == best_score]
+    winner = random.choice(top_matches)
+
+    match_name = files[winner]
+    print(f"[Audio] Fuzzy match: {query!r} → {match_name!r} (score={best_score:.0f}, "
+          f"candidates={len(top_matches)})")
+    return winner
 
 
 def control_fan(room: str, state: str, speed: str = None) -> dict:
