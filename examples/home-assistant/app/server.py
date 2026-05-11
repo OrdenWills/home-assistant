@@ -39,7 +39,7 @@ os.makedirs(DATASETS_DIR, exist_ok=True)
 LOCAL_MODELS = [
     {"id":"home-assistant-sft","name":"Home Assistant SFT (Finetuned)","hf_repo":"OrdenWills/LFM2.5-1.2B-home-assistant-sft","hf_file":"LFM2.5-1.2B-Instruct.Q4_K_M.gguf","size_label":"714 MB","score_label":"99%"},
     {"id":"home-assistant-sft(small)","name":"Home(small) Assistant SFT (Finetuned)","hf_repo":"OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file":"LFM2.5-350M.Q4_K_M.gguf","size_label":"218 MB","score_label":"98%"},
-    {"id": "home-assistant-sft-small-8bit","name": "Home Assistant SFT (Finetuned 350M)","hf_repo": "OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file": "LFM2.5-350M.Q8_0.gguf","size_label":"372 MB","score_label":"99%"},
+    {"id": "home-assistant-sft-small-8bit","name": "Home Assistant SFT (Finetuned 350M)","hf_repo": "OrdenWills/LFM2.5-350M-home-assistant-sft","hf_file": "LFM2.5-350M-home-assistant-sft.Q8_0.gguf","size_label":"372 MB","score_label":"99%"},
     {"id":"lfm25-1b-thinking-q4","name":"LFM2.5-1.2B-Thinking-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q4_0.gguf","size_label":"718 MB","score_label":"75%"},
     {"id":"lfm25-1b-thinking-q8","name":"LFM2.5-1.2B-Thinking-Q8_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Thinking-GGUF","hf_file":"LFM2.5-1.2B-Thinking-Q8_0.gguf","size_label":"1.28 GB","score_label":"82%"},
     {"id":"lfm25-1b-q4","name":"LFM2.5-1.2B-Instruct-Q4_0.gguf","hf_repo":"LiquidAI/LFM2.5-1.2B-Instruct-GGUF","hf_file":"LFM2.5-1.2B-Instruct-Q4_0.gguf","size_label":"696 MB","score_label":"68%"},

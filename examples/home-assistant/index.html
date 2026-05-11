@@ -544,7 +544,7 @@
     // ── UI Configuration ──────────────────────────────────────
     // Change this to 'true' to have thoughts open automatically, 
     // or 'false' to keep them collapsed until the user clicks.
-    const AUTO_OPEN_THOUGHTS = false;
+    const AUTO_OPEN_THOUGHTS = true;
 
     // ── Theme management ──────────────────────────────────────
 
@@ -1312,6 +1312,9 @@
                 thinkDetailsEl.classList.add("collapsed");
                 thinkDetailsEl.open = false;
                 thinkDetailsEl.querySelector("summary").textContent = "Thought Process";
+                // Transition to standard grey historical styling
+                thinkDetailsEl.classList.remove("live-thinking");
+                // thinkDetailsEl.style.marginBottom = "8px";
               }
 
             } else if (event.type === "token") {
@@ -1326,6 +1329,8 @@
                   thinkPreEl = null;
                 } else {
                   thinkDetailsEl.querySelector("summary").textContent = "Thought Process";
+                  thinkDetailsEl.classList.remove("live-thinking");
+                  // thinkDetailsEl.style.marginBottom = "8px";
                 }
               }
 
@@ -1372,6 +1377,8 @@
                   thinkDetailsEl = null;
                 } else {
                   thinkDetailsEl.querySelector("summary").textContent = "Thought Process";
+                  thinkDetailsEl.classList.remove("live-thinking");
+                  // thinkDetailsEl.style.marginBottom = "8px";
                 }
               }
 
@@ -1411,6 +1418,8 @@
                   thinkDetailsEl = null;
                 } else {
                   thinkDetailsEl.querySelector("summary").textContent = "Thought Process";
+                  thinkDetailsEl.classList.remove("live-thinking");
+                  // thinkDetailsEl.style.marginBottom = "8px";
                 }
               }
 
