@@ -518,26 +518,94 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   text-overflow: ellipsis;
 }
 
+/* ── Track name marquee ── */
+.track-marquee {
+  width: calc(100% - 20px);
+  overflow: hidden;
+  height: 0;
+  opacity: 0;
+  transition: height 0.3s ease, opacity 0.3s ease;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  flex-shrink: 0;
+}
+
+.track-marquee.active {
+  height: 14px;
+  opacity: 1;
+}
+
+.track-marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 9px;
+  line-height: 12px;
+  font-weight: 500;
+  color: var(--green);
+  letter-spacing: 0.02em;
+  animation: marquee-slide 10s linear infinite;
+  padding-left: 100%;
+  position: absolute;
+  top: 3px;
+}
+
+@keyframes marquee-slide {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+.track-marquee:not(.active) .track-marquee-text {
+  animation: none;
+}
+
 .speaker-card {
   flex-direction: column !important;
   align-items: stretch !important;
-  gap: 8px !important;
+  gap: 0px !important;
+  padding: 6px 10px 18px !important;
   min-height: 80px;
+  justify-content: center !important;
+  overflow: visible !important;
+  position: relative !important;
 }
+
+/* Scale down icons slightly to make room for marquee without causing a scrollbar */
+/* .speaker-card .disc-container,
+.speaker-card .icon-circle {
+  width: 24px;
+  height: 24px;
+}
+
+.speaker-card .disc-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.speaker-card .device-icon {
+  width: 16px;
+  height: 16px;
+} */
 
 .speaker-row {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
 .speaker-row.top {
+  margin-bottom: 4px;
+}
+/* .speaker-row.top {
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border-light);
   opacity: 0.4;
   transition: opacity 0.3s ease;
+} */
+/* Hide the folder label when music is active to prevent overlapping the marquee */
+.speaker-card.active-gadget .music-folder-path {
+  display: none;
 }
-
 .device-card.active-gadget .speaker-row.top {
   opacity: 1;
 }

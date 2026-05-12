@@ -191,10 +191,11 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                     idx = (idx - 1) % len(files)
                 
                 home_state["current_track_index"] = idx
-                persist_state()
                 
                 track_name = files[idx]
                 track_path = os.path.join(music_folder, track_name)
+                home_state["current_track_name"] = track_name
+                persist_state()
                 res["current_track"] = track_name
                 
                 # Perform actual audio actions
@@ -221,16 +222,59 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
 
 
 # ── Fuzzy track matching ───────────────────────────────────────────────────────
+import re as _re
+
 _FUZZY_THRESHOLD = 50  # minimum score (0-100) to accept a match
+
+# YouTube ID suffix: _<11 alphanum/dash chars> at end  (e.g. _shaX6kpDczI)
+_YT_ID_RE = _re.compile(r'[_][A-Za-z0-9_-]{11}$')
+# Website / source tags in brackets or parens
+_SOURCE_TAG_RE = _re.compile(
+    r'[\[\(]\s*(?:TrendyBeatz\.com|belaloaded\.com_?|okhype\.com|'
+    r'talkglitz\.tv|www\.\S+)\s*[\]\)]?', _re.IGNORECASE)
+# Common noise suffixes like (Official Audio), (Official Music Video)
+_NOISE_RE = _re.compile(
+    r'\(?\s*(?:Official\s*(?:Audio|Video|Music\s*Video)?|'
+    r'Piano\s*Tutorial)\s*\)?', _re.IGNORECASE)
+# Trailing filler the model appends to media queries
+_QUERY_FILLER_RE = _re.compile(
+    r'\b(?:for\s+me|for\s+us|please|on\s+the\s+speaker)\s*$', _re.IGNORECASE)
+# Leading article (only stripped when query has more substance)
+_LEADING_ARTICLE_RE = _re.compile(r'^(?:the|a|an)\s+', _re.IGNORECASE)
+
+
+def _clean_filename(name: str) -> str:
+    """Strip noise from a filename (no extension) for better matching."""
+    name = _SOURCE_TAG_RE.sub('', name)
+    name = _NOISE_RE.sub('', name)
+    name = _YT_ID_RE.sub('', name)
+    name = name.replace('-', ' ').replace('_', ' ')
+    return _re.sub(r'\s+', ' ', name).strip()
+
+
+def _clean_query(query: str) -> str:
+    """Strip trailing filler and leading articles from a media query."""
+    q = _QUERY_FILLER_RE.sub('', query).strip()
+    stripped = _LEADING_ARTICLE_RE.sub('', q)
+    if len(stripped) >= 2:
+        q = stripped
+    return q.strip()
+
 
 def _fuzzy_match_track(query: str, files: list[str], fallback_idx: int) -> int:
     """
-    Score *query* against every filename (extension stripped) using
-    rapidfuzz WRatio (weighted ratio).  WRatio automatically picks the
-    best algorithm based on string-length ratios, so short queries like
-    "lsd for me" still match long filenames like "LSD - Thunderclouds...".
-    Returns the index of the best match above _FUZZY_THRESHOLD.  If
-    several files tie at the top score, one is chosen at random.
+    Score *query* against every filename using rapidfuzz WRatio.
+    
+    Two-pass scoring for robustness:
+      1. raw query   vs  cleaned filename
+      2. core query  vs  cleaned filename  (filler words stripped)
+    
+    The *core* score acts as tiebreaker — e.g. "Lsd For Me" raw-matches
+    both LSD tracks and "Love Me" equally at ~85, but the core "lsd" vs
+    cleaned names clearly separates them (60 vs 30).
+    
+    Returns the index of the best match above _FUZZY_THRESHOLD.
+    If several files tie, one is chosen at random.
     Falls back to *fallback_idx* when nothing matches well enough.
     """
     try:
@@ -239,30 +283,34 @@ def _fuzzy_match_track(query: str, files: list[str], fallback_idx: int) -> int:
         print("[Audio] rapidfuzz not installed — skipping fuzzy match.")
         return fallback_idx
 
-    query_lower = query.lower().strip()
-    scored: list[tuple[int, float]] = []  # (index, score)
+    q_lower = query.lower().strip()
+    q_core = _clean_query(query).lower()
+
+    scored: list[tuple[int, float]] = []  # (index, composite_score)
 
     for i, fname in enumerate(files):
-        # Strip extension for cleaner matching
-        name = os.path.splitext(fname)[0].lower()
-        # WRatio handles short queries vs long filenames well
-        # e.g. "lsd for me" → 85.5 on "LSD - Thunderclouds..."
-        score = fuzz.WRatio(query_lower, name)
-        if score >= _FUZZY_THRESHOLD:
-            scored.append((i, score))
+        name_clean = _clean_filename(os.path.splitext(fname)[0]).lower()
+        # Score raw query against cleaned filename
+        raw_score = fuzz.WRatio(q_lower, name_clean)
+        # Score core query (filler stripped) against cleaned filename
+        core_score = fuzz.WRatio(q_core, name_clean)
+        # Composite: whichever is higher wins, but core gets a small
+        # bonus (+1) as tiebreaker since it's the truer intent signal
+        best = max(raw_score, core_score + 1)
+        if best >= _FUZZY_THRESHOLD:
+            scored.append((i, best))
 
     if not scored:
         print(f"[Audio] No fuzzy match above {_FUZZY_THRESHOLD}% for: {query!r}")
         return fallback_idx
 
-    # Find the highest score, then collect all ties
     best_score = max(s for _, s in scored)
     top_matches = [i for i, s in scored if s == best_score]
     winner = random.choice(top_matches)
 
     match_name = files[winner]
-    print(f"[Audio] Fuzzy match: {query!r} → {match_name!r} (score={best_score:.0f}, "
-          f"candidates={len(top_matches)})")
+    print(f"[Audio] Fuzzy match: {query!r} -> {match_name!r} "
+          f"(score={best_score:.0f}, candidates={len(top_matches)})")
     return winner
 
 

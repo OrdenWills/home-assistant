@@ -294,6 +294,9 @@
                   </div>
                   <span class="device-name">Speaker</span>
                 </div>
+                <div class="track-marquee" id="track-marquee">
+                  <span class="track-marquee-text" id="track-marquee-text"></span>
+                </div>
                 <span id="music-folder-display" class="music-folder-path"></span>
               </div>
             </div>
@@ -1008,7 +1011,7 @@
           folderEl.title = state.music_folder;
         }
         // Speaker UI sync
-        updateSpeakerUI(state.speaker?.living_room);
+        updateSpeakerUI(state.speaker?.living_room, state.current_track_name);
       } catch (e) {
         console.error("[RefreshState] Error:", e);
       }
@@ -1548,12 +1551,14 @@
     // fetchInitialFolder removed — refreshState() now handles music folder + speaker UI
 
     // ── Speaker UI Sync ───────────────────────────────────────
-    function updateSpeakerUI(status) {
+    function updateSpeakerUI(status, trackName) {
       const disc = document.getElementById("speaker-disc");
       const playBtn = document.getElementById("speaker-play-pause");
       const playIcon = document.getElementById("play-icon");
       const pauseIcon = document.getElementById("pause-icon");
       const speakerCard = document.getElementById("gadget-speaker-living_room");
+      const marquee = document.getElementById("track-marquee");
+      const marqueeText = document.getElementById("track-marquee-text");
 
       if (status === "playing") {
         if (disc) disc.classList.add("spinning");
@@ -1561,12 +1566,20 @@
         if (pauseIcon) pauseIcon.classList.remove("hidden");
         if (playBtn) playBtn.onclick = () => handleSpeakerAction("pause");
         if (speakerCard) speakerCard.classList.add("active-gadget");
+        // Show scrolling track name
+        if (marquee && marqueeText && trackName) {
+          // Strip extension and clean for display
+          const display = trackName.replace(/\.[^.]+$/, '');
+          marqueeText.textContent = display;
+          marquee.classList.add("active");
+        }
       } else {
         if (disc) disc.classList.remove("spinning");
         if (playIcon) playIcon.classList.remove("hidden");
         if (pauseIcon) pauseIcon.classList.add("hidden");
         if (playBtn) playBtn.onclick = () => handleSpeakerAction("play");
         if (speakerCard) speakerCard.classList.remove("active-gadget");
+        if (marquee) marquee.classList.remove("active");
       }
     }
 
@@ -1579,7 +1592,7 @@
         });
         const data = await res.json();
         if (data.success) {
-          updateSpeakerUI(data.state);
+          updateSpeakerUI(data.state, data.current_track);
           let toastMsg = "";
           if (data.state === "playing") {
             toastMsg = data.current_track ? `Playing: ${data.current_track}` : "Music started";
