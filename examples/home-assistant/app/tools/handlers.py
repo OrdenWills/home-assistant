@@ -111,6 +111,8 @@ def set_scene(scene: str) -> dict:
         lights["kitchen"]["state"] = "on"
         therm["temperature"] = 70
         therm["mode"] = "auto"
+        if "speaker" in home_state and "living_room" in home_state["speaker"]:
+            control_speaker("living_room", "play")
 
     home_state["active_scene"] = scene
     persist_state()
