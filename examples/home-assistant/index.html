@@ -1469,33 +1469,37 @@
         const res = await fetch("/history");
         if (!res.ok) return;
         const data = await res.json();
-        data.history.forEach(turn => {
-          appendMessage("user", turn.user);
-          if (turn.thought) {
-            appendThought(turn.thought);
+
+        // Render in batches to avoid blocking the main thread
+        const BATCH_SIZE = 5;
+        let i = 0;
+
+        function renderBatch() {
+          const end = Math.min(i + BATCH_SIZE, data.history.length);
+          for (; i < end; i++) {
+            const turn = data.history[i];
+            appendMessage("user", turn.user);
+            if (turn.thought) appendThought(turn.thought);
+            const assistantMsg = appendMessage("assistant", turn.assistant || "(no response)");
+            if (turn.turn_id !== undefined) assistantMsg.container.dataset.turnId = turn.turn_id;
+            if (turn.rating) {
+              const upBtn = assistantMsg.container.querySelector(".thumb-up");
+              const downBtn = assistantMsg.container.querySelector(".thumb-down");
+              if (upBtn && downBtn) applyFeedbackUI(turn.rating, upBtn, downBtn);
+            }
+            if (turn.tool_calls && turn.tool_calls.length > 0) appendToolCalls(turn.tool_calls);
           }
-          const assistantMsg = appendMessage("assistant", turn.assistant || "(no response)");
-          // Re-link turn_id so feedback buttons work on restored history too
-          if (turn.turn_id !== undefined) {
-            assistantMsg.container.dataset.turnId = turn.turn_id;
+          if (i < data.history.length) {
+            requestAnimationFrame(renderBatch);
+          } else if (data.history.length > 0) {
+            const divider = document.createElement("div");
+            divider.className = "history-divider";
+            divider.textContent = "— restored history —";
+            messagesEl.appendChild(divider);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
           }
-          // Restore feedback reaction state
-          if (turn.rating) {
-            const upBtn = assistantMsg.container.querySelector(".thumb-up");
-            const downBtn = assistantMsg.container.querySelector(".thumb-down");
-            if (upBtn && downBtn) applyFeedbackUI(turn.rating, upBtn, downBtn);
-          }
-          if (turn.tool_calls && turn.tool_calls.length > 0) {
-            appendToolCalls(turn.tool_calls);
-          }
-        });
-        if (data.history.length > 0) {
-          const divider = document.createElement("div");
-          divider.className = "history-divider";
-          divider.textContent = "— restored history —";
-          messagesEl.appendChild(divider);
-          messagesEl.scrollTop = messagesEl.scrollHeight;
         }
+        renderBatch();
       } catch (e) { console.error("[FetchHistory] Error:", e); }
     }
 

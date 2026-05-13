@@ -283,8 +283,17 @@ def set_thermostat_direct(req: ThermostatRequest):
 
 @app.get("/history")
 def get_history():
-    """Returns the chat history so the frontend can survive a page refresh."""
-    return JSONResponse({"history": chat_turns})
+    """Returns the chat history so the frontend can survive a page refresh.
+    Only UI-relevant fields are sent; heavy LLM context (system_prompt,
+    resolved_message, device_snapshot) stays server-side for training/export.
+    """
+    UI_FIELDS = {"turn_id", "user", "assistant", "thought", "tool_calls", "rating"}
+    MAX_HISTORY = 50
+    slim = [
+        {k: t[k] for k in UI_FIELDS if k in t}
+        for t in chat_turns[-MAX_HISTORY:]
+    ]
+    return JSONResponse({"history": slim})
 
 @app.post("/reset")
 def reset():
