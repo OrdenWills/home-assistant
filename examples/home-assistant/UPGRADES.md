@@ -27,3 +27,6 @@ This document tracks potential improvements, architectural changes, and "situati
 **Proposed Fix:** Add wake-word detection ("Hey Assistant") and better noise cancellation handling.
 
 ### 4. Improve handling user location currently the thoughts have things like user location is ''
+
+
+### 5. Pass the actually selected music output to the model to return output to the user

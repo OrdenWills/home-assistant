@@ -1046,7 +1046,7 @@
     function updateInputState() {
       const blocked = llamaStatus === "starting";
       sendBtn.disabled = blocked;
-      inputEl.disabled = blocked;
+      // inputEl.disabled = blocked; // Keep input enabled so user can type
       const micBtn = document.getElementById("mic-btn");
       if (micBtn) micBtn.disabled = blocked;
       if (!isRecording) inputEl.placeholder = blocked ? "Model loading, please wait\u2026" : "Type a command\u2026";
@@ -1208,13 +1208,14 @@
     // ── Send message ──────────────────────────────────────────
 
     async function sendMessage() {
+      if (sendBtn.disabled) return; // Prevent double-send via Enter key
       const text = inputEl.value.trim();
       if (!text) return;
 
       inputEl.value = "";
       sendBtn.disabled = true;
       sendBtn.classList.add("loading");
-      inputEl.disabled = true;
+      // inputEl.disabled = true; // Keep input enabled
       setAssistantDot("loading");
 
       appendMessage("user", text);
