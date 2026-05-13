@@ -548,7 +548,7 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   animation: marquee-slide 10s linear infinite;
   padding-left: 100%;
   position: absolute;
-  top: 3px;
+  top: 2px;
 }
 
 @keyframes marquee-slide {
