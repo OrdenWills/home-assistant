@@ -1230,6 +1230,7 @@
       let thinkDetailsEl = null;       // live <details> block for thinking
       let thinkPreEl = null;           // <pre> inside the thinking block
       let thinkText = "";              // accumulated thinking text
+      let liveToolCallsEl = null;      // live <details> for tool calls (updated per call)
 
       try {
         const response = await fetch("/chat/stream", {
@@ -1355,7 +1356,10 @@
                 assistantContainer = result.container;
                 assistantMsgEl.classList.add("streaming");
                 
-                if (thinkDetailsEl && assistantContainer && assistantContainer.parentNode === messagesEl) {
+                if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
+                  messagesEl.insertBefore(assistantContainer, liveToolCallsEl);
+                }
+                if (thinkDetailsEl && assistantContainer.parentNode === messagesEl && thinkDetailsEl.parentNode === messagesEl) {
                   messagesEl.insertBefore(thinkDetailsEl, assistantContainer);
                 }
               }
@@ -1369,6 +1373,24 @@
               const displayEvent = { ...event };
               delete displayEvent.state;
               toolEvents.push(displayEvent);
+
+              // ── Live tool-call details: create on first, update on each ──
+              if (!liveToolCallsEl) {
+                liveToolCallsEl = document.createElement("details");
+                liveToolCallsEl.className = "tool-calls";
+                liveToolCallsEl.innerHTML =
+                  `<summary>Tool calls (1)</summary>` +
+                  `<pre>${JSON.stringify([displayEvent], null, 2)}</pre>`;
+                // Append after typing indicator
+                messagesEl.appendChild(liveToolCallsEl);
+              } else {
+                liveToolCallsEl.querySelector("summary").textContent =
+                  `Tool calls (${toolEvents.length})`;
+                liveToolCallsEl.querySelector("pre").textContent =
+                  JSON.stringify(toolEvents, null, 2);
+              }
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+
               if (event.state) {
                 updateHouseVisualization(event.state);
                 updateStateCards(event.state);
@@ -1405,7 +1427,10 @@
                 const result = appendMessage("assistant", event.text || "(no response)");
                 assistantMsgEl = result.div;
                 assistantContainer = result.container;
-                if (thinkDetailsEl && assistantContainer && assistantContainer.parentNode === messagesEl) {
+                if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
+                  messagesEl.insertBefore(assistantContainer, liveToolCallsEl);
+                }
+                if (thinkDetailsEl && assistantContainer && assistantContainer.parentNode === messagesEl && thinkDetailsEl.parentNode === messagesEl) {
                   messagesEl.insertBefore(thinkDetailsEl, assistantContainer);
                 }
               } else {
@@ -1416,7 +1441,6 @@
                 assistantContainer.dataset.turnId = event.turn_id;
               }
               speakText(event.text || "");
-              if (toolEvents.length > 0) appendToolCalls(toolEvents);
               await refreshState();
 
             } else if (event.type === "turn_id") {
