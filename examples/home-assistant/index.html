@@ -1330,6 +1330,9 @@
               }
 
             } else if (event.type === "token") {
+              // Skip whitespace-only tokens (model emits \n between tool-call JSON blocks)
+              if (!event.text.trim()) continue;
+
               // ── Live response token — stream into message bubble ──
               // NOW we remove the bouncing dots, because actual text is coming
               typing.remove(); 
