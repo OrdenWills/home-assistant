@@ -1512,7 +1512,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   }
 }
 
-/* Live thinking block (open during generation) */
+/* Live thinking block */
 .tool-calls.live-thinking {
   margin-bottom: 4px;
 }
@@ -2251,6 +2251,12 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 /* SVG Parts — eyes and mouth are solid dark on light head */
+.avatar-face-group {
+  transform-origin: center;
+  transform-box: fill-box;
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
 .avatar-eye {
   fill: #1a1a2e;
   transform-origin: center;
@@ -2273,23 +2279,30 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   50% { transform: translateY(-1px) rotate(0deg); }
 }
 
-/* 1. Thinking: head tilts, eyes look around, mouth purses */
+/* 1. Thinking: head tilts sideways, face looks down */
 .assistant-avatar-svg.thinking {
-  animation: avatar-thinking-tilt 3s ease-in-out infinite;
+  animation: avatar-thinking-deep-head 3s ease-in-out infinite;
+}
+
+.assistant-avatar-svg.thinking .avatar-face-group {
+  animation: avatar-thinking-deep-face 3s ease-in-out infinite;
 }
 
 .assistant-avatar-svg.thinking .avatar-eye {
-  animation: blink-thinking 3.5s ease-in-out infinite,
-             look-around 2.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  animation: blink-thinking 3.5s ease-in-out infinite;
 }
 
 .assistant-avatar-svg.thinking .avatar-mouth {
-  animation: thinking-mouth 3s ease-in-out infinite;
+  animation: thinking-mouth-deep 3s ease-in-out infinite;
 }
 
-/* 2. Talking: mouth opens/closes, eyes face forward, gentle bob */
+/* 2. Talking: mouth opens/closes, face forward, gentle bob */
 .assistant-avatar-svg.talking {
   animation: avatar-idle-bob 4s ease-in-out infinite;
+}
+
+.assistant-avatar-svg.talking .avatar-face-group {
+  transform: translate(0, 0);
 }
 
 .assistant-avatar-svg.talking .avatar-eye {
@@ -2299,6 +2312,22 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 .assistant-avatar-svg.talking .avatar-mouth {
   animation: talk 0.28s ease-in-out infinite alternate;
 }
+
+/* 3. Directional Looking (Tool Calls) */
+.assistant-avatar-svg.looking-up { transform: rotate(0deg); }
+.assistant-avatar-svg.looking-up .avatar-face-group { transform: translate(0, -6px); }
+
+.assistant-avatar-svg.looking-up-left { transform: rotate(-5deg); }
+.assistant-avatar-svg.looking-up-left .avatar-face-group { transform: translate(-6px, -4px); }
+
+.assistant-avatar-svg.looking-left { transform: rotate(-5deg); }
+.assistant-avatar-svg.looking-left .avatar-face-group { transform: translate(-8px, 0); }
+
+.assistant-avatar-svg.looking-down-left { transform: rotate(-8deg); }
+.assistant-avatar-svg.looking-down-left .avatar-face-group { transform: translate(-6px, 6px); }
+
+.assistant-avatar-svg.looking-down-right { transform: rotate(8deg); }
+.assistant-avatar-svg.looking-down-right .avatar-face-group { transform: translate(6px, 6px); }
 
 /* --- KEYFRAMES --- */
 
@@ -2312,17 +2341,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 @keyframes blink-thinking {
   0%, 88%, 100% { transform: scaleY(1); }
   91% { transform: scaleY(0.05); }
-  55%, 62% { transform: scaleY(0.9); }
-}
-
-/* Eyes wander while thinking */
-@keyframes look-around {
-  0%, 100% { transform: translate(0, 0); }
-  14% { transform: translate(-2px, -1px); }
-  28% { transform: translate(2px, 0.5px); }
-  45% { transform: translate(-1px, 1.5px); }
-  62% { transform: translate(2.5px, -1px); }
-  80% { transform: translate(-2px, 0px); }
+  55%, 62% { transform: scaleY(0.85); }
 }
 
 /* Talk: mouth ellipse grows/shrinks vertically */
@@ -2332,17 +2351,21 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   100% { transform: scaleY(3.2) scaleX(0.78); }
 }
 
-/* Thinking mouth: small twitchy purse */
-@keyframes thinking-mouth {
-  0%, 100% { transform: scaleX(0.6) scaleY(0.8); }
-  35% { transform: scaleX(0.4) scaleY(0.7); }
-  65% { transform: scaleX(0.7) scaleY(1); }
+/* Deep Thinking Head Bob/Tilt */
+@keyframes avatar-thinking-deep-head {
+  0%, 100% { transform: translateY(1px) rotate(-18deg); }
+  50% { transform: translateY(3px) rotate(-24deg); }
 }
 
-/* Thinking: head tilts side to side */
-@keyframes avatar-thinking-tilt {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  20% { transform: translateY(-1px) rotate(-4deg); }
-  50% { transform: translateY(0.5px) rotate(2deg); }
-  75% { transform: translateY(-0.5px) rotate(-3deg); }
+/* Deep Thinking Face translate (looking down) */
+@keyframes avatar-thinking-deep-face {
+  0%, 100% { transform: translate(-4px, 8px); }
+  50% { transform: translate(-6px, 10px); }
+}
+
+/* Deep Thinking mouth: small twitchy purse */
+@keyframes thinking-mouth-deep {
+  0%, 100% { transform: scaleX(0.5) scaleY(0.7); }
+  35% { transform: scaleX(0.3) scaleY(0.6); }
+  65% { transform: scaleX(0.6) scaleY(0.9); }
 }

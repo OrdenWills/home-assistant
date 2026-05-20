@@ -695,9 +695,11 @@
         const svgWrapper = document.createElement("div");
         svgWrapper.innerHTML = `
           <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
-            <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
-            <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
-            <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+            <g class="avatar-face-group">
+              <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
+              <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
+              <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+            </g>
           </svg>
         `;
         const avatar = svgWrapper.firstElementChild;
@@ -770,9 +772,11 @@
       const svgWrapper = document.createElement("div");
       svgWrapper.innerHTML = `
         <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
-          <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
-          <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
-          <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+          <g class="avatar-face-group">
+            <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
+            <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
+            <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+          </g>
         </svg>
       `;
       const avatar = svgWrapper.firstElementChild;
@@ -1323,7 +1327,7 @@
                 // 1. MAKE AVATAR THINK — get the SVG from the typing indicator's container
                 const typingContainer = typing.closest('.msg-container');
                 if (typingContainer) currentAvatarSVG = typingContainer.querySelector('.assistant-avatar-svg');
-                if (currentAvatarSVG) currentAvatarSVG.classList.add('thinking');
+                if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg thinking';
               } else if (thinkDetailsEl.classList.contains("status-mode")) {
                 thinkDetailsEl.classList.remove("status-mode");
                 
@@ -1347,7 +1351,7 @@
                 // thinkDetailsEl.style.marginBottom = "8px";
               }
               // Remove thinking animation from avatar (talking gets set later on token events)
-              if (currentAvatarSVG) currentAvatarSVG.classList.remove('thinking');
+              if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg';
             } else if (event.type === "token") {
               // Skip whitespace-only tokens (model emits \n between tool-call JSON blocks)
               if (!event.text.trim()) continue;
@@ -1377,8 +1381,7 @@
                 // Switch avatar to talking state
                 currentAvatarSVG = assistantContainer.querySelector('.assistant-avatar-svg');
                 if (currentAvatarSVG) {
-                  currentAvatarSVG.classList.remove('thinking');
-                  currentAvatarSVG.classList.add('talking');
+                  currentAvatarSVG.className = 'assistant-avatar-svg talking';
                 }
                 
                 if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
@@ -1398,6 +1401,22 @@
               const displayEvent = { ...event };
               delete displayEvent.state;
               toolEvents.push(displayEvent);
+
+              // Map tool call to look direction
+              const toolName = event.function?.name || event.name;
+              const typingContainer = typing.closest('.msg-container');
+              if (typingContainer) {
+                 const avatar = typingContainer.querySelector('.assistant-avatar-svg');
+                 if (avatar) {
+                    avatar.className = 'assistant-avatar-svg'; // Reset states
+                    if (toolName === 'set_thermostat') avatar.classList.add('looking-up');
+                    else if (toolName === 'toggle_lights' || toolName === 'toggle_all_lights') avatar.classList.add('looking-up-left');
+                    else if (toolName === 'control_tv' || toolName === 'control_speaker' || toolName === 'control_fan') avatar.classList.add('looking-up-left');
+                    else if (toolName === 'lock_door' || toolName === 'lock_all_doors') avatar.classList.add('looking-down-left');
+                    else if (toolName === 'set_scene') avatar.classList.add('looking-left');
+                    else avatar.classList.add('looking-left'); // default towards house panel
+                 }
+              }
 
               // ── Live tool-call details: create on first, update on each ──
               if (!liveToolCallsEl) {
@@ -1449,7 +1468,7 @@
               }
 
               // Stop all avatar animations — return to idle
-              if (currentAvatarSVG) currentAvatarSVG.classList.remove('thinking', 'talking');
+              if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg';
 
               if (!assistantMsgEl) {
                 const result = appendMessage("assistant", event.text || "(no response)");
@@ -1492,7 +1511,7 @@
               }
 
               if (assistantMsgEl) assistantMsgEl.classList.remove("streaming");
-              if (currentAvatarSVG) currentAvatarSVG.classList.remove('thinking', 'talking');
+              if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg';
               appendMessage("assistant", event.text || "An error occurred.");
             }
           }
