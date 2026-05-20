@@ -1230,7 +1230,7 @@
     const avatar = lastContainer.querySelector('.assistant-avatar-svg');
     if (avatar) {
         // Reset all states, then add the new one
-        avatar.className = 'assistant-avatar-svg ' + stateClass;
+        avatar.setAttribute('class', 'assistant-avatar-svg ' + stateClass);
     }
 }
 
@@ -1376,7 +1376,7 @@
                 // thinkDetailsEl.style.marginBottom = "8px";
               }
               // Remove thinking animation from avatar (talking gets set later on token events)
-              if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg';
+              if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg');
             } else if (event.type === "token") {
               // Skip whitespace-only tokens (model emits \n between tool-call JSON blocks)
               if (!event.text.trim()) continue;
@@ -1493,7 +1493,7 @@
               }
 
               // Stop all avatar animations — return to idle
-              if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg';
+              if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg');
 
               if (!assistantMsgEl) {
                 const result = appendMessage("assistant", event.text || "(no response)");
@@ -1536,7 +1536,7 @@
               }
 
               if (assistantMsgEl) assistantMsgEl.classList.remove("streaming");
-              if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg';
+              if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg');
               appendMessage("assistant", event.text || "An error occurred.");
             }
           }
