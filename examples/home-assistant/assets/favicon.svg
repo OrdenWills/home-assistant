@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <style>
+    :root {
+      --bg-start: #fffef6;
+      --bg-end: #c2bfb6;
+      --border: rgba(140, 135, 125, 0.45);
+      --features: #1a1a2e;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-start: #44404c;
+        --bg-end: #191420;
+        --border: rgba(157, 78, 221, 0.35);
+        --features: #e0e0e0;
+      }
+    }
+    .head {
+      fill: url(#favGrad);
+      stroke: var(--border);
+      stroke-width: 4;
+    }
+    .features {
+      fill: var(--features);
+    }
+  </style>
+  <defs>
+    <radialGradient id="favGrad" cx="36%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="var(--bg-start)" />
+      <stop offset="100%" stop-color="var(--bg-end)" />
+    </radialGradient>
+  </defs>
+  <circle class="head" cx="50" cy="50" r="46" />
+  <g class="features">
+    <ellipse cx="36" cy="42" rx="9" ry="12" />
+    <ellipse cx="64" cy="42" rx="9" ry="12" />
+    <ellipse cx="50" cy="68" rx="9" ry="2" />
+  </g>
+</svg>

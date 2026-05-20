@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/style.css?v=11" />
+  <link rel="icon" id="favicon" type="image/svg+xml" href="/assets/favicon.svg" />
 </head>
 
 <body>
@@ -566,6 +567,51 @@
       const toggle = document.getElementById('theme-toggle');
       if (toggle) toggle.textContent = themeIcons[theme];
       localStorage.setItem('theme', theme);
+      updateFavicon(theme);
+    }
+
+    function updateFavicon(theme) {
+      let gradStart, gradEnd, border, features;
+      if (theme === 'soft-dark') {
+        gradStart = '#44404c';
+        gradEnd = '#191420';
+        border = 'rgba(157, 78, 221, 0.35)';
+        features = '#e0e0e0';
+      } else if (theme === 'dark-hc') {
+        gradStart = '#202025';
+        gradEnd = '#0a0a0d';
+        border = '#00d4ff';
+        features = '#00d4ff';
+      } else { // light
+        gradStart = '#fffef6';
+        gradEnd = '#c2bfb6';
+        border = 'rgba(140, 135, 125, 0.45)';
+        features = '#1a1a2e';
+      }
+
+      const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+        <defs>
+          <radialGradient id="favGrad" cx="36%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="${gradStart}" />
+            <stop offset="100%" stop-color="${gradEnd}" />
+          </radialGradient>
+        </defs>
+        <circle cx="50" cy="50" r="46" fill="url(#favGrad)" stroke="${border}" stroke-width="4" />
+        <g>
+          <ellipse cx="36" cy="42" rx="9" ry="12" fill="${features}" />
+          <ellipse cx="64" cy="42" rx="9" ry="12" fill="${features}" />
+          <ellipse cx="50" cy="68" rx="9" ry="2" fill="${features}" />
+        </g>
+      </svg>`;
+
+      const link = document.getElementById('favicon') || document.createElement('link');
+      link.id = 'favicon';
+      link.rel = 'icon';
+      link.type = 'image/svg+xml';
+      link.href = 'data:image/svg+xml;utf8,' + encodeURIComponent(svgString);
+      if (!link.parentNode) {
+        document.head.appendChild(link);
+      }
     }
 
     function toggleTheme() {
