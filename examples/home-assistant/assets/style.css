@@ -2279,13 +2279,13 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   50% { transform: translateY(-1px) rotate(0deg); }
 }
 
-/* 1. Thinking: head tilts sideways, face looks down */
+/* 1. Thinking: head tilts and face scans the ground */
 .assistant-avatar-svg.thinking {
-  animation: avatar-thinking-deep-head 3s ease-in-out infinite;
+  animation: avatar-thinking-head 5s ease-in-out infinite;
 }
 
 .assistant-avatar-svg.thinking .avatar-face-group {
-  animation: avatar-thinking-deep-face 3s ease-in-out infinite;
+  animation: avatar-thinking-face 5s ease-in-out infinite;
 }
 
 .assistant-avatar-svg.thinking .avatar-eye {
@@ -2314,6 +2314,10 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 }
 
 /* 3. Directional Looking (Tool Calls) */
+.assistant-avatar-svg[class*="looking-"] {
+  animation: none; /* Stops the idle bob so the rotation can apply */
+}
+
 .assistant-avatar-svg.looking-up { transform: rotate(0deg); }
 .assistant-avatar-svg.looking-up .avatar-face-group { transform: translate(0, -6px); }
 
@@ -2351,16 +2355,18 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   100% { transform: scaleY(3.2) scaleX(0.78); }
 }
 
-/* Deep Thinking Head Bob/Tilt */
-@keyframes avatar-thinking-deep-head {
-  0%, 100% { transform: translateY(1px) rotate(-18deg); }
-  50% { transform: translateY(3px) rotate(-24deg); }
+/* Deep Thinking Head Rock */
+@keyframes avatar-thinking-head {
+  0%, 100% { transform: translateY(2px) rotate(-16deg); }
+  50% { transform: translateY(2px) rotate(16deg); }
 }
 
-/* Deep Thinking Face translate (looking down) */
-@keyframes avatar-thinking-deep-face {
-  0%, 100% { transform: translate(-4px, 8px); }
-  50% { transform: translate(-6px, 10px); }
+/* Deep Thinking Face Floor Scan */
+@keyframes avatar-thinking-face {
+  0%, 100% { transform: translate(-6px, 8px); }
+  25% { transform: translate(0px, 9.5px); }
+  50% { transform: translate(6px, 8px); }
+  75% { transform: translate(0px, 9.5px); }
 }
 
 /* Deep Thinking mouth: small twitchy purse */

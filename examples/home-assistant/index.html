@@ -1221,6 +1221,19 @@
       window.speechSynthesis.speak(utter);
     }
 
+    function updateAvatarState(stateClass) {
+    // Find the avatar in the most recent assistant container (typing or message)
+    const containers = document.querySelectorAll('.msg-container.assistant');
+    const lastContainer = containers[containers.length - 1];
+    if (!lastContainer) return;
+
+    const avatar = lastContainer.querySelector('.assistant-avatar-svg');
+    if (avatar) {
+        // Reset all states, then add the new one
+        avatar.className = 'assistant-avatar-svg ' + stateClass;
+    }
+}
+
     // ── Send message ──────────────────────────────────────────
 
     async function sendMessage() {
@@ -1299,6 +1312,11 @@
                 } else {
                   messagesEl.appendChild(thinkDetailsEl);
                 }
+                
+                // MAKE AVATAR THINK
+                const typingContainer = typing.closest('.msg-container');
+                if (typingContainer) currentAvatarSVG = typingContainer.querySelector('.assistant-avatar-svg');
+                if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg thinking');
               }
               thinkDetailsEl.querySelector("summary").textContent = event.text;
               messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -1324,16 +1342,23 @@
                   messagesEl.appendChild(thinkDetailsEl);
                 }
 
-                // 1. MAKE AVATAR THINK — get the SVG from the typing indicator's container
+                // MAKE AVATAR THINK
                 const typingContainer = typing.closest('.msg-container');
                 if (typingContainer) currentAvatarSVG = typingContainer.querySelector('.assistant-avatar-svg');
-                if (currentAvatarSVG) currentAvatarSVG.className = 'assistant-avatar-svg thinking';
+                if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg thinking');
               } else if (thinkDetailsEl.classList.contains("status-mode")) {
                 thinkDetailsEl.classList.remove("status-mode");
                 
                 thinkDetailsEl.open = AUTO_OPEN_THOUGHTS; 
                 
                 thinkDetailsEl.querySelector("summary").textContent = "Thinking...";
+                
+                // Ensure avatar is thinking
+                const typingContainer = typing.closest('.msg-container');
+                if (typingContainer) currentAvatarSVG = typingContainer.querySelector('.assistant-avatar-svg');
+                if (currentAvatarSVG && !currentAvatarSVG.classList.contains('thinking')) {
+                  currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg thinking');
+                }
               }
 
               thinkText += event.text;
@@ -1381,7 +1406,7 @@
                 // Switch avatar to talking state
                 currentAvatarSVG = assistantContainer.querySelector('.assistant-avatar-svg');
                 if (currentAvatarSVG) {
-                  currentAvatarSVG.className = 'assistant-avatar-svg talking';
+                  currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg talking');
                 }
                 
                 if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
@@ -1408,7 +1433,7 @@
               if (typingContainer) {
                  const avatar = typingContainer.querySelector('.assistant-avatar-svg');
                  if (avatar) {
-                    avatar.className = 'assistant-avatar-svg'; // Reset states
+                    avatar.setAttribute('class', 'assistant-avatar-svg'); // Reset states
                     if (toolName === 'set_thermostat') avatar.classList.add('looking-up');
                     else if (toolName === 'toggle_lights' || toolName === 'toggle_all_lights') avatar.classList.add('looking-up-left');
                     else if (toolName === 'control_tv' || toolName === 'control_speaker' || toolName === 'control_fan') avatar.classList.add('looking-up-left');
