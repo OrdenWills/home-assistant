@@ -691,10 +691,16 @@
 
       // Insert avatar if it's the assistant
       if (role === "assistant") {
-        const avatar = document.createElement("img");
-        avatar.className = "assistant-avatar";
-        avatar.src = "/assets/agent-half.png";
-        avatar.alt = "Agent";
+        // Use a wrapper to parse the SVG string easily
+        const svgWrapper = document.createElement("div");
+        svgWrapper.innerHTML = `
+          <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
+            <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
+            <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
+            <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+          </svg>
+        `;
+        const avatar = svgWrapper.firstElementChild;
         container.appendChild(avatar);
       }
 
@@ -760,10 +766,17 @@
       const container = document.createElement("div");
       container.className = "msg-container assistant";
 
-      const avatar = document.createElement("img");
-      avatar.className = "assistant-avatar";
-      avatar.src = "/assets/agent-half.png";
-      avatar.alt = "Agent";
+      // Use SVG avatar (same as messages) so we can animate states
+      const svgWrapper = document.createElement("div");
+      svgWrapper.innerHTML = `
+        <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
+          <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
+          <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
+          <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+        </svg>
+      `;
+      const avatar = svgWrapper.firstElementChild;
+      container.appendChild(avatar);
 
       const wrapper = document.createElement("div");
       wrapper.className = "msg-wrapper";
@@ -780,7 +793,6 @@
       };
 
       wrapper.appendChild(div);
-      container.appendChild(avatar);
       container.appendChild(wrapper);
 
       messagesEl.appendChild(container);
@@ -1231,6 +1243,7 @@
       let thinkPreEl = null;           // <pre> inside the thinking block
       let thinkText = "";              // accumulated thinking text
       let liveToolCallsEl = null;      // live <details> for tool calls (updated per call)
+      let currentAvatarSVG = null;
 
       try {
         const response = await fetch("/chat/stream", {
@@ -1306,10 +1319,14 @@
                 } else {
                   messagesEl.appendChild(thinkDetailsEl);
                 }
+
+                // 1. MAKE AVATAR THINK — get the SVG from the typing indicator's container
+                const typingContainer = typing.closest('.msg-container');
+                if (typingContainer) currentAvatarSVG = typingContainer.querySelector('.assistant-avatar-svg');
+                if (currentAvatarSVG) currentAvatarSVG.classList.add('thinking');
               } else if (thinkDetailsEl.classList.contains("status-mode")) {
                 thinkDetailsEl.classList.remove("status-mode");
                 
-                // --- TEST BEHAVIOR HERE ---
                 thinkDetailsEl.open = AUTO_OPEN_THOUGHTS; 
                 
                 thinkDetailsEl.querySelector("summary").textContent = "Thinking...";
@@ -1329,7 +1346,8 @@
                 thinkDetailsEl.classList.remove("live-thinking");
                 // thinkDetailsEl.style.marginBottom = "8px";
               }
-
+              // Remove thinking animation from avatar (talking gets set later on token events)
+              if (currentAvatarSVG) currentAvatarSVG.classList.remove('thinking');
             } else if (event.type === "token") {
               // Skip whitespace-only tokens (model emits \n between tool-call JSON blocks)
               if (!event.text.trim()) continue;
@@ -1355,6 +1373,13 @@
                 assistantMsgEl = result.div;
                 assistantContainer = result.container;
                 assistantMsgEl.classList.add("streaming");
+                
+                // Switch avatar to talking state
+                currentAvatarSVG = assistantContainer.querySelector('.assistant-avatar-svg');
+                if (currentAvatarSVG) {
+                  currentAvatarSVG.classList.remove('thinking');
+                  currentAvatarSVG.classList.add('talking');
+                }
                 
                 if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
                   messagesEl.insertBefore(assistantContainer, liveToolCallsEl);
@@ -1423,6 +1448,9 @@
                 assistantMsgEl.classList.remove("streaming");
               }
 
+              // Stop all avatar animations — return to idle
+              if (currentAvatarSVG) currentAvatarSVG.classList.remove('thinking', 'talking');
+
               if (!assistantMsgEl) {
                 const result = appendMessage("assistant", event.text || "(no response)");
                 assistantMsgEl = result.div;
@@ -1442,6 +1470,7 @@
               }
               speakText(event.text || "");
               await refreshState();
+
 
             } else if (event.type === "turn_id") {
               if (assistantContainer) {
@@ -1463,6 +1492,7 @@
               }
 
               if (assistantMsgEl) assistantMsgEl.classList.remove("streaming");
+              if (currentAvatarSVG) currentAvatarSVG.classList.remove('thinking', 'talking');
               appendMessage("assistant", event.text || "An error occurred.");
             }
           }

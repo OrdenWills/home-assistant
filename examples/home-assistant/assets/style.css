@@ -2218,3 +2218,131 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
     letter-spacing: 0;
   }
 }
+
+
+/* ── Dynamic Avatar Styling & Animations ── */
+.assistant-avatar-svg {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%,
+    #fffef6 0%,
+    #f5f2ea 35%,
+    #e4e0d6 65%,
+    #d0cdc4 85%,
+    #c2bfb6 100%);
+  border: 1.5px solid rgba(140, 135, 125, 0.45);
+  z-index: 2;
+  margin-right: -12px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 2px rgba(255, 255, 250, 0.6),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  animation: avatar-idle-bob 4s ease-in-out infinite;
+  transition: transform 0.3s ease;
+}
+
+.msg-container.assistant:has(.msg-footer) .assistant-avatar-svg {
+  margin-bottom: 25px;
+}
+
+/* SVG Parts — eyes and mouth are solid dark on light head */
+.avatar-eye {
+  fill: #1a1a2e;
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: blink 4s ease-in-out infinite;
+}
+
+.avatar-mouth {
+  fill: #1a1a2e;
+  transform-origin: center center;
+  transform-box: fill-box;
+  transition: all 0.15s ease;
+}
+
+/* --- STATES --- */
+
+/* 0. Idle: gentle floating bob + periodic blink */
+@keyframes avatar-idle-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-1px) rotate(0deg); }
+}
+
+/* 1. Thinking: head tilts, eyes look around, mouth purses */
+.assistant-avatar-svg.thinking {
+  animation: avatar-thinking-tilt 3s ease-in-out infinite;
+}
+
+.assistant-avatar-svg.thinking .avatar-eye {
+  animation: blink-thinking 3.5s ease-in-out infinite,
+             look-around 2.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.assistant-avatar-svg.thinking .avatar-mouth {
+  animation: thinking-mouth 3s ease-in-out infinite;
+}
+
+/* 2. Talking: mouth opens/closes, eyes face forward, gentle bob */
+.assistant-avatar-svg.talking {
+  animation: avatar-idle-bob 4s ease-in-out infinite;
+}
+
+.assistant-avatar-svg.talking .avatar-eye {
+  animation: blink 5s ease-in-out infinite;
+}
+
+.assistant-avatar-svg.talking .avatar-mouth {
+  animation: talk 0.28s ease-in-out infinite alternate;
+}
+
+/* --- KEYFRAMES --- */
+
+/* Blink: natural idle blink */
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.05); }
+}
+
+/* Blink: faster, with brief squint while thinking */
+@keyframes blink-thinking {
+  0%, 88%, 100% { transform: scaleY(1); }
+  91% { transform: scaleY(0.05); }
+  55%, 62% { transform: scaleY(0.9); }
+}
+
+/* Eyes wander while thinking */
+@keyframes look-around {
+  0%, 100% { transform: translate(0, 0); }
+  14% { transform: translate(-2px, -1px); }
+  28% { transform: translate(2px, 0.5px); }
+  45% { transform: translate(-1px, 1.5px); }
+  62% { transform: translate(2.5px, -1px); }
+  80% { transform: translate(-2px, 0px); }
+}
+
+/* Talk: mouth ellipse grows/shrinks vertically */
+@keyframes talk {
+  0% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(2.5) scaleX(0.88); }
+  100% { transform: scaleY(3.2) scaleX(0.78); }
+}
+
+/* Thinking mouth: small twitchy purse */
+@keyframes thinking-mouth {
+  0%, 100% { transform: scaleX(0.6) scaleY(0.8); }
+  35% { transform: scaleX(0.4) scaleY(0.7); }
+  65% { transform: scaleX(0.7) scaleY(1); }
+}
+
+/* Thinking: head tilts side to side */
+@keyframes avatar-thinking-tilt {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-1px) rotate(-4deg); }
+  50% { transform: translateY(0.5px) rotate(2deg); }
+  75% { transform: translateY(-0.5px) rotate(-3deg); }
+}
