@@ -44,6 +44,8 @@
     inset 0 1px 2px rgba(255, 255, 250, 0.6),
     inset 0 -1px 3px rgba(0, 0, 0, 0.05);
   --avatar-features: #1a1a2e;
+  --avatar-disc-shadow: rgba(140, 135, 125, 0.45); /* Base theme shadow */
+
 }
 
 /* Soft dark mode */
@@ -67,7 +69,7 @@ html[data-theme="soft-dark"] {
   --user-bubble: #262626;
   --assistant-bubble: #2d2d2d;
   --header-glass: rgba(38, 38, 38, 0.67);
-  
+
   /* Avatar variables */
   --avatar-bg: radial-gradient(circle at 36% 30%,
     #44404c 0%,
@@ -81,6 +83,8 @@ html[data-theme="soft-dark"] {
     inset 0 1px 2px rgba(255, 255, 255, 0.08),
     inset 0 -1px 3px rgba(0, 0, 0, 0.2);
   --avatar-features: #e0e0e0;
+  --avatar-disc-shadow: rgba(157, 78, 221, 0.45);
+  
 }
 
 /* High contrast dark mode */
@@ -115,6 +119,7 @@ html[data-theme="dark-hc"] {
     0 2px 8px var(--accent-dim),
     inset 0 1px 2px rgba(255, 255, 255, 0.1);
   --avatar-features: #00d4ff;
+  --avatar-disc-shadow: rgba(0, 212, 255, 0.5);
 }
 
 html,
@@ -2261,24 +2266,78 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 
 /* ── Dynamic Avatar Styling & Animations ── */
-.assistant-avatar-svg {
+
+.avatar-wrapper {
+  position: relative;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  background: var(--avatar-bg);
-  border: var(--avatar-border);
   z-index: 2;
   margin-right: -12px;
   margin-bottom: 0;
   flex-shrink: 0;
+}
+
+.msg-container.assistant:has(.msg-footer) .avatar-wrapper {
+  margin-bottom: 25px;
+}
+
+.assistant-avatar-svg {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--avatar-bg);
+  border: var(--avatar-border);
+  position: relative;
+  z-index: 2;
   box-shadow: var(--avatar-shadow);
   overflow: hidden;
   animation: avatar-idle-bob 4s ease-in-out infinite;
   transition: transform 0.3s ease;
 }
 
-.msg-container.assistant:has(.msg-footer) .assistant-avatar-svg {
-  margin-bottom: 25px;
+.avatar-shadow {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 4px;
+  background: var(--avatar-disc-shadow);
+  border-radius: 50%;
+  filter: blur(2px);
+  z-index: 1;
+  opacity: 0.7;
+  animation: shadow-idle-bob 4s ease-in-out infinite;
+  transition: transform 0.3s ease, width 0.3s ease, opacity 0.3s ease;
+}
+
+/* Sync shadow to avatar states via adjacent sibling selectors */
+.assistant-avatar-svg.thinking + .avatar-shadow {
+  animation: shadow-thinking 5s ease-in-out infinite;
+}
+
+.assistant-avatar-svg.talking + .avatar-shadow {
+  animation: shadow-idle-bob 4s ease-in-out infinite;
+}
+
+.assistant-avatar-svg[class*="looking-"] + .avatar-shadow {
+  animation: none;
+}
+
+.assistant-avatar-svg.looking-up + .avatar-shadow {
+  transform: translateX(-50%) scale(1); opacity: 0.7;
+}
+.assistant-avatar-svg.looking-up-left + .avatar-shadow {
+  transform: translateX(-47%) scale(1); opacity: 0.7;
+}
+.assistant-avatar-svg.looking-left + .avatar-shadow {
+  transform: translateX(-47%) scale(1); opacity: 0.7;
+}
+.assistant-avatar-svg.looking-down-left + .avatar-shadow {
+  transform: translateX(-45%) scale(1.05); opacity: 0.85;
+}
+.assistant-avatar-svg.looking-down-right + .avatar-shadow {
+  transform: translateX(-55%) scale(1.05); opacity: 0.85;
 }
 
 /* SVG Parts — eyes and mouth are solid dark on light head */
@@ -2366,6 +2425,18 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 /* --- KEYFRAMES --- */
 
+/* Shadow: gets smaller/lighter as avatar bobs up */
+@keyframes shadow-idle-bob {
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.7; }
+  50% { transform: translateX(-50%) scale(0.85); opacity: 0.4; }
+}
+
+/* Shadow: stays larger/darker as avatar lowers its head, shifts opposite to head rotation */
+@keyframes shadow-thinking {
+  0%, 100% { transform: translateX(-40%) scale(1.15); opacity: 0.9; }
+  50% { transform: translateX(-60%) scale(1.15); opacity: 0.9; }
+}
+
 /* Blink: natural idle blink */
 @keyframes blink {
   0%, 92%, 100% { transform: scaleY(1); }
@@ -2405,4 +2476,46 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   0%, 100% { transform: scaleX(0.5) scaleY(0.7); }
   35% { transform: scaleX(0.3) scaleY(0.6); }
   65% { transform: scaleX(0.6) scaleY(0.9); }
+}
+
+/* ── Load More Button ── */
+.load-more-btn {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  z-index: 100;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.load-more-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.load-more-btn.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(-10px);
+}
+
+.load-more-btn svg {
+  flex-shrink: 0;
 }

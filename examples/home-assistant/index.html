@@ -740,16 +740,19 @@
         // Use a wrapper to parse the SVG string easily
         const svgWrapper = document.createElement("div");
         svgWrapper.innerHTML = `
-          <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
-            <g class="avatar-face-group">
-              <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
-              <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
-              <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
-            </g>
-          </svg>
+          <div class="avatar-wrapper">
+            <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
+              <g class="avatar-face-group">
+                <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
+                <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
+                <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+              </g>
+            </svg>
+            <div class="avatar-shadow"></div>
+          </div>
         `;
-        const avatar = svgWrapper.firstElementChild;
-        container.appendChild(avatar);
+        const avatarWrap = svgWrapper.firstElementChild;
+        container.appendChild(avatarWrap);
       }
 
       const wrapper = document.createElement("div");
@@ -817,16 +820,19 @@
       // Use SVG avatar (same as messages) so we can animate states
       const svgWrapper = document.createElement("div");
       svgWrapper.innerHTML = `
-        <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
-          <g class="avatar-face-group">
-            <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
-            <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
-            <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
-          </g>
-        </svg>
+        <div class="avatar-wrapper">
+          <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
+            <g class="avatar-face-group">
+              <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
+              <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
+              <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+            </g>
+          </svg>
+          <div class="avatar-shadow"></div>
+        </div>
       `;
-      const avatar = svgWrapper.firstElementChild;
-      container.appendChild(avatar);
+      const avatarWrap = svgWrapper.firstElementChild;
+      container.appendChild(avatarWrap);
 
       const wrapper = document.createElement("div");
       wrapper.className = "msg-wrapper";
@@ -1619,9 +1625,13 @@
 
     async function fetchHistory() {
       try {
-        const res = await fetch("/history");
+        const res = await fetch("/history?limit=7&offset=0");
         if (!res.ok) return;
         const data = await res.json();
+
+        // Track loaded message count for pagination
+        window.loadedMessageCount = data.history.length;
+        window.totalMessageCount = data.total;
 
         // Render in batches to avoid blocking the main thread
         const BATCH_SIZE = 5;
@@ -1650,11 +1660,189 @@
             divider.textContent = "— restored history —";
             messagesEl.appendChild(divider);
             messagesEl.scrollTop = messagesEl.scrollHeight;
+            
+            // Show load more button if there are more messages
+            if (data.has_more) {
+              showLoadMoreButton();
+            }
           }
         }
         renderBatch();
       } catch (e) { console.error("[FetchHistory] Error:", e); }
     }
+
+    // Load More functionality
+    let loadMoreBtn = null;
+    let isLoadingMore = false;
+
+    function showLoadMoreButton() {
+      if (!loadMoreBtn) {
+        loadMoreBtn = document.createElement("button");
+        loadMoreBtn.id = "load-more-btn";
+        loadMoreBtn.className = "load-more-btn hidden";
+        loadMoreBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg>
+          Load More
+        `;
+        loadMoreBtn.onclick = loadMoreMessages;
+        messagesEl.parentElement.appendChild(loadMoreBtn);
+      }
+    }
+
+    async function loadMoreMessages() {
+      if (isLoadingMore) return;
+      isLoadingMore = true;
+      loadMoreBtn.textContent = "Loading...";
+      
+      try {
+        const offset = window.loadedMessageCount;
+        const res = await fetch(`/history?limit=7&offset=${offset}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Save scroll position
+        const scrollHeight = messagesEl.scrollHeight;
+        
+        // Create a fragment to hold all new messages
+        const fragment = document.createDocumentFragment();
+        
+        // Render older messages using the same logic as appendMessage
+        for (const turn of data.history) {
+          // User message
+          const userContainer = document.createElement("div");
+          userContainer.className = "msg-container user";
+          
+          const userWrapper = document.createElement("div");
+          userWrapper.className = "msg-wrapper";
+          
+          const userMsg = document.createElement("div");
+          userMsg.className = "msg user";
+          userMsg.textContent = turn.user;
+          
+          userWrapper.appendChild(userMsg);
+          userContainer.appendChild(userWrapper);
+          fragment.appendChild(userContainer);
+          
+          // Thought block if present
+          if (turn.thought) {
+            const details = document.createElement("details");
+            details.className = "tool-calls";
+            details.style.marginBottom = "8px";
+            details.innerHTML =
+              `<summary>Thought Process</summary>` +
+              `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${turn.thought}</pre>`;
+            fragment.appendChild(details);
+          }
+          
+          // Assistant message
+          const assistantContainer = document.createElement("div");
+          assistantContainer.className = "msg-container assistant";
+          if (turn.turn_id !== undefined) assistantContainer.dataset.turnId = turn.turn_id;
+          
+          // Add avatar
+          const svgWrapper = document.createElement("div");
+          svgWrapper.innerHTML = `
+            <div class="avatar-wrapper">
+              <svg class="assistant-avatar-svg" viewBox="0 0 100 100">
+                <g class="avatar-face-group">
+                  <ellipse class="avatar-eye" cx="36" cy="42" rx="9" ry="12" />
+                  <ellipse class="avatar-eye" cx="64" cy="42" rx="9" ry="12" />
+                  <ellipse class="avatar-mouth" cx="50" cy="68" rx="9" ry="2" />
+                </g>
+              </svg>
+              <div class="avatar-shadow"></div>
+            </div>
+          `;
+          assistantContainer.appendChild(svgWrapper.firstElementChild);
+          
+          const assistantWrapper = document.createElement("div");
+          assistantWrapper.className = "msg-wrapper";
+          
+          const assistantMsg = document.createElement("div");
+          assistantMsg.className = "msg assistant";
+          assistantMsg.textContent = turn.assistant || "(no response)";
+          
+          const assistantFooter = document.createElement("div");
+          assistantFooter.className = "msg-footer";
+          
+          const feedback = document.createElement("div");
+          feedback.className = "msg-feedback";
+          
+          const upBtn = document.createElement("button");
+          upBtn.className = "feedback-btn thumb-up";
+          upBtn.title = "Good response — save to golden set";
+          upBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
+          
+          const downBtn = document.createElement("button");
+          downBtn.className = "feedback-btn thumb-down";
+          downBtn.title = "Bad response — save to failure set";
+          downBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>';
+          
+          // Apply rating if exists
+          if (turn.rating) {
+            applyFeedbackUI(turn.rating, upBtn, downBtn);
+          }
+          
+          feedback.appendChild(upBtn);
+          feedback.appendChild(downBtn);
+          assistantFooter.appendChild(feedback);
+          
+          assistantWrapper.appendChild(assistantMsg);
+          assistantWrapper.appendChild(assistantFooter);
+          assistantContainer.appendChild(assistantWrapper);
+          fragment.appendChild(assistantContainer);
+          
+          // Tool calls if present
+          if (turn.tool_calls && turn.tool_calls.length > 0) {
+            const details = document.createElement("details");
+            details.className = "tool-calls";
+            details.innerHTML =
+              `<summary>Tool calls (${turn.tool_calls.length})</summary>` +
+              `<pre>${JSON.stringify(turn.tool_calls, null, 2)}</pre>`;
+            fragment.appendChild(details);
+          }
+        }
+        
+        // Insert at the beginning
+        const firstChild = messagesEl.firstChild;
+        messagesEl.insertBefore(fragment, firstChild);
+        
+        // Restore scroll position
+        messagesEl.scrollTop = messagesEl.scrollHeight - scrollHeight;
+        
+        // Update counters
+        window.loadedMessageCount += data.history.length;
+        
+        // Hide button if no more messages
+        if (!data.has_more) {
+          loadMoreBtn.remove();
+          loadMoreBtn = null;
+        } else {
+          loadMoreBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+            Load More
+          `;
+        }
+      } catch (e) {
+        console.error("[LoadMore] Error:", e);
+        loadMoreBtn.textContent = "Error - Try Again";
+      } finally {
+        isLoadingMore = false;
+      }
+    }
+
+    // Show/hide load more button on scroll
+    messagesEl.addEventListener("scroll", () => {
+      if (loadMoreBtn && messagesEl.scrollTop < 100) {
+        loadMoreBtn.classList.remove("hidden");
+      } else if (loadMoreBtn) {
+        loadMoreBtn.classList.add("hidden");
+      }
+    });
 
     refreshState();
     fetchLocalModels();
@@ -1834,4 +2022,4 @@
   </script>
 </body>
 
-</html>
+</html

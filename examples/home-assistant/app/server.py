@@ -282,18 +282,34 @@ def set_thermostat_direct(req: ThermostatRequest):
     return JSONResponse({"status": "ok", "state": home_state})
 
 @app.get("/history")
-def get_history():
-    """Returns the chat history so the frontend can survive a page refresh.
+def get_history(limit: int = 7, offset: int = 0):
+    """Returns the chat history with pagination support.
     Only UI-relevant fields are sent; heavy LLM context (system_prompt,
     resolved_message, device_snapshot) stays server-side for training/export.
+    
+    Args:
+        limit: Number of messages to return (default 7)
+        offset: Number of messages to skip from the end (default 0)
     """
     UI_FIELDS = {"turn_id", "user", "assistant", "thought", "tool_calls", "rating"}
-    MAX_HISTORY = 50
+    total = len(chat_turns)
+    
+    # Calculate slice indices: get messages from (total - offset - limit) to (total - offset)
+    start_idx = max(0, total - offset - limit)
+    end_idx = total - offset if offset > 0 else total
+    
     slim = [
         {k: t[k] for k in UI_FIELDS if k in t}
-        for t in chat_turns[-MAX_HISTORY:]
+        for t in chat_turns[start_idx:end_idx]
     ]
-    return JSONResponse({"history": slim})
+    
+    return JSONResponse({
+        "history": slim,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "has_more": start_idx > 0
+    })
 
 @app.post("/reset")
 def reset():
