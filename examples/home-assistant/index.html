@@ -1270,6 +1270,7 @@
     let ttsQueue = [];
     let isSpeaking = false;
     let currentUtterance = null;
+    let currentAvatarForTTS = null; // Track which avatar is currently speaking
     
     function speakText(text) {
       if (!window.speechSynthesis || isMuted) return;
@@ -1293,6 +1294,10 @@
             // Check if there are more chunks queued
             if (ttsQueue.length === 0 && !isSpeaking) {
               avatarSVG.setAttribute('class', 'assistant-avatar-svg');
+              // Trigger look-down if input is focused
+              if (document.activeElement === inputEl) {
+                setTimeout(() => handleInputFocus(true), 50);
+              }
             }
           }, duration);
         }
@@ -1307,34 +1312,54 @@
       
       utterance.onstart = () => {
         isSpeaking = true;
+        currentAvatarForTTS = avatarSVG;
         if (avatarSVG) {
           avatarSVG.setAttribute('class', 'assistant-avatar-svg talking');
         }
       };
       
       utterance.onend = () => {
+        // Immediately stop mouth animation
+        if (currentAvatarForTTS) {
+          currentAvatarForTTS.setAttribute('class', 'assistant-avatar-svg');
+        }
+        
         isSpeaking = false;
         currentUtterance = null;
         
-        // Process next in queue
-        if (ttsQueue.length > 0) {
-          const next = ttsQueue.shift();
-          currentUtterance = next.utterance;
-          window.speechSynthesis.speak(next.utterance);
-        } else {
-          // No more speech, return avatar to idle
-          if (avatarSVG) {
-            avatarSVG.setAttribute('class', 'assistant-avatar-svg');
+        // Small delay before processing next to avoid animation flicker
+        setTimeout(() => {
+          // Process next in queue
+          if (ttsQueue.length > 0) {
+            const next = ttsQueue.shift();
+            currentUtterance = next.utterance;
+            currentAvatarForTTS = next.avatarSVG;
+            window.speechSynthesis.speak(next.utterance);
+          } else {
+            // No more speech - ensure avatar is idle and check for input focus
+            currentAvatarForTTS = null;
+            if (avatarSVG) {
+              avatarSVG.setAttribute('class', 'assistant-avatar-svg');
+            }
+            // Trigger look-down if input is focused
+            if (document.activeElement === inputEl) {
+              setTimeout(() => handleInputFocus(true), 50);
+            }
           }
-        }
+        }, 100); // 100ms pause between sentences
       };
       
       utterance.onerror = (e) => {
         console.error('[TTS] Error:', e);
         isSpeaking = false;
         currentUtterance = null;
+        currentAvatarForTTS = null;
         if (avatarSVG) {
           avatarSVG.setAttribute('class', 'assistant-avatar-svg');
+        }
+        // Trigger look-down if input is focused
+        if (document.activeElement === inputEl) {
+          setTimeout(() => handleInputFocus(true), 50);
         }
       };
       
@@ -1343,6 +1368,7 @@
         ttsQueue.push({ utterance, avatarSVG });
       } else {
         currentUtterance = utterance;
+        currentAvatarForTTS = avatarSVG;
         window.speechSynthesis.speak(utterance);
       }
     }
@@ -1354,6 +1380,10 @@
       ttsQueue = [];
       isSpeaking = false;
       currentUtterance = null;
+      if (currentAvatarForTTS) {
+        currentAvatarForTTS.setAttribute('class', 'assistant-avatar-svg');
+        currentAvatarForTTS = null;
+      }
     }
     
     function detectSentenceBoundary(text) {
@@ -1737,14 +1767,8 @@
         typing.remove();
         sendBtn.classList.remove("loading");
         updateInputState();
-        // if (!sendBtn.disabled) inputEl.focus();
-        // 1. Wait 50ms for the avatar to finish resetting to "idle"
-        setTimeout(() => {
-          // 2. ONLY look down IF the user is actually focused on the input box
-          if (typeof handleInputFocus === 'function' && document.activeElement === inputEl) {
-            handleInputFocus(true);
-          }
-        }, 50);
+        // Don't trigger look-down here - let TTS onend handler do it after speech completes
+        // This prevents the avatar from looking down while still speaking
       }
     }
 
