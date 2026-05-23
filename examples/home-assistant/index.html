@@ -1274,17 +1274,17 @@
     }
 
     function updateAvatarState(stateClass) {
-    // Find the avatar in the most recent assistant container (typing or message)
-    const containers = document.querySelectorAll('.msg-container.assistant');
-    const lastContainer = containers[containers.length - 1];
-    if (!lastContainer) return;
+      // Find the avatar in the most recent assistant container (typing or message)
+      const containers = document.querySelectorAll('.msg-container.assistant');
+      const lastContainer = containers[containers.length - 1];
+      if (!lastContainer) return;
 
-    const avatar = lastContainer.querySelector('.assistant-avatar-svg');
-    if (avatar) {
+      const avatar = lastContainer.querySelector('.assistant-avatar-svg');
+      if (avatar) {
         // Reset all states, then add the new one
         avatar.setAttribute('class', 'assistant-avatar-svg ' + stateClass);
+      }
     }
-}
 
     // ── Send message ──────────────────────────────────────────
 
@@ -1350,12 +1350,12 @@
               if (!thinkDetailsEl) {
                 thinkDetailsEl = document.createElement("details");
                 thinkDetailsEl.className = "tool-calls live-thinking status-mode";
-                thinkDetailsEl.open = false; 
+                thinkDetailsEl.open = false;
                 thinkDetailsEl.innerHTML =
                   `<summary></summary>` +
                   `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;"></pre>`;
                 thinkPreEl = thinkDetailsEl.querySelector("pre");
-                
+
                 const container = typing.closest(".msg-container");
                 if (container && container.parentNode === messagesEl) {
                   messagesEl.insertBefore(thinkDetailsEl, container);
@@ -1364,7 +1364,7 @@
                 } else {
                   messagesEl.appendChild(thinkDetailsEl);
                 }
-                
+
                 // MAKE AVATAR THINK
                 const typingContainer = typing.closest('.msg-container');
                 if (typingContainer) currentAvatarSVG = typingContainer.querySelector('.assistant-avatar-svg');
@@ -1378,15 +1378,15 @@
               if (!thinkDetailsEl) {
                 thinkDetailsEl = document.createElement("details");
                 thinkDetailsEl.className = "tool-calls live-thinking";
-                
+
                 // --- TEST BEHAVIOR HERE ---
-                thinkDetailsEl.open = AUTO_OPEN_THOUGHTS; 
-                
+                thinkDetailsEl.open = AUTO_OPEN_THOUGHTS;
+
                 thinkDetailsEl.innerHTML =
                   `<summary>Thinking...</summary>` +
                   `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;"></pre>`;
                 thinkPreEl = thinkDetailsEl.querySelector("pre");
-                
+
                 const container = typing.closest(".msg-container");
                 if (container && container.parentNode === messagesEl) {
                   messagesEl.insertBefore(thinkDetailsEl, container);
@@ -1400,11 +1400,11 @@
                 if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg thinking');
               } else if (thinkDetailsEl.classList.contains("status-mode")) {
                 thinkDetailsEl.classList.remove("status-mode");
-                
-                thinkDetailsEl.open = AUTO_OPEN_THOUGHTS; 
-                
+
+                thinkDetailsEl.open = AUTO_OPEN_THOUGHTS;
+
                 thinkDetailsEl.querySelector("summary").textContent = "Thinking...";
-                
+
                 // Ensure avatar is thinking
                 const typingContainer = typing.closest('.msg-container');
                 if (typingContainer) currentAvatarSVG = typingContainer.querySelector('.assistant-avatar-svg');
@@ -1435,7 +1435,7 @@
 
               // ── Live response token — stream into message bubble ──
               // NOW we remove the bouncing dots, because actual text is coming
-              typing.remove(); 
+              typing.remove();
 
               if (thinkDetailsEl) {
                 if (thinkDetailsEl.classList.contains("status-mode")) {
@@ -1454,13 +1454,13 @@
                 assistantMsgEl = result.div;
                 assistantContainer = result.container;
                 assistantMsgEl.classList.add("streaming");
-                
+
                 // Switch avatar to talking state
                 currentAvatarSVG = assistantContainer.querySelector('.assistant-avatar-svg');
                 if (currentAvatarSVG) {
                   currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg talking');
                 }
-                
+
                 if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
                   messagesEl.insertBefore(assistantContainer, liveToolCallsEl);
                 }
@@ -1474,7 +1474,7 @@
 
             } else if (event.type === "tool_call") {
               // Note: We DO NOT remove `typing` here anymore!
-              
+
               const displayEvent = { ...event };
               delete displayEvent.state;
               toolEvents.push(displayEvent);
@@ -1483,16 +1483,16 @@
               const toolName = event.function?.name || event.name;
               const typingContainer = typing.closest('.msg-container');
               if (typingContainer) {
-                 const avatar = typingContainer.querySelector('.assistant-avatar-svg');
-                 if (avatar) {
-                    avatar.setAttribute('class', 'assistant-avatar-svg'); // Reset states
-                    if (toolName === 'set_thermostat') avatar.classList.add('looking-up');
-                    else if (toolName === 'toggle_lights' || toolName === 'toggle_all_lights') avatar.classList.add('looking-up-left');
-                    else if (toolName === 'control_tv' || toolName === 'control_speaker' || toolName === 'control_fan') avatar.classList.add('looking-up-left');
-                    else if (toolName === 'lock_door' || toolName === 'lock_all_doors') avatar.classList.add('looking-down-left');
-                    else if (toolName === 'set_scene') avatar.classList.add('looking-left');
-                    else avatar.classList.add('looking-left'); // default towards house panel
-                 }
+                const avatar = typingContainer.querySelector('.assistant-avatar-svg');
+                if (avatar) {
+                  avatar.setAttribute('class', 'assistant-avatar-svg'); // Reset states
+                  if (toolName === 'set_thermostat') avatar.classList.add('looking-up');
+                  else if (toolName === 'toggle_lights' || toolName === 'toggle_all_lights') avatar.classList.add('looking-up-left');
+                  else if (toolName === 'control_tv' || toolName === 'control_speaker' || toolName === 'control_fan') avatar.classList.add('looking-up-left');
+                  else if (toolName === 'lock_door' || toolName === 'lock_all_doors') avatar.classList.add('looking-down-left');
+                  else if (toolName === 'set_scene') avatar.classList.add('looking-left');
+                  else avatar.classList.add('looking-left'); // default towards house panel
+                }
               }
 
               // ── Live tool-call details: create on first, update on each ──
@@ -1527,7 +1527,7 @@
 
             } else if (event.type === "done") {
               typing.remove(); // Remove typing when completely done
-              
+
               // ── Final Cleanup ──
               if (thinkDetailsEl) {
                 if (thinkDetailsEl.classList.contains("status-mode")) {
@@ -1575,7 +1575,7 @@
 
             } else if (event.type === "error") {
               typing.remove(); // Remove typing on error
-              
+
               if (thinkDetailsEl) {
                 if (thinkDetailsEl.classList.contains("status-mode")) {
                   thinkDetailsEl.remove();
@@ -1603,7 +1603,14 @@
         typing.remove();
         sendBtn.classList.remove("loading");
         updateInputState();
-        if (!sendBtn.disabled) inputEl.focus();
+        // if (!sendBtn.disabled) inputEl.focus();
+        // 1. Wait 50ms for the avatar to finish resetting to "idle"
+        setTimeout(() => {
+          // 2. ONLY look down IF the user is actually focused on the input box
+          if (typeof handleInputFocus === 'function' && document.activeElement === inputEl) {
+            handleInputFocus(true);
+          }
+        }, 50);
       }
     }
 
@@ -1660,7 +1667,7 @@
             divider.textContent = "— restored history —";
             messagesEl.appendChild(divider);
             messagesEl.scrollTop = messagesEl.scrollHeight;
-            
+
             // Show load more button if there are more messages
             if (data.has_more) {
               showLoadMoreButton();
@@ -1695,7 +1702,7 @@
       if (isLoadingMore) return;
       isLoadingMore = true;
       loadMoreBtn.textContent = "Loading...";
-      
+
       try {
         const offset = window.loadedMessageCount;
         const res = await fetch(`/history?limit=7&offset=${offset}`);
@@ -1704,27 +1711,27 @@
 
         // Save scroll position
         const scrollHeight = messagesEl.scrollHeight;
-        
+
         // Create a fragment to hold all new messages
         const fragment = document.createDocumentFragment();
-        
+
         // Render older messages using the same logic as appendMessage
         for (const turn of data.history) {
           // User message
           const userContainer = document.createElement("div");
           userContainer.className = "msg-container user";
-          
+
           const userWrapper = document.createElement("div");
           userWrapper.className = "msg-wrapper";
-          
+
           const userMsg = document.createElement("div");
           userMsg.className = "msg user";
           userMsg.textContent = turn.user;
-          
+
           userWrapper.appendChild(userMsg);
           userContainer.appendChild(userWrapper);
           fragment.appendChild(userContainer);
-          
+
           // Thought block if present
           if (turn.thought) {
             const details = document.createElement("details");
@@ -1735,12 +1742,12 @@
               `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${turn.thought}</pre>`;
             fragment.appendChild(details);
           }
-          
+
           // Assistant message
           const assistantContainer = document.createElement("div");
           assistantContainer.className = "msg-container assistant";
           if (turn.turn_id !== undefined) assistantContainer.dataset.turnId = turn.turn_id;
-          
+
           // Add avatar
           const svgWrapper = document.createElement("div");
           svgWrapper.innerHTML = `
@@ -1756,44 +1763,44 @@
             </div>
           `;
           assistantContainer.appendChild(svgWrapper.firstElementChild);
-          
+
           const assistantWrapper = document.createElement("div");
           assistantWrapper.className = "msg-wrapper";
-          
+
           const assistantMsg = document.createElement("div");
           assistantMsg.className = "msg assistant";
           assistantMsg.textContent = turn.assistant || "(no response)";
-          
+
           const assistantFooter = document.createElement("div");
           assistantFooter.className = "msg-footer";
-          
+
           const feedback = document.createElement("div");
           feedback.className = "msg-feedback";
-          
+
           const upBtn = document.createElement("button");
           upBtn.className = "feedback-btn thumb-up";
           upBtn.title = "Good response — save to golden set";
           upBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
-          
+
           const downBtn = document.createElement("button");
           downBtn.className = "feedback-btn thumb-down";
           downBtn.title = "Bad response — save to failure set";
           downBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path></svg>';
-          
+
           // Apply rating if exists
           if (turn.rating) {
             applyFeedbackUI(turn.rating, upBtn, downBtn);
           }
-          
+
           feedback.appendChild(upBtn);
           feedback.appendChild(downBtn);
           assistantFooter.appendChild(feedback);
-          
+
           assistantWrapper.appendChild(assistantMsg);
           assistantWrapper.appendChild(assistantFooter);
           assistantContainer.appendChild(assistantWrapper);
           fragment.appendChild(assistantContainer);
-          
+
           // Tool calls if present
           if (turn.tool_calls && turn.tool_calls.length > 0) {
             const details = document.createElement("details");
@@ -1804,17 +1811,17 @@
             fragment.appendChild(details);
           }
         }
-        
+
         // Insert at the beginning
         const firstChild = messagesEl.firstChild;
         messagesEl.insertBefore(fragment, firstChild);
-        
+
         // Restore scroll position
         messagesEl.scrollTop = messagesEl.scrollHeight - scrollHeight;
-        
+
         // Update counters
         window.loadedMessageCount += data.history.length;
-        
+
         // Hide button if no more messages
         if (!data.has_more) {
           loadMoreBtn.remove();
@@ -1834,6 +1841,40 @@
         isLoadingMore = false;
       }
     }
+
+    // ── Avatar Focus Tracking ─────────────────────────────────
+
+    function handleInputFocus(isFocused) {
+      // Only trigger if the assistant is idle (not thinking/talking/loading)
+      // We check sendBtn.disabled as a proxy for the "busy" state
+      if (sendBtn.disabled || sendBtn.classList.contains("loading")) return;
+
+      // Find all assistant avatars (in history and typing indicator)
+      const avatars = document.querySelectorAll('.assistant-avatar-svg');
+      if (avatars.length === 0) return;
+
+      // Target the last visible avatar (either the latest reply or the typing dots)
+      const lastAvatar = avatars[avatars.length - 1];
+
+      if (isFocused) {
+        lastAvatar.classList.add('looking-down-input');
+      } else {
+        lastAvatar.classList.remove('looking-down-input');
+      }
+    }
+
+    // Attach listeners to the textarea
+    inputEl.addEventListener('focus', () => handleInputFocus(true));
+    inputEl.addEventListener('blur', () => handleInputFocus(false));
+
+    // Ensure that when we start sending a message, we remove the "looking-down" class
+    // Update your existing sendMessage function to include this line at the top:
+    const originalSendMessage = sendMessage;
+    sendMessage = async function () {
+      const avatars = document.querySelectorAll('.assistant-avatar-svg');
+      avatars.forEach(a => a.classList.remove('looking-down-input'));
+      return originalSendMessage.apply(this, arguments);
+    };
 
     // Show/hide load more button on scroll
     messagesEl.addEventListener("scroll", () => {

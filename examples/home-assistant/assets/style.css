@@ -2361,6 +2361,20 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   transition: all 0.15s ease;
 }
 
+
+
+/* Looking down at the input bar */
+.assistant-avatar-svg.looking-down-input { 
+  animation: none; 
+  transform: rotate(0deg); 
+}
+.assistant-avatar-svg.looking-down-input .avatar-face-group { 
+  transform: translate(0, 8px); 
+}
+/* Optional: slight squint when looking down */
+.assistant-avatar-svg.looking-down-input .avatar-eye {
+  transform: scaleY(0.8);
+}
 /* --- STATES --- */
 
 /* 0. Idle: gentle floating bob + periodic blink */
