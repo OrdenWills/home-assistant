@@ -2500,7 +2500,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 /* ── FEEDBACK ANIMATIONS ── */
 
-/* Positive feedback: smile + head shake */
+/* Positive feedback: smile + head shake + happy eyes */
 .assistant-avatar-svg.feedback-positive {
   animation: feedback-head-shake-positive 1.2s ease-in-out;
 }
@@ -2509,17 +2509,25 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   animation: feedback-face-relax 1.2s ease-in-out;
 }
 
+.assistant-avatar-svg.feedback-positive .avatar-eye {
+  animation: feedback-happy-eyes 1.2s ease-in-out;
+}
+
 .assistant-avatar-svg.feedback-positive .avatar-mouth {
   animation: feedback-smile 1.2s ease-in-out;
 }
 
-/* Negative feedback: sad face + head shake */
+/* Negative feedback: sad face + head shake + sad eyes */
 .assistant-avatar-svg.feedback-negative {
   animation: feedback-head-shake-negative 1.2s ease-in-out;
 }
 
 .assistant-avatar-svg.feedback-negative .avatar-face-group {
   animation: feedback-face-relax 1.2s ease-in-out;
+}
+
+.assistant-avatar-svg.feedback-negative .avatar-eye {
+  animation: feedback-sad-eyes 1.2s ease-in-out;
 }
 
 .assistant-avatar-svg.feedback-negative .avatar-mouth {
@@ -2554,18 +2562,32 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   100% { transform: translate(0, 0); }
 }
 
-/* Smile: mouth curves up into happy expression */
-@keyframes feedback-smile {
-  0% { transform: scaleY(1) scaleX(1); }
-  50% { transform: scaleY(1.8) scaleX(0.9) rotateZ(12deg); }
-  100% { transform: scaleY(0.6) scaleX(1.1) rotateZ(0deg); }
+/* Happy eyes: move up slightly, scale, and cut off the bottom half to make ^^ shapes */
+@keyframes feedback-happy-eyes {
+  0% { transform: translate(0, 0) scale(1, 1); clip-path: inset(0 0 0 0); }
+  50% { transform: translate(0, -2px) scale(1.1, 1.4); clip-path: inset(0 0 45% 0); }
+  100% { transform: translate(0, -1px) scale(1.1, 1.4); clip-path: inset(0 0 45% 0); }
 }
 
-/* Frown: mouth curves down into sad expression */
+/* Sad eyes: droop downward with a sad/squinting expression */
+@keyframes feedback-sad-eyes {
+  0% { transform: translate(0, 0) scale(1, 1); }
+  50% { transform: translate(0, 4px) scale(1.1, 0.7); }
+  100% { transform: translate(0, 3px) scale(1.1, 0.8); }
+}
+
+/* Smile: move up, scale to a tall oval, and cut off the top half to form a 'U' curve */
+@keyframes feedback-smile {
+  0% { transform: translate(0, 0) scale(1, 1); clip-path: inset(0 0 0 0); }
+  50% { transform: translate(0, -1px) scale(1.5, 4); clip-path: inset(50% 0 0 0); }
+  100% { transform: translate(0, -1px) scale(1.6, 4.5); clip-path: inset(50% 0 0 0); }
+}
+
+/* Frown: move down, scale to a tall oval, and cut off the bottom half to form an 'n' curve */
 @keyframes feedback-frown {
-  0% { transform: scaleY(1) scaleX(1); }
-  50% { transform: scaleY(1.5) scaleX(0.85) rotateZ(-15deg); }
-  100% { transform: scaleY(0.4) scaleX(0.9) rotateZ(0deg); }
+  0% { transform: translate(0, 0) scale(1, 1); clip-path: inset(0 0 0 0); }
+  50% { transform: translate(0, 5px) scale(1.5, 4); clip-path: inset(0 0 50% 0); }
+  100% { transform: translate(0, 4px) scale(1.6, 4); clip-path: inset(0 0 50% 0); }
 }
 
 /* ── Load More Button ── */
