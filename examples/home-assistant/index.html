@@ -734,6 +734,15 @@
           } else {
             showFeedbackToast("👎 Saved to failure set", "negative");
           }
+
+          // Get the avatar from the message container and animate
+          const container = upBtn.closest(".msg-container");
+          if (container) {
+            const avatar = container.querySelector(".assistant-avatar-svg");
+            if (avatar) {
+              playFeedbackAnimation(avatar, rating);
+            }
+          }
         } else {
           const data = await res.json().catch(() => ({}));
           showFeedbackToast(`Error: ${data.error || res.status}`, "negative");
@@ -741,6 +750,23 @@
       } catch (e) {
         showFeedbackToast("Network error saving feedback", "negative");
       }
+    }
+
+    function playFeedbackAnimation(avatar, rating) {
+      // Remove any existing feedback animation classes
+      avatar.classList.remove("feedback-positive", "feedback-negative");
+      avatar.classList.remove("thinking", "talking");
+      
+      // Add the appropriate feedback animation
+      const animationClass = rating === "positive" ? "feedback-positive" : "feedback-negative";
+      avatar.classList.add(animationClass);
+      
+      // Remove animation class after it completes (1.2s duration matches animation)
+      setTimeout(() => {
+        avatar.classList.remove(animationClass);
+        // Return avatar to idle state
+        avatar.setAttribute("class", "assistant-avatar-svg");
+      }, 1200);
     }
 
     // ── Helpers ───────────────────────────────────────────────

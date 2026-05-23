@@ -2498,6 +2498,76 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   65% { transform: scaleX(0.6) scaleY(0.9); }
 }
 
+/* ── FEEDBACK ANIMATIONS ── */
+
+/* Positive feedback: smile + head shake */
+.assistant-avatar-svg.feedback-positive {
+  animation: feedback-head-shake-positive 1.2s ease-in-out;
+}
+
+.assistant-avatar-svg.feedback-positive .avatar-face-group {
+  animation: feedback-face-relax 1.2s ease-in-out;
+}
+
+.assistant-avatar-svg.feedback-positive .avatar-mouth {
+  animation: feedback-smile 1.2s ease-in-out;
+}
+
+/* Negative feedback: sad face + head shake */
+.assistant-avatar-svg.feedback-negative {
+  animation: feedback-head-shake-negative 1.2s ease-in-out;
+}
+
+.assistant-avatar-svg.feedback-negative .avatar-face-group {
+  animation: feedback-face-relax 1.2s ease-in-out;
+}
+
+.assistant-avatar-svg.feedback-negative .avatar-mouth {
+  animation: feedback-frown 1.2s ease-in-out;
+}
+
+/* Head shake: side to side */
+@keyframes feedback-head-shake-positive {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  15% { transform: translateY(-1px) rotate(-8deg); }
+  30% { transform: translateY(-1px) rotate(8deg); }
+  45% { transform: translateY(-1px) rotate(-8deg); }
+  60% { transform: translateY(-1px) rotate(8deg); }
+  75% { transform: translateY(-1px) rotate(-2deg); }
+  90% { transform: translateY(0) rotate(0deg); }
+}
+
+/* Head shake (negative is slower, more emphatic) */
+@keyframes feedback-head-shake-negative {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  10% { transform: translateY(-2px) rotate(-12deg); }
+  25% { transform: translateY(-2px) rotate(12deg); }
+  40% { transform: translateY(-2px) rotate(-12deg); }
+  55% { transform: translateY(-2px) rotate(12deg); }
+  70% { transform: translateY(-2px) rotate(-4deg); }
+  85% { transform: translateY(0) rotate(0deg); }
+}
+
+/* Face relax from thinking/talking state back to normal */
+@keyframes feedback-face-relax {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(0, 0); }
+}
+
+/* Smile: mouth curves up into happy expression */
+@keyframes feedback-smile {
+  0% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(1.8) scaleX(0.9) rotateZ(12deg); }
+  100% { transform: scaleY(0.6) scaleX(1.1) rotateZ(0deg); }
+}
+
+/* Frown: mouth curves down into sad expression */
+@keyframes feedback-frown {
+  0% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(1.5) scaleX(0.85) rotateZ(-15deg); }
+  100% { transform: scaleY(0.4) scaleX(0.9) rotateZ(0deg); }
+}
+
 /* ── Load More Button ── */
 .load-more-btn {
   position: absolute;
