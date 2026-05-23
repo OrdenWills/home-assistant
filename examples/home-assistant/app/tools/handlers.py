@@ -88,6 +88,7 @@ def set_scene(scene: str) -> dict:
             home_state["tv"][room] = "off"
         for room in home_state.get("speaker", {}):
             home_state["speaker"][room] = "stopped"
+            control_speaker(room, "stop")
         therm["temperature"] = 68
         therm["mode"] = "auto"
     elif scene == "morning":
@@ -104,6 +105,7 @@ def set_scene(scene: str) -> dict:
             home_state["tv"][room] = "off"
         for room in home_state.get("speaker", {}):
             home_state["speaker"][room] = "stopped"
+            control_speaker(room, "stop")
         therm["temperature"] = 65
         therm["mode"] = "auto"
     elif scene == "party":
