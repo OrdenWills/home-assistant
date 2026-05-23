@@ -880,6 +880,84 @@
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
+    /**
+     * Enforce sliding window: keep only the last 7 conversation turns in the live window.
+     * A "turn" = user message + assistant response + optional thought + tool calls.
+     * Historical messages (loaded via "Load More") are preserved above the divider.
+     */
+    function enforceMessageLimit() {
+      const MAX_TURNS = 7;
+      
+      console.log('[SlidingWindow] Running enforceMessageLimit...');
+      
+      // Find the history divider (if it exists)
+      const divider = messagesEl.querySelector('.history-divider');
+      console.log('[SlidingWindow] Divider found:', !!divider);
+      
+      // Get all message containers in the live window (after divider, or all if no divider)
+      let liveMessages;
+      if (divider) {
+        // Get all elements after the divider
+        liveMessages = [];
+        let node = divider.nextSibling;
+        while (node) {
+          liveMessages.push(node);
+          node = node.nextSibling;
+        }
+      } else {
+        // No divider = all messages are live
+        liveMessages = Array.from(messagesEl.children);
+      }
+      
+      console.log('[SlidingWindow] Live messages count:', liveMessages.length);
+      
+      // Count conversation turns by finding user message containers
+      const turns = [];
+      let currentTurn = [];
+      
+      for (const element of liveMessages) {
+        // Check if this is a user message container
+        if (element.classList && element.classList.contains('msg-container') && 
+            element.classList.contains('user')) {
+          // Start a new turn
+          if (currentTurn.length > 0) {
+            turns.push(currentTurn);
+          }
+          currentTurn = [element];
+        } else {
+          // Add to current turn (assistant message, thought, tool calls, etc.)
+          currentTurn.push(element);
+        }
+      }
+      
+      // Don't forget the last turn
+      if (currentTurn.length > 0) {
+        turns.push(currentTurn);
+      }
+      
+      console.log('[SlidingWindow] Total turns counted:', turns.length);
+      
+      // If we have more than MAX_TURNS, remove the oldest ones
+      if (turns.length > MAX_TURNS) {
+        const turnsToRemove = turns.length - MAX_TURNS;
+        
+        console.log(`[SlidingWindow] Removing ${turnsToRemove} old turn(s)...`);
+        
+        for (let i = 0; i < turnsToRemove; i++) {
+          const turn = turns[i];
+          console.log(`[SlidingWindow] Removing turn ${i + 1}, elements:`, turn.length);
+          // Remove all elements in this turn
+          for (const element of turn) {
+            element.remove();
+          }
+        }
+        
+        console.log(`[SlidingWindow] ✓ Removed ${turnsToRemove} old turn(s), keeping last ${MAX_TURNS}`);
+      } else {
+        console.log(`[SlidingWindow] No removal needed (${turns.length} <= ${MAX_TURNS})`);
+      }
+    }
+
     function setAssistantDot(state) {
       const dot = document.getElementById("assistant-dot");
       if (!dot) return;
@@ -1760,6 +1838,8 @@
               // Don't call speakText here anymore - TTS is handled by chunks
               await refreshState();
 
+              // ── Sliding Window: Maintain only last 7 conversation turns ──
+              enforceMessageLimit();
 
             } else if (event.type === "turn_id") {
               if (assistantContainer) {
@@ -1854,10 +1934,8 @@
           if (i < data.history.length) {
             requestAnimationFrame(renderBatch);
           } else if (data.history.length > 0) {
-            const divider = document.createElement("div");
-            divider.className = "history-divider";
-            divider.textContent = "— restored history —";
-            messagesEl.appendChild(divider);
+            // DON'T add divider on initial load - these are live messages
+            // Only add divider when "Load More" is clicked
             messagesEl.scrollTop = messagesEl.scrollHeight;
 
             // Show load more button if there are more messages
@@ -2007,6 +2085,21 @@
         // Insert at the beginning
         const firstChild = messagesEl.firstChild;
         messagesEl.insertBefore(fragment, firstChild);
+
+        // Add divider if this is the first time loading more
+        if (!messagesEl.querySelector('.history-divider')) {
+          const divider = document.createElement("div");
+          divider.className = "history-divider";
+          divider.textContent = "— restored history —";
+          // Insert divider after the newly loaded historical messages
+          const allChildren = Array.from(messagesEl.children);
+          const insertAfterIndex = data.history.length * 3; // Approximate: user + assistant + maybe thought/tools
+          if (allChildren[insertAfterIndex]) {
+            messagesEl.insertBefore(divider, allChildren[insertAfterIndex]);
+          } else {
+            messagesEl.appendChild(divider);
+          }
+        }
 
         // Restore scroll position
         messagesEl.scrollTop = messagesEl.scrollHeight - scrollHeight;
