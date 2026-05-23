@@ -2046,8 +2046,13 @@
 
           const timestamp = document.createElement("div");
           timestamp.className = "msg-timestamp";
-          // Use a placeholder timestamp for loaded messages
-          timestamp.textContent = "";
+          // Format timestamp from loaded message (ISO format from server)
+          if (turn.timestamp) {
+            const date = new Date(turn.timestamp);
+            timestamp.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          } else {
+            timestamp.textContent = "";
+          }
 
           const feedback = document.createElement("div");
           feedback.className = "msg-feedback";

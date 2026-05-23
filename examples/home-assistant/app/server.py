@@ -291,7 +291,7 @@ def get_history(limit: int = 7, offset: int = 0):
         limit: Number of messages to return (default 7)
         offset: Number of messages to skip from the end (default 0)
     """
-    UI_FIELDS = {"turn_id", "user", "assistant", "thought", "tool_calls", "rating"}
+    UI_FIELDS = {"turn_id", "user", "assistant", "thought", "tool_calls", "rating", "timestamp"}
     total = len(chat_turns)
     
     # Calculate slice indices: get messages from (total - offset - limit) to (total - offset)
@@ -570,6 +570,7 @@ def chat_stream(req: ChatRequest):
                     "assistant": text,
                     "tool_calls": events,
                     "device_snapshot": current_snapshot,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
 
                 # Automatic caching disabled - only cache on Approval (feedback)
@@ -589,6 +590,7 @@ def chat_stream(req: ChatRequest):
                     "thought": "",
                     "assistant": text,
                     "tool_calls": [],
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
                 yield f"data: {json.dumps({'type': 'done', 'text': text, 'turn_id': turn_id, 'cached': False})}\n\n"
             return
@@ -618,6 +620,7 @@ def chat_stream(req: ChatRequest):
                 "assistant": text,
                 "tool_calls": events,
                 "device_snapshot": current_snapshot,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             })
 
             yield f"data: {json.dumps({'type': 'token', 'text': text})}\n\n"
@@ -738,8 +741,7 @@ def chat_stream(req: ChatRequest):
                     "thought": thought_trace,
                     "assistant": final_text,
                     "tool_calls": tool_events,
-                    "device_snapshot": current_snapshot,
-                })
+                    "device_snapshot": current_snapshot,                    "timestamp": datetime.now(timezone.utc).isoformat(),                })
                 save_chat_history(chat_turns)
                 yield f"data: {json.dumps({'type': 'turn_id', 'turn_id': turn_id})}\n\n"
 
