@@ -643,6 +643,25 @@
     const inputEl = document.getElementById("user-input");
     const sendBtn = document.getElementById("send-btn");
 
+    // ── Smart scroll tracking (prevent jumpback while manually scrolling) ──
+    let isUserScrolledToBottom = true;
+    const SCROLL_THRESHOLD = 150; // px from bottom to consider "at bottom"
+
+    function checkIfScrolledToBottom() {
+      const scrollTop = messagesEl.scrollTop;
+      const scrollHeight = messagesEl.scrollHeight;
+      const clientHeight = messagesEl.clientHeight;
+      isUserScrolledToBottom = (scrollHeight - scrollTop - clientHeight) < SCROLL_THRESHOLD;
+    }
+
+    function smartScroll() {
+      if (isUserScrolledToBottom) {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+    }
+
+    messagesEl.addEventListener("scroll", checkIfScrolledToBottom);
+
     // ── Current room state ────────────────────────────────────
 
     let currentRoom = null;
@@ -806,7 +825,7 @@
       container.appendChild(wrapper);
 
       messagesEl.appendChild(container);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      smartScroll();
 
       // Return BOTH the text div (for streaming) AND the outer container
       // (for later setting data-turn-id once the server sends the turn_id event).
@@ -852,7 +871,7 @@
       container.appendChild(wrapper);
 
       messagesEl.appendChild(container);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      smartScroll();
       return div;
     }
 
@@ -865,7 +884,7 @@
         `<summary>Thought Process</summary>` +
         `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;">${text}</pre>`;
       messagesEl.appendChild(details);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      smartScroll();
       return details;
     }
 
@@ -877,7 +896,7 @@
         `<summary>Tool calls (${toolCalls.length})</summary>` +
         `<pre>${JSON.stringify(toolCalls, null, 2)}</pre>`;
       messagesEl.appendChild(details);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      smartScroll();
     }
 
     /**
@@ -1618,7 +1637,7 @@
                 if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg thinking');
               }
               thinkDetailsEl.querySelector("summary").textContent = event.text;
-              messagesEl.scrollTop = messagesEl.scrollHeight;
+              smartScroll();
 
             } else if (event.type === "think_token") {
               // ── Live thinking token — stream into dedicated thinking block ──
@@ -1662,7 +1681,7 @@
 
               thinkText += event.text;
               if (thinkPreEl) thinkPreEl.textContent = thinkText;
-              messagesEl.scrollTop = messagesEl.scrollHeight;
+              smartScroll();
 
             } else if (event.type === "think_done") {
               // ── Thinking complete — remove cursor, collapse, and rename ──
@@ -1715,7 +1734,7 @@
               
               fullText += event.text;
               assistantMsgEl.textContent = fullText;
-              messagesEl.scrollTop = messagesEl.scrollHeight;
+              smartScroll();
               
               // ── TTS Chunk Processing ──
               // Accumulate text and check for sentence boundaries
@@ -1770,7 +1789,7 @@
                 liveToolCallsEl.querySelector("pre").textContent =
                   JSON.stringify(toolEvents, null, 2);
               }
-              messagesEl.scrollTop = messagesEl.scrollHeight;
+              smartScroll();
 
               if (event.state) {
                 updateHouseVisualization(event.state);
@@ -1936,7 +1955,7 @@
           } else if (data.history.length > 0) {
             // DON'T add divider on initial load - these are live messages
             // Only add divider when "Load More" is clicked
-            messagesEl.scrollTop = messagesEl.scrollHeight;
+            smartScroll();
 
             // Show load more button if there are more messages
             if (data.has_more) {
