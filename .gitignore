@@ -47,3 +47,5 @@ examples/home-assistant/stage2_dataset_v4.jsonl
 examples/home-assistant/jot.txt
 examples/home-assistant/_test_fuzz.py
 examples/home-assistant/.vscode/settings.json
+examples/home-assistant/.kiro/specs/real-time-chat-sliding-window/requirements.md
+examples/home-assistant/.kiro/specs/real-time-chat-sliding-window/.config.kiro
