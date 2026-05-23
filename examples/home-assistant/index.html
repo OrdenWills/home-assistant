@@ -1310,16 +1310,46 @@
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       
+      let lastBoundaryTime = 0;
+      let estimatedEndTime = 0;
+      let stopAnimationTimer = null;
+      
       utterance.onstart = () => {
         isSpeaking = true;
         currentAvatarForTTS = avatarSVG;
         if (avatarSVG) {
           avatarSVG.setAttribute('class', 'assistant-avatar-svg talking');
         }
+        
+        // Estimate total duration: ~150ms per word + 200ms buffer
+        const wordCount = text.trim().split(/\s+/).length;
+        estimatedEndTime = Date.now() + (wordCount * 150) + 200;
+      };
+      
+      utterance.onboundary = (event) => {
+        // Track the last word boundary
+        lastBoundaryTime = Date.now();
+        
+        // If we're near the end of the text, prepare to stop animation
+        if (event.charIndex && text.length - event.charIndex < 10) {
+          // We're at the last few characters - stop animation proactively
+          if (stopAnimationTimer) clearTimeout(stopAnimationTimer);
+          stopAnimationTimer = setTimeout(() => {
+            if (currentAvatarForTTS) {
+              currentAvatarForTTS.setAttribute('class', 'assistant-avatar-svg');
+            }
+          }, 100); // Stop animation 100ms before audio ends
+        }
       };
       
       utterance.onend = () => {
-        // Immediately stop mouth animation
+        // Clear any pending animation stop timer
+        if (stopAnimationTimer) {
+          clearTimeout(stopAnimationTimer);
+          stopAnimationTimer = null;
+        }
+        
+        // Ensure mouth animation stops immediately
         if (currentAvatarForTTS) {
           currentAvatarForTTS.setAttribute('class', 'assistant-avatar-svg');
         }
@@ -1351,6 +1381,10 @@
       
       utterance.onerror = (e) => {
         console.error('[TTS] Error:', e);
+        if (stopAnimationTimer) {
+          clearTimeout(stopAnimationTimer);
+          stopAnimationTimer = null;
+        }
         isSpeaking = false;
         currentUtterance = null;
         currentAvatarForTTS = null;
