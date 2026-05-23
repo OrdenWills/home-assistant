@@ -1265,12 +1265,110 @@
       micBtn.style.display = "none";
     }
 
+    // ── TTS Management ───────────────────────────────────────
+    
+    let ttsQueue = [];
+    let isSpeaking = false;
+    let currentUtterance = null;
+    
     function speakText(text) {
       if (!window.speechSynthesis || isMuted) return;
       window.speechSynthesis.cancel();
       const utter = new SpeechSynthesisUtterance(text);
       utter.rate = 1.0; utter.pitch = 1.0;
       window.speechSynthesis.speak(utter);
+    }
+    
+    function queueSpeechChunk(text, avatarSVG) {
+      if (!text || !text.trim()) return;
+      
+      // If muted, just animate mouth without sound
+      if (isMuted) {
+        if (avatarSVG) {
+          avatarSVG.setAttribute('class', 'assistant-avatar-svg talking');
+          // Estimate duration: ~150ms per word
+          const wordCount = text.trim().split(/\s+/).length;
+          const duration = Math.max(500, wordCount * 150);
+          setTimeout(() => {
+            // Check if there are more chunks queued
+            if (ttsQueue.length === 0 && !isSpeaking) {
+              avatarSVG.setAttribute('class', 'assistant-avatar-svg');
+            }
+          }, duration);
+        }
+        return;
+      }
+      
+      if (!window.speechSynthesis) return;
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      
+      utterance.onstart = () => {
+        isSpeaking = true;
+        if (avatarSVG) {
+          avatarSVG.setAttribute('class', 'assistant-avatar-svg talking');
+        }
+      };
+      
+      utterance.onend = () => {
+        isSpeaking = false;
+        currentUtterance = null;
+        
+        // Process next in queue
+        if (ttsQueue.length > 0) {
+          const next = ttsQueue.shift();
+          currentUtterance = next.utterance;
+          window.speechSynthesis.speak(next.utterance);
+        } else {
+          // No more speech, return avatar to idle
+          if (avatarSVG) {
+            avatarSVG.setAttribute('class', 'assistant-avatar-svg');
+          }
+        }
+      };
+      
+      utterance.onerror = (e) => {
+        console.error('[TTS] Error:', e);
+        isSpeaking = false;
+        currentUtterance = null;
+        if (avatarSVG) {
+          avatarSVG.setAttribute('class', 'assistant-avatar-svg');
+        }
+      };
+      
+      // If currently speaking, queue it; otherwise speak immediately
+      if (isSpeaking || window.speechSynthesis.speaking) {
+        ttsQueue.push({ utterance, avatarSVG });
+      } else {
+        currentUtterance = utterance;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+    
+    function stopAllSpeech() {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      ttsQueue = [];
+      isSpeaking = false;
+      currentUtterance = null;
+    }
+    
+    function detectSentenceBoundary(text) {
+      // Returns the index of the last sentence boundary, or -1 if none found
+      const boundaries = ['. ', '! ', '? ', '.\n', '!\n', '?\n'];
+      let lastIndex = -1;
+      
+      for (const boundary of boundaries) {
+        const idx = text.lastIndexOf(boundary);
+        if (idx > lastIndex) {
+          lastIndex = idx + boundary.length;
+        }
+      }
+      
+      return lastIndex;
     }
 
     function updateAvatarState(stateClass) {
@@ -1293,6 +1391,9 @@
       const text = inputEl.value.trim();
       if (!text) return;
 
+      // Stop any ongoing speech from previous response
+      stopAllSpeech();
+
       inputEl.value = "";
       sendBtn.disabled = true;
       sendBtn.classList.add("loading");
@@ -1313,6 +1414,10 @@
       let thinkText = "";              // accumulated thinking text
       let liveToolCallsEl = null;      // live <details> for tool calls (updated per call)
       let currentAvatarSVG = null;
+      
+      // TTS chunk management
+      let ttsBuffer = "";              // accumulates text until sentence boundary
+      let lastSpokenIndex = 0;         // tracks what we've already queued for TTS
 
       try {
         const response = await fetch("/chat/stream", {
@@ -1455,11 +1560,8 @@
                 assistantContainer = result.container;
                 assistantMsgEl.classList.add("streaming");
 
-                // Switch avatar to talking state
+                // Switch avatar to talking state (will be managed by TTS)
                 currentAvatarSVG = assistantContainer.querySelector('.assistant-avatar-svg');
-                if (currentAvatarSVG) {
-                  currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg talking');
-                }
 
                 if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
                   messagesEl.insertBefore(assistantContainer, liveToolCallsEl);
@@ -1468,9 +1570,25 @@
                   messagesEl.insertBefore(thinkDetailsEl, assistantContainer);
                 }
               }
+              
               fullText += event.text;
               assistantMsgEl.textContent = fullText;
               messagesEl.scrollTop = messagesEl.scrollHeight;
+              
+              // ── TTS Chunk Processing ──
+              // Accumulate text and check for sentence boundaries
+              ttsBuffer += event.text;
+              const boundaryIndex = detectSentenceBoundary(ttsBuffer);
+              
+              if (boundaryIndex > 0) {
+                // Found a sentence boundary - queue everything up to it
+                const chunk = ttsBuffer.substring(0, boundaryIndex).trim();
+                if (chunk) {
+                  queueSpeechChunk(chunk, currentAvatarSVG);
+                }
+                // Keep the remainder for next iteration
+                ttsBuffer = ttsBuffer.substring(boundaryIndex);
+              }
 
             } else if (event.type === "tool_call") {
               // Note: We DO NOT remove `typing` here anymore!
@@ -1544,18 +1662,28 @@
                 assistantMsgEl.classList.remove("streaming");
               }
 
-              // Stop all avatar animations — return to idle
-              if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg');
+              // Queue any remaining text in buffer for TTS
+              if (ttsBuffer.trim()) {
+                queueSpeechChunk(ttsBuffer.trim(), currentAvatarSVG);
+                ttsBuffer = "";
+              }
+
+              // Avatar state is now managed by TTS events, not manually set here
 
               if (!assistantMsgEl) {
                 const result = appendMessage("assistant", event.text || "(no response)");
                 assistantMsgEl = result.div;
                 assistantContainer = result.container;
+                currentAvatarSVG = assistantContainer.querySelector('.assistant-avatar-svg');
                 if (liveToolCallsEl && assistantContainer.parentNode === messagesEl) {
                   messagesEl.insertBefore(assistantContainer, liveToolCallsEl);
                 }
                 if (thinkDetailsEl && assistantContainer && assistantContainer.parentNode === messagesEl && thinkDetailsEl.parentNode === messagesEl) {
                   messagesEl.insertBefore(thinkDetailsEl, assistantContainer);
+                }
+                // If we got the full text in done event, queue it for TTS
+                if (event.text) {
+                  queueSpeechChunk(event.text, currentAvatarSVG);
                 }
               } else {
                 assistantMsgEl.textContent = event.text || fullText || "(no response)";
@@ -1564,7 +1692,8 @@
               if (event.turn_id !== undefined && assistantContainer) {
                 assistantContainer.dataset.turnId = event.turn_id;
               }
-              speakText(event.text || "");
+              
+              // Don't call speakText here anymore - TTS is handled by chunks
               await refreshState();
 
 
@@ -1588,7 +1717,11 @@
               }
 
               if (assistantMsgEl) assistantMsgEl.classList.remove("streaming");
+              
+              // Stop any ongoing speech
+              stopAllSpeech();
               if (currentAvatarSVG) currentAvatarSVG.setAttribute('class', 'assistant-avatar-svg');
+              
               appendMessage("assistant", event.text || "An error occurred.");
             }
           }
@@ -1598,6 +1731,7 @@
 
       } catch (e) {
         typing.remove();
+        stopAllSpeech();
         appendMessage("assistant", "Error: could not reach the server.");
       } finally {
         typing.remove();
