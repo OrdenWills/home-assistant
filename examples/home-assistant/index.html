@@ -2044,6 +2044,11 @@
           const assistantFooter = document.createElement("div");
           assistantFooter.className = "msg-footer";
 
+          const timestamp = document.createElement("div");
+          timestamp.className = "msg-timestamp";
+          // Use a placeholder timestamp for loaded messages
+          timestamp.textContent = "";
+
           const feedback = document.createElement("div");
           feedback.className = "msg-feedback";
 
@@ -2062,8 +2067,19 @@
             applyFeedbackUI(turn.rating, upBtn, downBtn);
           }
 
+          // Add click handlers for feedback
+          upBtn.addEventListener("click", (e) => {
+            showFeedbackPopup(assistantContainer, "positive", upBtn, downBtn, e.currentTarget);
+          });
+
+          downBtn.addEventListener("click", (e) => {
+            showFeedbackPopup(assistantContainer, "negative", upBtn, downBtn, e.currentTarget);
+          });
+
           feedback.appendChild(upBtn);
           feedback.appendChild(downBtn);
+          
+          assistantFooter.appendChild(timestamp);
           assistantFooter.appendChild(feedback);
 
           assistantWrapper.appendChild(assistantMsg);

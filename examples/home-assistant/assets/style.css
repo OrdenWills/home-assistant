@@ -1194,6 +1194,12 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   align-items: center;
 }
 
+/* Hidden divider for sliding window logic */
+.history-divider {
+  display: none;
+  /* Kept in DOM for sliding window boundary detection but hidden from UI */
+}
+
 .assistant-avatar {
   width: 32px;
   height: 32px;
