@@ -641,6 +641,9 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
 .speaker-row.top {
   margin-bottom: 4px;
 }
+.speaker-row.bottom {
+  position: relative;
+}
 /* .speaker-row.top {
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border-light);
@@ -653,6 +656,17 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
 }
 .device-card.active-gadget .speaker-row.top {
   opacity: 1;
+}
+
+/* Repeat mode button in speaker card */
+.speaker-row.bottom .repeat-mode-btn {
+  margin-left: auto;
+  padding: 3px;
+}
+
+.speaker-row.bottom .repeat-mode-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .disc-container {

@@ -384,6 +384,29 @@ def ui_control_speaker(req: SpeakerControlRequest):
         log_transaction([{"name": "control_speaker", "args": {"room": req.room, "action": req.action}}], summary)
     return JSONResponse(res)
 
+class RepeatModeRequest(BaseModel):
+    mode: str  # "none" | "all" | "one"
+
+@app.post("/speaker/repeat_mode")
+def set_repeat_mode(req: RepeatModeRequest):
+    """Set the repeat mode for music playback."""
+    home_state["repeat_mode"] = req.mode
+    persist_state()
+    return JSONResponse({"success": True, "mode": req.mode})
+
+@app.get("/speaker/status")
+def get_speaker_status():
+    """Check if music is still playing (for auto-next in repeat all mode)."""
+    import pygame
+    if pygame.mixer.get_init():
+        is_busy = pygame.mixer.music.get_busy()
+        return JSONResponse({
+            "playing": is_busy,
+            "repeat_mode": home_state.get("repeat_mode", "none"),
+            "current_track": home_state.get("current_track_name")
+        })
+    return JSONResponse({"playing": False, "repeat_mode": "none"})
+
 # ── Feedback / Dataset endpoint ────────────────────────────────────────────────
 
 class FeedbackRequest(BaseModel):

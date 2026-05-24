@@ -283,7 +283,7 @@
                     </button>
                   </div>
                 </div>
-                <!-- Bottom Row: Icon & Name -->
+                <!-- Bottom Row: Icon, Name & Repeat Mode -->
                 <div class="speaker-row bottom">
                   <div class="icon-circle">
                     <svg class="device-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
@@ -294,6 +294,28 @@
                     </svg>
                   </div>
                   <span class="device-name">Speaker</span>
+                  <button class="media-btn repeat-mode-btn" id="repeat-mode-btn" title="Repeat Mode: No Repeat">
+                    <!-- No Repeat Icon (arrow right) -->
+                    <svg id="repeat-none-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="17 1 21 5 17 9"></polyline>
+                      <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    </svg>
+                    <!-- Repeat All Icon (circular arrows) -->
+                    <svg id="repeat-all-icon" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="17 1 21 5 17 9"></polyline>
+                      <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                      <polyline points="7 23 3 19 7 15"></polyline>
+                      <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                    </svg>
+                    <!-- Repeat One Icon (circular arrows with 1) -->
+                    <svg id="repeat-one-icon" class="hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="17 1 21 5 17 9"></polyline>
+                      <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                      <polyline points="7 23 3 19 7 15"></polyline>
+                      <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                      <text x="12" y="16" font-size="8" text-anchor="middle" fill="currentColor" stroke="none" font-weight="bold">1</text>
+                    </svg>
+                  </button>
                 </div>
                 <div class="track-marquee" id="track-marquee">
                   <span class="track-marquee-text" id="track-marquee-text"></span>
@@ -2311,6 +2333,66 @@
 
     // fetchInitialFolder removed — refreshState() now handles music folder + speaker UI
 
+    // ── Repeat Mode Toggle ────────────────────────────────────
+    const repeatModeBtn = document.getElementById("repeat-mode-btn");
+    const repeatNoneIcon = document.getElementById("repeat-none-icon");
+    const repeatAllIcon = document.getElementById("repeat-all-icon");
+    const repeatOneIcon = document.getElementById("repeat-one-icon");
+    
+    // Repeat modes: 'none' -> 'all' -> 'one' -> 'none'
+    let repeatMode = localStorage.getItem("repeat_mode") || "none";
+    
+    const repeatModes = {
+      none: { title: "Repeat Mode: No Repeat", next: "all" },
+      all: { title: "Repeat Mode: Repeat All", next: "one" },
+      one: { title: "Repeat Mode: Repeat One", next: "none" }
+    };
+    
+    function updateRepeatModeUI() {
+      const mode = repeatMode;
+      if (repeatModeBtn) repeatModeBtn.title = repeatModes[mode].title;
+      
+      // Show/hide appropriate icon
+      if (repeatNoneIcon) repeatNoneIcon.classList.toggle("hidden", mode !== "none");
+      if (repeatAllIcon) repeatAllIcon.classList.toggle("hidden", mode !== "all");
+      if (repeatOneIcon) repeatOneIcon.classList.toggle("hidden", mode !== "one");
+    }
+    
+    updateRepeatModeUI();
+    
+    if (repeatModeBtn) {
+      repeatModeBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        repeatMode = repeatModes[repeatMode].next;
+        localStorage.setItem("repeat_mode", repeatMode);
+        updateRepeatModeUI();
+        
+        // Send to backend
+        try {
+          await fetch("/speaker/repeat_mode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: repeatMode })
+          });
+          showFeedbackToast(`Repeat: ${repeatModes[repeatMode].title.split(': ')[1]}`, "positive");
+          
+          // If switching to repeat all and music is playing, start monitoring
+          if (repeatMode === "all") {
+            const statusRes = await fetch("/speaker/status");
+            const statusData = await statusRes.json();
+            if (statusData.playing) {
+              startTrackEndMonitoring();
+            }
+          } else {
+            // Stop monitoring if switching away from repeat all
+            stopTrackEndMonitoring();
+          }
+        } catch (err) {
+          console.error("Failed to set repeat mode", err);
+        }
+      });
+    }
+
     // ── Speaker UI Sync ───────────────────────────────────────
     function updateSpeakerUI(status, trackName) {
       const disc = document.getElementById("speaker-disc");
@@ -2357,10 +2439,16 @@
           let toastMsg = "";
           if (data.state === "playing") {
             toastMsg = data.current_track ? `Playing: ${data.current_track}` : "Music started";
+            // Start monitoring for track end if in repeat all mode
+            if (repeatMode === "all") {
+              startTrackEndMonitoring();
+            }
           } else if (data.state === "paused") {
             toastMsg = "Music paused";
+            stopTrackEndMonitoring();
           } else if (data.state === "stopped") {
             toastMsg = "Music stopped";
+            stopTrackEndMonitoring();
           } else {
             toastMsg = action.charAt(0).toUpperCase() + action.slice(1);
           }
@@ -2370,6 +2458,37 @@
         console.error("Speaker control failed", err);
       }
     };
+
+    // ── Track End Monitoring for Repeat All ──────────────────
+    let trackEndMonitorInterval = null;
+    let lastTrackName = null;
+
+    function startTrackEndMonitoring() {
+      if (trackEndMonitorInterval) return; // Already monitoring
+      
+      trackEndMonitorInterval = setInterval(async () => {
+        try {
+          const res = await fetch("/speaker/status");
+          const data = await res.json();
+          
+          // If music stopped playing and we're in repeat all mode
+          if (!data.playing && repeatMode === "all") {
+            stopTrackEndMonitoring();
+            // Auto-play next track
+            await handleSpeakerAction("next");
+          }
+        } catch (err) {
+          console.error("Track monitoring failed", err);
+        }
+      }, 1000); // Check every second
+    }
+
+    function stopTrackEndMonitoring() {
+      if (trackEndMonitorInterval) {
+        clearInterval(trackEndMonitorInterval);
+        trackEndMonitorInterval = null;
+      }
+    }
 
     // ── Mute Toggle ───────────────────────────────────────────
     let isMuted = localStorage.getItem("assistant_muted") === "true";

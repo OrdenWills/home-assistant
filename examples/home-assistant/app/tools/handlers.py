@@ -208,7 +208,13 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                     if action in ["play", "next", "previous"]:
                         try:
                             pygame.mixer.music.load(track_path)
-                            pygame.mixer.music.play()
+                            # Set up repeat mode based on home_state
+                            repeat_mode = home_state.get("repeat_mode", "none")
+                            if repeat_mode == "one":
+                                pygame.mixer.music.play(loops=-1)  # Loop current track infinitely
+                            else:
+                                pygame.mixer.music.play()
+                                # For "all" mode, we'll handle track end event in the frontend
                         except Exception as e:
                             res["playback_error"] = str(e)
                     elif action == "pause":
