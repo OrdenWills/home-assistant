@@ -2346,6 +2346,26 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   transform: translateX(-55%) scale(1.05); opacity: 0.85;
 }
 
+/* --- Listening to Mic Mode --- */
+/* Turns head right, bringing the left ear forward, creating a profile view */
+.assistant-avatar-svg.listening-mic {
+  animation: none;
+  transform: rotate(8deg); /* Slight tilt to show it is "leaning in" to listen */
+}
+.assistant-avatar-svg.listening-mic .avatar-face-group {
+  /* Push face far right and squash horizontally to simulate turning away */
+  transform: translate(15px, 0px) scaleX(0.4);
+}
+.assistant-avatar-svg.listening-mic .avatar-eye {
+  /* Slight squint indicating focus/listening */
+  transform: scaleY(0.8);
+}
+.assistant-avatar-svg.listening-mic + .avatar-shadow {
+  transform: translateX(-40%) scale(0.9); 
+  opacity: 0.6;
+  animation: none;
+}
+
 /* SVG Parts — eyes and mouth are solid dark on light head */
 .avatar-face-group {
   transform-origin: center;

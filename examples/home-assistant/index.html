@@ -1344,7 +1344,17 @@
         voiceText.textContent = "Listening...";
         micBtn.classList.add("recording");
         inputEl.placeholder = "Listening...";
+
+        // ADDED: Make avatar strike the listening pose
+        const avatars = document.querySelectorAll('.assistant-avatar-svg');
+        if (avatars.length > 0) {
+          const lastAvatar = avatars[avatars.length - 1];
+          lastAvatar.classList.remove('looking-down-input');
+          lastAvatar.classList.add('listening-mic');
+        }
       };
+
+      
 
       voiceRecognition.onresult = (event) => {
         let interimTranscript = '';
@@ -1365,6 +1375,13 @@
         micBtn.classList.remove("recording");
         updateInputState();
         clearTimeout(voiceTimeout);
+
+        // ADDED: Remove listening pose
+        const avatars = document.querySelectorAll('.assistant-avatar-svg');
+        if (avatars.length > 0) {
+          avatars[avatars.length - 1].classList.remove('listening-mic');
+        }
+
         const finalSpokenText = voiceText.textContent.trim();
         if (finalSpokenText && finalSpokenText !== "Listening...") {
           inputEl.value = finalSpokenText;
@@ -1378,6 +1395,11 @@
         voiceModal.classList.remove("active");
         micBtn.classList.remove("recording");
         updateInputState();
+        // ADDED: Remove listening pose on error
+        const avatars = document.querySelectorAll('.assistant-avatar-svg');
+        if (avatars.length > 0) {
+          avatars[avatars.length - 1].classList.remove('listening-mic');
+        }
       };
 
       micBtn.addEventListener("click", () => {
@@ -2196,6 +2218,8 @@
     // ── Avatar Focus Tracking ─────────────────────────────────
 
     function handleInputFocus(isFocused) {
+      // Prevent overriding if currently listening to mic
+      if (isRecording) return;
       // Only trigger if the assistant is idle (not thinking/talking/loading)
       // We check sendBtn.disabled as a proxy for the "busy" state
       if (sendBtn.disabled || sendBtn.classList.contains("loading")) return;
