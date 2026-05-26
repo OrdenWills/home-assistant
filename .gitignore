@@ -49,3 +49,4 @@ examples/home-assistant/_test_fuzz.py
 examples/home-assistant/.vscode/settings.json
 examples/home-assistant/.kiro/specs/real-time-chat-sliding-window/requirements.md
 examples/home-assistant/.kiro/specs/real-time-chat-sliding-window/.config.kiro
+examples/home-assistant/ideas.md

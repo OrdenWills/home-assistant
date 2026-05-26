@@ -25,7 +25,7 @@ def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, f
         "TOOLS:\n"
         "  toggle_lights(room, state='on'|'off')\n"
         "  lock_door(door, state='lock'|'unlock')\n"
-        "  set_thermostat(temperature=<int>, mode='heat'|'cool'|'auto')\n"
+        "  set_thermostat(temperature=<int 60–80>, mode='heat'|'cool'|'auto')\n"
         "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
         "  control_tv(room, state='on'|'off')\n"
         "  control_fan(room, state='on'|'off'[, speed='low'|'medium'|'high'])\n"
