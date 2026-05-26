@@ -1926,6 +1926,21 @@
               // Don't call speakText here anymore - TTS is handled by chunks
               await refreshState();
 
+              // ── Ensure track monitoring is running if repeat mode is "all" ──
+              // (in case agent triggered a play command)
+              if (repeatMode === "all") {
+                try {
+                  const statusRes = await fetch("/speaker/status");
+                  const statusData = await statusRes.json();
+                  if (statusData.playing && !trackEndMonitorInterval) {
+                    console.log("[Agent] Music started by agent, starting track monitoring");
+                    startTrackEndMonitoring();
+                  }
+                } catch (err) {
+                  console.error("Failed to check speaker status after agent response", err);
+                }
+              }
+
               // ── Sliding Window: Maintain only last 7 conversation turns ──
               enforceMessageLimit();
 
@@ -2358,6 +2373,25 @@
     }
     
     updateRepeatModeUI();
+    
+    // ── Initial check: if repeat mode is "all" and music is already playing, start monitoring ──
+    async function initializeRepeatMonitoring() {
+      if (repeatMode === "all") {
+        try {
+          const statusRes = await fetch("/speaker/status");
+          const statusData = await statusRes.json();
+          if (statusData.playing) {
+            console.log("[Init] Music already playing in repeat all mode, starting monitoring");
+            startTrackEndMonitoring();
+          }
+        } catch (err) {
+          console.error("Failed to check initial speaker status", err);
+        }
+      }
+    }
+    
+    // Call on page load after a brief delay to ensure page is ready
+    setTimeout(initializeRepeatMonitoring, 500);
     
     if (repeatModeBtn) {
       repeatModeBtn.addEventListener("click", async (e) => {
