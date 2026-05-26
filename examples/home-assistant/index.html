@@ -570,7 +570,7 @@
     // ── UI Configuration ──────────────────────────────────────
     // Change this to 'true' to have thoughts open automatically, 
     // or 'false' to keep them collapsed until the user clicks.
-    const AUTO_OPEN_THOUGHTS = true;
+    const AUTO_OPEN_THOUGHTS = false;
 
     // ── Theme management ──────────────────────────────────────
 
@@ -1719,7 +1719,7 @@
                 thinkDetailsEl.open = AUTO_OPEN_THOUGHTS;
 
                 thinkDetailsEl.innerHTML =
-                  `<summary>Thinking...</summary>` +
+                  `<summary>Thinking...<span class="think-spinner"></span></summary>` +
                   `<pre style="white-space: pre-wrap; font-family: inherit; margin-top: 8px;"></pre>`;
                 thinkPreEl = thinkDetailsEl.querySelector("pre");
 
@@ -1739,7 +1739,7 @@
 
                 thinkDetailsEl.open = AUTO_OPEN_THOUGHTS;
 
-                thinkDetailsEl.querySelector("summary").textContent = "Thinking...";
+                thinkDetailsEl.querySelector("summary").innerHTML = 'Thinking...<span class="think-spinner"></span>';
 
                 // Ensure avatar is thinking
                 const typingContainer = typing.closest('.msg-container');
