@@ -27,8 +27,7 @@
     <header>
       <div class="brand">
         <img class="brand-logo" src="/assets/liquid-ai-logo.png" alt="Liquid AI" />
-        <span class="brand-sep">/</span>
-        <span class="brand-app">Home Assistant powered by a local LFM2.5 model</span>
+        <!-- <span class="brand-sep">/</span> -->
       </div>
       <div class="meta">
         <button class="backend-btn" id="theme-toggle" title="Cycle theme: Light → Soft Dark → High Contrast">🌙</button>
@@ -955,11 +954,11 @@
     function enforceMessageLimit() {
       const MAX_TURNS = 7;
       
-      console.log('[SlidingWindow] Running enforceMessageLimit...');
+      // // console.log('[SlidingWindow] Running enforceMessageLimit...');
       
       // Find the history divider (if it exists)
       const divider = messagesEl.querySelector('.history-divider');
-      console.log('[SlidingWindow] Divider found:', !!divider);
+      // console.log('[SlidingWindow] Divider found:', !!divider);
       
       // Get all message containers in the live window (after divider, or all if no divider)
       let liveMessages;
@@ -976,7 +975,7 @@
         liveMessages = Array.from(messagesEl.children);
       }
       
-      console.log('[SlidingWindow] Live messages count:', liveMessages.length);
+      // console.log('[SlidingWindow] Live messages count:', liveMessages.length);
       
       // Count conversation turns by finding user message containers
       const turns = [];
@@ -1002,26 +1001,26 @@
         turns.push(currentTurn);
       }
       
-      console.log('[SlidingWindow] Total turns counted:', turns.length);
+      // console.log('[SlidingWindow] Total turns counted:', turns.length);
       
       // If we have more than MAX_TURNS, remove the oldest ones
       if (turns.length > MAX_TURNS) {
         const turnsToRemove = turns.length - MAX_TURNS;
         
-        console.log(`[SlidingWindow] Removing ${turnsToRemove} old turn(s)...`);
+        // console.log(`[SlidingWindow] Removing ${turnsToRemove} old turn(s)...`);
         
         for (let i = 0; i < turnsToRemove; i++) {
           const turn = turns[i];
-          console.log(`[SlidingWindow] Removing turn ${i + 1}, elements:`, turn.length);
+          // console.log(`[SlidingWindow] Removing turn ${i + 1}, elements:`, turn.length);
           // Remove all elements in this turn
           for (const element of turn) {
             element.remove();
           }
         }
         
-        console.log(`[SlidingWindow] ✓ Removed ${turnsToRemove} old turn(s), keeping last ${MAX_TURNS}`);
+        // console.log(`[SlidingWindow] ✓ Removed ${turnsToRemove} old turn(s), keeping last ${MAX_TURNS}`);
       } else {
-        console.log(`[SlidingWindow] No removal needed (${turns.length} <= ${MAX_TURNS})`);
+        // console.log(`[SlidingWindow] No removal needed (${turns.length} <= ${MAX_TURNS})`);
       }
     }
 
