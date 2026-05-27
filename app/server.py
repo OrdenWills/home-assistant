@@ -1,4 +1,5 @@
 #app/server.py
+import asyncio
 import subprocess
 import threading
 import time
@@ -8,7 +9,7 @@ from datetime import datetime, timezone
 import json
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -193,6 +194,10 @@ async def lifespan(app_: FastAPI):
     # Load persisted chat history
     chat_turns.clear()
     chat_turns.extend(load_chat_history())
+
+    # Set event loop for event bus
+    from app.events import event_bus
+    event_bus.set_event_loop(asyncio.get_running_loop())
 
     model_id = home_state.get("active_model_id", "home-assistant-sft(small)")
     model = next((m for m in LOCAL_MODELS if m["id"] == model_id), None)
@@ -401,7 +406,56 @@ def set_repeat_mode(req: RepeatModeRequest):
     """Set the repeat mode for music playback."""
     home_state["repeat_mode"] = req.mode
     persist_state()
+    from app.events import emit_state_event
+    emit_state_event("repeat_mode_changed", {
+        "type": "repeat_mode_changed",
+        "mode": req.mode
+    })
     return JSONResponse({"success": True, "mode": req.mode})
+
+@app.get("/events/stream")
+async def event_stream(request: Request) -> StreamingResponse:
+    """SSE endpoint for real-time state updates."""
+    from app.events import event_bus
+    
+    async def generate():
+        queue = await event_bus.subscribe()
+        try:
+            # Send initial state sync
+            init_event = {
+                "type": "connection_init",
+                "speaker_state": {
+                    "room": "living_room",
+                    "state": home_state.get("speaker", {}).get("living_room", "stopped"),
+                    "track_name": home_state.get("current_track_name"),
+                    "track_index": home_state.get("current_track_index", 0),
+                },
+                "repeat_mode": home_state.get("repeat_mode", "none"),
+            }
+            yield f"event: connection_init\ndata: {json.dumps(init_event)}\n\n"
+            
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    event_type = message["event"]
+                    data = message["data"]
+                    yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
+        finally:
+            event_bus.unsubscribe(queue)
+            
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
 
 @app.get("/speaker/status")
 def get_speaker_status():

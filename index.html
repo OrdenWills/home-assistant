@@ -2422,6 +2422,95 @@
       }
     }
 
+    class MusicStateSync {
+      constructor(onStateUpdate) {
+        this.eventSource = null;
+        this.onStateUpdate = onStateUpdate;
+        this.reconnectDelay = 1000;
+        this.maxReconnectDelay = 30000;
+        this.isConnected = false;
+      }
+
+      connect() {
+        if (this.eventSource) {
+          this.disconnect();
+        }
+
+        console.log("[SSE] Connecting to event stream...");
+        this.eventSource = new EventSource("/events/stream");
+
+        this.eventSource.addEventListener("open", () => {
+          console.log("[SSE] Connected");
+          this.isConnected = true;
+          this.reconnectDelay = 1000; // Reset backoff
+        });
+
+        // Register custom event listeners
+        const eventTypes = ["connection_init", "track_changed", "playback_state_changed", "repeat_mode_changed"];
+        eventTypes.forEach(type => {
+          this.eventSource.addEventListener(type, (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              console.log(`[SSE] Received ${type}:`, data);
+              this.onStateUpdate(data);
+            } catch (e) {
+              console.error("[SSE] JSON parse error:", e, event.data);
+            }
+          });
+        });
+
+        this.eventSource.addEventListener("error", (error) => {
+          console.error("[SSE] Connection error:", error);
+          this.isConnected = false;
+          this.eventSource.close();
+
+          console.log(`[SSE] Reconnecting in ${this.reconnectDelay}ms...`);
+          setTimeout(() => this.connect(), this.reconnectDelay);
+          this.reconnectDelay = Math.min(this.reconnectDelay * 2, this.maxReconnectDelay);
+        });
+      }
+
+      disconnect() {
+        if (this.eventSource) {
+          console.log("[SSE] Disconnecting...");
+          this.eventSource.close();
+          this.eventSource = null;
+          this.isConnected = false;
+        }
+      }
+    }
+
+    function updateMusicUI(eventData) {
+      if (!eventData || !eventData.type) return;
+
+      if (eventData.type === "connection_init") {
+        const speaker = eventData.speaker_state || {};
+        updateSpeakerUI(speaker.state, speaker.track_name);
+        if (eventData.repeat_mode) {
+          repeatMode = eventData.repeat_mode;
+          updateRepeatModeUI();
+        }
+      } 
+      else if (eventData.type === "track_changed") {
+        updateSpeakerUI(eventData.state, eventData.track_name);
+        if (eventData.triggered_by === "auto_advance") {
+          const trackDisplay = eventData.track_name 
+            ? eventData.track_name.replace(/\.[^.]+$/, '') 
+            : "Next track";
+          showFeedbackToast(`Now playing: ${trackDisplay}`, "positive");
+        }
+      }
+      else if (eventData.type === "playback_state_changed") {
+        updateSpeakerUI(eventData.state, eventData.track_name);
+      }
+      else if (eventData.type === "repeat_mode_changed") {
+        if (eventData.mode) {
+          repeatMode = eventData.mode;
+          updateRepeatModeUI();
+        }
+      }
+    }
+
     window.handleSpeakerAction = async function (action) {
       try {
         const res = await fetch("/speaker/control", {
@@ -2531,6 +2620,14 @@
     });
 
     fbClose.addEventListener("click", () => fbPopup.classList.add("hidden"));
+
+    // Initialize real-time music state synchronization via Server-Sent Events (SSE)
+    const musicSync = new MusicStateSync(updateMusicUI);
+    musicSync.connect();
+
+    window.addEventListener("beforeunload", () => {
+      musicSync.disconnect();
+    });
 
     // Clicking the dimmed background also closes the chat
     if (mobileChatBackdrop) mobileChatBackdrop.addEventListener("click", () => toggleMobileChat(false));

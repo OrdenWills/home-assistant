@@ -57,6 +57,18 @@ def _audio_event_monitor():
             
             # Detect transition: playing → stopped
             if _was_music_playing and not is_playing:
+                # pygame.mixer.music.get_busy() returns False when paused,
+                # so check the speaker state to distinguish pause from
+                # a genuine track end.
+                speaker_room = list(home_state.get("speaker", {}).keys())[0] if home_state.get("speaker") else None
+                current_speaker_state = home_state["speaker"].get(speaker_room) if speaker_room else None
+                
+                if current_speaker_state == "paused":
+                    print("[Audio Monitor] Music paused (not a natural end) — skipping auto-advance")
+                    _was_music_playing = False
+                    time.sleep(0.5)
+                    continue
+                
                 print("[Audio Monitor] Music stopped (was playing)")
                 
                 # Check if it was an explicit stop or natural end
@@ -71,7 +83,7 @@ def _audio_event_monitor():
                         # Reset the intent flag before auto-playing
                         home_state["speaker_stop_intent"] = False
                         persist_state()
-                        control_speaker(speaker_room, "next")
+                        control_speaker(speaker_room, "next", triggered_by="auto_advance")
                 else:
                     # Reset intent flag after checking
                     home_state["speaker_stop_intent"] = False
@@ -234,7 +246,7 @@ def control_tv(room: str, state: str) -> dict:
     return {"success": True, "room": room, "state": state}
 
 
-def control_speaker(room: str, action: str, media: str = None) -> dict:
+def control_speaker(room: str, action: str, media: str = None, triggered_by: str = "user") -> dict:
     if "speaker" not in home_state or room not in home_state["speaker"]:
         return {"success": False, "error": f"No speaker in {room}"}
     
@@ -293,7 +305,15 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                 # Perform actual audio actions
                 if _ensure_mixer():
                     import pygame
-                    if action in ["play", "next", "previous"]:
+                    if action == "pause":
+                        pygame.mixer.music.pause()
+                    elif action == "stop":
+                        pygame.mixer.music.stop()
+                    elif action == "resume" or (action == "play" and current_status == "paused"):
+                        # Resume from where we left off — don't reload the track
+                        pygame.mixer.music.unpause()
+                        start_audio_monitor()
+                    elif action in ["play", "next", "previous"]:
                         try:
                             pygame.mixer.music.load(track_path)
                             # Set up repeat mode based on home_state
@@ -306,18 +326,30 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                                 start_audio_monitor()
                         except Exception as e:
                             res["playback_error"] = str(e)
-                    elif action == "pause":
-                        pygame.mixer.music.pause()
-                    elif action == "stop":
-                        pygame.mixer.music.stop()
-                    elif action == "resume" or (action == "play" and current_status == "paused"):
-                        pygame.mixer.music.unpause()
-                        start_audio_monitor()  # Restart monitoring if resumed
             else:
                 res["info"] = "No supported audio files found in folder."
         except Exception as e:
             res["error"] = f"Folder error: {str(e)}"
             
+    # Emit events to SSE clients
+    from app.events import emit_state_event
+    if action in ["next", "previous"] or (action == "play" and current_status != "paused"):
+        emit_state_event("track_changed", {
+            "type": "track_changed",
+            "room": room,
+            "state": home_state["speaker"][room],
+            "track_name": home_state.get("current_track_name"),
+            "track_index": home_state.get("current_track_index", 0),
+            "triggered_by": triggered_by,
+        })
+    elif action in ["pause", "stop", "resume"] or (action == "play" and current_status == "paused"):
+        emit_state_event("playback_state_changed", {
+            "type": "playback_state_changed",
+            "room": room,
+            "state": home_state["speaker"][room],
+            "track_name": home_state.get("current_track_name"),
+        })
+
     return res
 
 

@@ -18,3 +18,6 @@ jot.txt
 app/__pycache__/
 app/tools/__pycache__/handlers.cpython-312.pyc
 __pycache__/
+tests/test_event_bus.py
+tests/test_event_emission.py
+tests/test_sse_endpoint.py
