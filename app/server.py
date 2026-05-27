@@ -199,6 +199,11 @@ async def lifespan(app_: FastAPI):
     if model:
         print(f"[Startup] Auto-loading last used model: {model['name']}")
         threading.Thread(target=_start_llama_server_bg, args=(model,), daemon=True).start()
+    
+    # Start background audio monitor for detecting natural track ends
+    from app.tools.handlers import start_audio_monitor
+    start_audio_monitor()
+    
     yield
 
     global llama_proc
@@ -207,6 +212,10 @@ async def lifespan(app_: FastAPI):
             llama_proc.terminate(); llama_proc.wait(timeout=10)
         except Exception:
             llama_proc.kill()
+    
+    # Stop audio monitor on shutdown
+    from app.tools.handlers import stop_audio_monitor
+    stop_audio_monitor()
 
 
 # ── App ────────────────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 import os
 import random
+import threading
+import time
 from app.state import home_state, persist_state
 
 # ── Lazy pygame mixer init ─────────────────────────────────────────────────────
@@ -20,6 +22,87 @@ def _ensure_mixer():
     except Exception as e:
         print(f"[Audio] pygame mixer init failed: {e}")
         return False
+
+
+# ── Audio Event Monitoring (Backend-Driven Auto-Next) ────────────────────────
+# Detects when music naturally ends and triggers auto-next for repeat modes
+_audio_monitor_thread = None
+_audio_monitor_stop_flag = False
+_was_music_playing = False
+
+def _audio_event_monitor():
+    """
+    Background thread that monitors pygame.mixer for natural track ends.
+    When music transitions from playing → stopped, checks if it was an explicit
+    stop or a natural end by examining speaker_stop_intent.
+    If natural end + repeat_mode='all', automatically queues next track.
+    """
+    global _was_music_playing
+    
+    print("[Audio Monitor] Started background event monitor thread")
+    
+    while not _audio_monitor_stop_flag:
+        try:
+            if not _mixer_ready:
+                time.sleep(0.5)
+                continue
+                
+            import pygame
+            if not pygame.mixer.get_init():
+                time.sleep(0.5)
+                continue
+            
+            # Check if music is currently playing
+            is_playing = pygame.mixer.music.get_busy()
+            
+            # Detect transition: playing → stopped
+            if _was_music_playing and not is_playing:
+                print("[Audio Monitor] Music stopped (was playing)")
+                
+                # Check if it was an explicit stop or natural end
+                was_explicit_stop = home_state.get("speaker_stop_intent", False)
+                repeat_mode = home_state.get("repeat_mode", "none")
+                
+                if not was_explicit_stop and repeat_mode == "all":
+                    print(f"[Audio Monitor] Natural track end + repeat_all mode → auto-playing next track")
+                    # Auto-play next track
+                    speaker_room = list(home_state.get("speaker", {}).keys())[0] if home_state.get("speaker") else None
+                    if speaker_room:
+                        # Reset the intent flag before auto-playing
+                        home_state["speaker_stop_intent"] = False
+                        persist_state()
+                        control_speaker(speaker_room, "next")
+                else:
+                    # Reset intent flag after checking
+                    home_state["speaker_stop_intent"] = False
+                    persist_state()
+            
+            _was_music_playing = is_playing
+            time.sleep(0.5)  # Check every 500ms
+            
+        except Exception as e:
+            print(f"[Audio Monitor] Error: {e}")
+            time.sleep(1)
+
+
+def start_audio_monitor():
+    """Start the background audio event monitor thread."""
+    global _audio_monitor_thread, _audio_monitor_stop_flag
+    
+    if _audio_monitor_thread and _audio_monitor_thread.is_alive():
+        return  # Already running
+    
+    _audio_monitor_stop_flag = False
+    _audio_monitor_thread = threading.Thread(target=_audio_event_monitor, daemon=True)
+    _audio_monitor_thread.start()
+
+
+def stop_audio_monitor():
+    """Stop the background audio event monitor thread."""
+    global _audio_monitor_stop_flag
+    _audio_monitor_stop_flag = True
+    if _audio_monitor_thread:
+        _audio_monitor_thread.join(timeout=2)
 
 
 def toggle_lights(room: str, state: str) -> dict:
@@ -157,14 +240,19 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
     
     current_status = home_state["speaker"][room]
     
+    # Track whether this is an explicit stop (True) or a play/natural action (False)
     if action == "play":
         home_state["speaker"][room] = "playing"
+        home_state["speaker_stop_intent"] = False  # Not a stop
     elif action == "pause":
         home_state["speaker"][room] = "paused"
+        home_state["speaker_stop_intent"] = False  # Pause != stop
     elif action == "stop":
         home_state["speaker"][room] = "stopped"
+        home_state["speaker_stop_intent"] = True  # Mark as explicit stop
     elif action in ["next", "previous"]:
         home_state["speaker"][room] = "playing"
+        home_state["speaker_stop_intent"] = False  # Not a stop
     
     persist_state()
     
@@ -214,7 +302,8 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                                 pygame.mixer.music.play(loops=-1)  # Loop current track infinitely
                             else:
                                 pygame.mixer.music.play()
-                                # For "all" mode, we'll handle track end event in the frontend
+                                # Start backend audio monitor for auto-next detection
+                                start_audio_monitor()
                         except Exception as e:
                             res["playback_error"] = str(e)
                     elif action == "pause":
@@ -223,6 +312,7 @@ def control_speaker(room: str, action: str, media: str = None) -> dict:
                         pygame.mixer.music.stop()
                     elif action == "resume" or (action == "play" and current_status == "paused"):
                         pygame.mixer.music.unpause()
+                        start_audio_monitor()  # Restart monitoring if resumed
             else:
                 res["info"] = "No supported audio files found in folder."
         except Exception as e:

@@ -1926,20 +1926,8 @@
               // Don't call speakText here anymore - TTS is handled by chunks
               await refreshState();
 
-              // ── Ensure track monitoring is running if repeat mode is "all" ──
-              // (in case agent triggered a play command)
-              if (repeatMode === "all") {
-                try {
-                  const statusRes = await fetch("/speaker/status");
-                  const statusData = await statusRes.json();
-                  if (statusData.playing && !trackEndMonitorInterval) {
-                    console.log("[Agent] Music started by agent, starting track monitoring");
-                    startTrackEndMonitoring();
-                  }
-                } catch (err) {
-                  console.error("Failed to check speaker status after agent response", err);
-                }
-              }
+              // Backend now handles all audio monitoring via event detection
+              // No need for frontend polling
 
               // ── Sliding Window: Maintain only last 7 conversation turns ──
               enforceMessageLimit();
@@ -2374,24 +2362,8 @@
     
     updateRepeatModeUI();
     
-    // ── Initial check: if repeat mode is "all" and music is already playing, start monitoring ──
-    async function initializeRepeatMonitoring() {
-      if (repeatMode === "all") {
-        try {
-          const statusRes = await fetch("/speaker/status");
-          const statusData = await statusRes.json();
-          if (statusData.playing) {
-            console.log("[Init] Music already playing in repeat all mode, starting monitoring");
-            startTrackEndMonitoring();
-          }
-        } catch (err) {
-          console.error("Failed to check initial speaker status", err);
-        }
-      }
-    }
-    
-    // Call on page load after a brief delay to ensure page is ready
-    setTimeout(initializeRepeatMonitoring, 500);
+    // Backend now handles all audio monitoring and auto-advance
+    // No need for frontend to manage monitoring lifecycle
     
     if (repeatModeBtn) {
       repeatModeBtn.addEventListener("click", async (e) => {
@@ -2409,17 +2381,8 @@
           });
           showFeedbackToast(`Repeat: ${repeatModes[repeatMode].title.split(': ')[1]}`, "positive");
           
-          // If switching to repeat all and music is playing, start monitoring
-          if (repeatMode === "all") {
-            const statusRes = await fetch("/speaker/status");
-            const statusData = await statusRes.json();
-            if (statusData.playing) {
-              startTrackEndMonitoring();
-            }
-          } else {
-            // Stop monitoring if switching away from repeat all
-            stopTrackEndMonitoring();
-          }
+          // Backend handles all monitoring and auto-advance now
+          // Just update the UI, no need to manage frontend monitoring lifecycle
         } catch (err) {
           console.error("Failed to set repeat mode", err);
         }
@@ -2493,34 +2456,18 @@
     };
 
     // ── Track End Monitoring for Repeat All ──────────────────
-    let trackEndMonitorInterval = null;
-    let lastTrackName = null;
-
+    // Backend now handles auto-next via pygame event detection.
+    // No frontend polling needed - backend detects natural track ends
+    // and automatically plays next track when in repeat_mode="all"
+    
     function startTrackEndMonitoring() {
-      if (trackEndMonitorInterval) return; // Already monitoring
-      
-      trackEndMonitorInterval = setInterval(async () => {
-        try {
-          const res = await fetch("/speaker/status");
-          const data = await res.json();
-          
-          // If music stopped playing and we're in repeat all mode
-          if (!data.playing && repeatMode === "all") {
-            stopTrackEndMonitoring();
-            // Auto-play next track
-            await handleSpeakerAction("next");
-          }
-        } catch (err) {
-          console.error("Track monitoring failed", err);
-        }
-      }, 1000); // Check every second
+      // No-op: Backend handles everything via event detection
+      // Kept for compatibility with repeat mode toggle
     }
 
     function stopTrackEndMonitoring() {
-      if (trackEndMonitorInterval) {
-        clearInterval(trackEndMonitorInterval);
-        trackEndMonitorInterval = null;
-      }
+      // No-op: Backend handles everything
+      // Kept for compatibility
     }
 
     // ── Mute Toggle ───────────────────────────────────────────

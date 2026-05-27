@@ -62,6 +62,12 @@ home_state: dict = {
     "active_model_id": "home-assistant-sft(small)",
     "music_folder": None,
     "current_track_index": 0,
+    "playback_intent": {
+        "room": None,
+        "action": None,      # "play", "pause", "stop", "next", "previous"
+        "timestamp": None,
+        "user_triggered": False,  # True if user/agent, False if natural end
+    },
 }
 
 
