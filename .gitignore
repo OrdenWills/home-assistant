@@ -8,3 +8,10 @@ multi-step/
 __pycache__/
 .vscode/
 C:\Users\Adolphus\projects\home-assistant\.vscode
+.vscode/
+.kiro/
+__pycache__/
+*.pyc
+cache.db
+ideas.md
+jot.txt
