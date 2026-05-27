@@ -15,8 +15,6 @@ __pycache__/
 cache.db
 ideas.md
 jot.txt
-app/__pycache__/state.cpython-312.pyc
-app/__pycache__/server.cpython-312.pyc
-app/__pycache__/state.cpython-312.pyc
-app/__pycache__/server.cpython-312.pyc
-app/__pycache__/server.cpython-312.pyc
+app/__pycache__/
+app/tools/__pycache__/handlers.cpython-312.pyc
+__pycache__/
