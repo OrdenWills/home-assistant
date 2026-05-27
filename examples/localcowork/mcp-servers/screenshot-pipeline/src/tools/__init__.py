@@ -1,1 +1,0 @@
-"""Screenshot pipeline tool implementations."""

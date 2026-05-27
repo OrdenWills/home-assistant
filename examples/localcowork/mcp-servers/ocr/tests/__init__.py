@@ -1,1 +1,0 @@
-"""OCR server tests."""

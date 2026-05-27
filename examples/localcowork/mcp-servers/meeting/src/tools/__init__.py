@@ -1,1 +1,0 @@
-"""Meeting server tool implementations."""

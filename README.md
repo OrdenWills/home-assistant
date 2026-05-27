@@ -1,146 +1,236 @@
-<div align="center">
-  <img 
-    src="https://github.com/user-attachments/assets/e0f42ac6-822f-4b7b-a0ae-07b2a619258d" 
-    alt="Liquid AI" 
-    style="width: 100%; max-width: 100%; height: auto; display: inline-block; margin-bottom: 0.5em; margin-top: 0.5em;"
-  />
-  <div style="display: flex; justify-content: center; gap: 0.5em;">
-    <a href="https://playground.liquid.ai/"><strong>Try LFM</strong></a> • 
-    <a href="https://docs.liquid.ai/lfm"><strong>Documentation</strong></a> • 
-    <a href="https://leap.liquid.ai/"><strong>LEAP</strong></a>
-  </div>
-  <br/>
-  <a href="https://discord.com/invite/liquid-ai"><img src="https://img.shields.io/discord/1385439864920739850?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2" alt="Join Discord"></a>
-</div>
-</br>
+# Home Assistant powered by a local LFM
 
-**Examples**, **tutorials**, and **applications** to help you build with our open-weight [LFMs](https://huggingface.co/LiquidAI) and the [LEAP SDK](https://leap.liquid.ai/) on laptops, mobile, and edge devices.
+This project builds a home assistant system powered entirely by a local LFM model. The focus
+is practical: every step of the journey is covered, from a first working prototype to a
+fine-tuned model for tool calling running fully on your own hardware.
 
-## Contents
+In this tutorial you will learn how to:
 
-- [🤖 Local AI Apps](#-local-ai-apps)
-- [📱 Mobile App Deployment](#-mobile-app-deployment)
-  - [Android](#android)
-  - [iOS](#ios)
-- [🎯 Fine-Tuning Notebooks](#-fine-tuning-notebooks)
-- [🏭 Built with LFM](#-built-with-lfm)
-- [🌟 Community Projects](#-community-projects)
-- [🕐 Technical Deep Dives](#-technical-deep-dives)
-- [Contributing](#contributing)
-- [Support](#support)
+1. Build a [proof of concept](#step-1-build-a-proof-of-concept) for a fully local Home Assistant.
+2. [Benchmark](#benchmark) its tool-calling accuracy so you have a clear baseline to improve on.
+3. Generate [synthetic data](#step-3-generate-synthetic-data) for model fine-tuning.
+4. [Fine-tune](#step-4-fine-tune-the-model) the model on this synthetic data to maximise accuracy.
 
-## 🤖 Local AI Apps
+## Quick start
 
-Ready-to-run applications showcasing agentic workflows and real-time inference on a local device.
+**Requirements**
 
-| Name | Description | Link |
-|------|-------------|------|
-| Invoice Parser | Extract structured data from invoice images using LFM2-VL-3B | [Code](./examples/invoice-parser/README.md) |
-| Audio Transcription CLI | Real-time audio-to-text transcription using LFM2-Audio-1.5B with llama.cpp | [Code](./examples/audio-transcription-cli/) |
-| Flight Search Assistant | Find and book plane tickets using LFM2.5-1.2B-Thinking with tool calling | [Code](./examples/flight-search-assistant/README.md) |
-| Audio Car Cockpit | Voice-controlled car cockpit demo combining LFM2.5-Audio-1.5B with LFM2-1.2B-Tool | [Code](./examples/audio-car-cockpit/README.md) |
-| Audio WebGPU Demo | Run LFM2.5-Audio-1.5B entirely in your browser for speech recognition, TTS, and conversation | [Code](./examples/audio-webgpu-demo/README.md) |
-| Vision WebGPU Demo | Real-time video captioning with LFM2.5-VL-1.6B running in-browser using WebGPU | [Code](./examples/vl-webgpu-demo/README.md) |
-| Thinking WebGPU Demo | Run LFM2.5-1.2B-Thinking entirely in your browser with WebGPU for on-device chain-of-thought reasoning | [Demo](https://huggingface.co/spaces/LiquidAI/LFM2.5-1.2B-Thinking-WebGPU) |
-| LocalCowork | On-device AI agent for file ops, security scanning, OCR, and more, powered by LFM2-24B-A2B | [Code](./examples/localcowork/README.md) |
-| Hand & Voice Racer | Browser driving game controlled by hand gestures (MediaPipe) and voice commands (LFM2.5-Audio-1.5B), running fully local | [Code](./examples/hand-voice-racer/README.md) |
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) for running the Python app
+- [llama.cpp](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#installation) for running the model locally (`llama-server` must be on your PATH)
 
-## 📱 Mobile App Deployment
+**1. Start the app server**
 
-Native examples for deploying LFM2 models on iOS and Android using the [LEAP Edge SDK](https://leap.liquid.ai/docs/edge-sdk/overview). Written for Android (Kotlin) and iOS (Swift), the goal of the Edge SDK is to make Small Language Model deployment as easy as calling a cloud LLM API endpoint.
+```bash
+uv run uvicorn app.server:app --port 5173 --reload
+```
 
-### Android
+**2. Open the app**
 
-| Name | Description | Link |
-|------|-------------|------|
-| LeapChat | Chat app with real-time streaming, persistent history, and modern UI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapChat) |
-| LeapAudioDemo | Audio input and output with LFM2.5-Audio-1.5B for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapAudioDemo) |
-| LeapKoogAgent | Integration with Koog framework for AI agent functionality | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/LeapKoogAgent) |
-| SloganApp | Single turn marketing slogan generation with Android Views | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/SloganApp) |
-| ShareAI | Website summary generator | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/ShareAI) |
-| Recipe Generator | Structured output generation with the LEAP SDK | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/RecipeGenerator) |
-| VLM Example | Visual Language Model integration | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/Android/VLMExample) |
+```bash
+open http://localhost:5173
+```
 
-### iOS
+![Demo](assets/Demo.gif)
 
-| Name | Description | Link |
-|------|-------------|------|
-| LeapChat | Chat app with real-time streaming, conversation management, and SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapChatExample) |
-| LeapSloganExample | Basic LeapSDK integration for text generation in SwiftUI | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapSloganExample) |
-| Recipe Generator | Structured output generation | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/RecipeGenerator) |
-| Audio Demo | Audio input/output with LeapSDK for on-device AI inference | [Code](https://github.com/Liquid4All/LeapSDK-Examples/tree/main/iOS/LeapAudioDemo) |
+The UI includes a model selector. When you pick a model, the app automatically downloads
+and starts `llama-server` in the background. No manual model server setup is needed.
 
-## 🎯 Fine-Tuning Notebooks
+### Pre-download models (recommended)
 
-Colab notebooks and Python scripts for customizing LFM models with your own data.
+Large model downloads can take time. To avoid UI timeouts when selecting models the first time, pre-download them using the provided scripts:
 
-| Name | Description | Link |
-|------|-------------|------|
-| **Supervised Fine-Tuning (SFT)** | | |
-| SFT with Unsloth | Memory-efficient SFT using Unsloth with LoRA for 2x faster training | [Notebook](./finetuning/notebooks/sft_with_unsloth.ipynb) |
-| SFT with TRL | Supervised fine-tuning using Hugging Face TRL library with parameter-efficient LoRA | [Notebook](./finetuning/notebooks/sft_with_trl.ipynb) |
-| **Reinforcement Learning** | | |
-| GRPO with Unsloth | Train reasoning models using Group Relative Policy Optimization for verifiable tasks | [Notebook](./finetuning/notebooks/grpo_with_unsloth.ipynb) |
-| GRPO with TRL | Train reasoning models using Group Relative Policy Optimization with rule-based rewards | [Notebook](./finetuning/notebooks/grpo_for_verifiable_tasks.ipynb) |
-| **Continued Pre-Training (CPT)** | | |
-| CPT for Translation | Adapt models to specific languages or translation domains using domain data | [Notebook](./finetuning/notebooks/cpt_translation_with_unsloth.ipynb) |
-| CPT for Text Completion | Teach models domain-specific knowledge and creative writing styles | [Notebook](./finetuning/notebooks/cpt_text_completion_with_unsloth.ipynb) |
-| **Vision-Language Models** | | |
-| VLM SFT with Unsloth | Supervised fine-tuning for LFM2-VL models on custom image-text datasets | [Notebook](./finetuning/notebooks/sft_for_vision_language_model.ipynb) |
+**Option 1: PowerShell** (Windows)
+```powershell
+.\download_models.ps1
+```
 
-## 🏭 Built with LFM
+**Option 2: Batch** (Windows)
+```bash
+download_models.bat
+```
 
-Production and open-source applications that support LFM models as an inference backend, among other providers.
+**Option 3: Python** (Any OS)
+```bash
+uv run python download_models.py
+```
 
-| Name | Description | Link |
-|------|-------------|------|
-| DeepCamera | Open-source AI camera system for local vision intelligence with facial recognition, person re-ID, and edge deployment on Jetson and Raspberry Pi | [Code](https://github.com/SharpAI/DeepCamera) |
+This will cache the thinking and 350M models locally. First-time downloads may take 30-60 minutes depending on your connection.
 
-## 🌟 Community Projects
+## Step 1: Build a proof of concept
 
-Open-source projects built by the community showcasing LFMs with real use cases.
+The main components of our solution are: 
 
-| Name | Description | Link |
-|------|-------------|------|
-| Image Classification on Edge | End-to-end tutorial covering fine-tuning and deployment for super fast and accurate image classification using local VLMs | [Code](https://github.com/Paulescu/image-classification-with-local-vlms) |
-| Chess Game with Small LMs | End-to-end tutorial covering fine-tuning and deployment to build a Chess game using Small Language Models | [Code](https://github.com/Paulescu/chess-game) |
-| TranslatorLens | Offline translation camera for real-time text translation | [Code](https://github.com/linmx0130/TranslatorLens) |
-| Food Images Fine-tuning | Fine-tune LFM models on food image datasets | [Code](https://github.com/benitomartin/food-images-finetuning) |
-| Meeting Intelligence CLI | CLI tool for meeting transcription and analysis | [Code](https://github.com/chintan-projects/meeting-prompter) |
-| Private Doc Q&A | On-device document Q&A with RAG and voice input | [Code](https://github.com/chintan-projects/private-doc-qa) |
-| Photo Triage Agent | Private photo library cleanup using LFM vision model | [Code](https://github.com/chintan-projects/photo-triage-agent) |
-| LFM-Scholar | Automated literature review agent for finding and citing papers | [Code](https://github.com/gyunggyung/LFM-Scholar) |
-| LFM2-KoEn-Tuning | Fine-tuned LFM2 1.2B for Korean-English translation | [Code](https://github.com/gyunggyung/LFM2-KoEn-Tuning) |
-| Chat with LEAP SDK | LEAP SDK integration for React Native | [Code](https://github.com/glody007/expo-leap-sdk) |
-| Private Summarizer | 100% local text summarization with multi-language support | [Code](https://github.com/Private-Intelligence/private_summarizer) |
-| Tiny-MoA | Mixture of Agents on CPU with LFM2.5 Brain (1.2B) | [Code](https://github.com/gyunggyung/Tiny-MoA) |
-| LFM-2.5 JP on Web | LFM2.5 1.2B parameter Japanese language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime on Web | [Code](https://github.com/sitammeur/lfm2.5-jp-web) |
-| LFM-2.5 Thinking on Web | LFM2.5 1.2B parameter reasoning language model running locally in the browser with WebGPU, using Transformers.js and ONNX Runtime Web | [Code](https://github.com/sitammeur/lfm2.5-thinking-web) |
-| LFM2.5 Mobile Actions | LoRA fine-tuned LFM2.5-1.2B that translates natural language into Android OS function calls for on-device mobile action recognition | [Code](https://github.com/Mandark-droid/LFM2.5-1.2B-Instruct-mobile-actions) |
-| SFT + DPO Fine-tuning | Teaching a 1.2B Model to be a Grumpy Italian Chef: SFT + DPO Fine-Tuning with Unsloth | [Code](https://github.com/benitomartin/grumpy-chef-finetuning-dpo) |
-| Tauri Plugin LEAP AI | Tauri plugin to integrate LEAP and Liquid LFMs into desktop and mobile apps built with Tauri | [Crate](https://crates.io/crates/tauri-plugin-leap-ai) |
-| grosme | CLI grocery assistant that reads Apple Notes lists and finds Walmart product matches using LFM-2.5 tool-calling agent via Ollama | [Code](https://github.com/earl562/grosme) |
-| barq-web-rag | Browser-based RAG app for document Q&A with LFM2.5-1.2B-Thinking running fully local via WebGPU | [Code](https://github.com/YASSERRMD/barq-web-rag) |
+- **Browser** renders the UI and sends chat messages to the server
+- **FastAPI server** handles HTTP requests, manages home state, and starts the llama.cpp server on model selection
+- **Agent loop** drives the conversation, calls the model for inference, and dispatches tool calls
+- **Tools** read and mutate the home state (lights, thermostat, doors, scenes)
+- **llama.cpp server** runs the LFM model locally and exposes an OpenAI-compatible API
 
-## 🕐 Technical Deep Dives
+```mermaid
+graph LR
+    Browser <-->|chat / state| FastAPI[FastAPI server]
+    FastAPI -->|start process| LFM[llama.cpp server]
+    FastAPI -->|run| Agent[Agent loop]
+    Agent <-->|inference| LFM
+    Agent <-->|execute| Tools
+```
 
-Recorded sessions (~60 minutes) covering advanced topics and hands-on implementations.
+The brain of the system is a small language model (hello LFM!) that can map English sentences to the right tool calls.
 
-| Date | Topic | Link |
-|------|-------|------|
-| 2025-11-06 | Fine-tuning LFM2-VL for image classification | [Video](https://www.youtube.com/watch?v=00IK9apncCg) |
-| 2025-11-27 | Building a 100% local Audio-to-Speech CLI with LFM2-Audio | [Video](https://www.youtube.com/watch?v=yeu077gPmCA) |
-| 2025-12-26 | Fine-tuning LFM2-350M for browser control with GRPO and OpenEnv | [Video](https://www.youtube.com/watch?v=gKQ08yee3Lw) |
-| 2026-01-22 | Local video-captioning with LFM2.5-VL-1.6B and WebGPU | [Video](https://www.youtube.com/watch?v=xsWARHFoA3E) |
-| 2026-03-05 | Build your own local AI coding assistant | [Video](https://www.youtube.com/watch?v=6JEm1IxcxEw) |
+- `toggle_lights`: turn lights on or off in a specific room
+- `set_thermostat`: change the temperature and operating mode
+- `lock_door`: lock or unlock a door
+- `get_device_status`: read the current state of any device
+- `set_scene`: activate a preset that adjusts multiple devices at once
 
-Join the next session! Head to the `#live-events` channel on [Discord](https://discord.com/invite/liquid-ai).
+and
 
-## Contributing
+- `intent_unclear`: the most important tool for robustness. The model must call it whenever the request falls outside what the system can handle, whether the request is ambiguous, off-topic (ordering food, asking about the weather), incomplete (a pronoun with no prior context like "turn it on"), or refers to an unsupported device like a TV or camera. Getting this tool right is what separates a reliable assistant from one that hallucinates actions.
 
-We welcome contributions! Open a PR with a link to your project GitHub repo in the Community Projects section.
 
-## Support
+The sequence diagram below shows how the system starts and processes a chat message step by step. Solid arrows are calls, dashed arrows are responses:
 
-- 📖 [Liquid AI Documentation](https://docs.liquid.ai/)
-- 💬 [Join our community on Discord](https://discord.com/invite/liquid-ai)
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant FastAPI as FastAPI server
+    participant Agent as Agent loop
+    participant Tools
+    participant LFM as llama.cpp server
+
+    Note over Browser,LFM: Startup
+    Browser->>FastAPI: select model
+    FastAPI->>LFM: start process (background thread)
+    LFM-->>FastAPI: ready
+
+    Note over Browser,LFM: Chat request
+    Browser->>FastAPI: POST /chat
+    FastAPI->>Agent: run(message, history)
+    Agent->>LFM: inference request (with tool schemas)
+    LFM-->>Agent: tool call
+    Agent->>Tools: execute tool
+    Tools-->>Agent: result
+    Agent->>LFM: inference request (with tool result)
+    LFM-->>Agent: text response
+    Agent-->>FastAPI: text response
+    FastAPI-->>Browser: text response
+    Browser->>FastAPI: GET /state
+    FastAPI-->>Browser: updated home state
+```
+
+The FastAPI server, the agent loop, and the tools are all implemented in Python. That said, feel free to re-implement them in any other language for higher performance. Rust, for example, would be a good choice.
+
+## Step 2: Benchmarking tool-calling accuracy <a name="benchmark"></a>
+
+Play with the UI using one of the local models and you will quickly notice: 
+
+- sometimes it works
+
+  ![Happy path](assets/happy_path.gif)
+
+- sometimes it doesn't.
+
+  ![Unhappy path](assets/unhappy_path.gif)
+
+That's fine for a proof of concept. But the full power of small language models only comes out
+  when you fine-tune them.
+
+  Before you fine-tune, though, you need to know where you stand. You need to measure. You cannot ship to production based on vibes or things that more or less work. You ship based on good benchmarks and evals.
+
+
+### What's a good benchmark?
+
+A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition. Here is the methodology we use to build `benchmark/`, a 100-task suite designed from the ground up around these principles.
+
+**1. Start with a taxonomy**
+
+Define the input space BEFORE writing prompts. A taxonomy makes coverage gaps visible and prevents accidental clustering around the examples you happened to think of first.
+
+Our taxonomy has three dimensions:
+
+| Dimension | Values |
+|-----------|--------|
+| Capability | `lights`, `thermostat`, `doors`, `status`, `scene`, `rejection`, `multi_tool` |
+| Phrasing | `imperative`, `colloquial`, `implicit`, `question` |
+| Inference depth | `literal` (words map 1:1 to tool + args), `semantic` (requires translation), `boundary` (model must reject) |
+
+**2. Sample from every cell**
+
+The Cartesian product of those dimensions defines the universe of task types. Sample at least one task per non-empty cell. This forces you to write prompts you would not have thought of otherwise, such as 
+- an implicit-semantic thermostat request ("It feels like a sauna in here") or
+- a boundary-case door request ("Is the house secure right now?").
+
+**3. Write programmatic verifiers**
+
+Every task has a pure Python verifier that inspects
+
+- the final `home_state` dict, or
+- captured `tool_calls` for read-only and rejection tasks.
+
+No LLM-as-judge. Deterministic, fast, cheap.
+
+```python
+# State check: was the right final state reached?
+passed = state["lights"]["kitchen"]["state"] == "on"
+
+# Tool-call check (for status queries and rejections): was the right tool called with the right args?
+call = _find_last_call(tool_calls, "intent_unclear")
+passed = call is not None and call["args"].get("reason") == "off_topic"
+```
+
+You can run the benchmark for a given model as follows:
+
+```bash
+uv run python benchmark/run.py \
+    --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
+    --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf
+```
+
+**Run a single task by number (1-101)**, for example:
+
+```bash
+uv run python benchmark/run.py \
+    --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
+    --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf \
+    --task 5
+```
+
+It's also worth running the benchmark against a frontier model like GPT-4o-mini.
+
+  Why? Because a frontier model scoring near-perfect tells you the agent harness is correct. The
+  prompts, the tool schemas, the verification logic. If a state-of-the-art model doesn't pass almost
+  everything, the problem is not the model. The problem is your code.
+
+
+**Run against OpenAI gpt-4o-mini** (requires `OPENAI_API_KEY` in `.env`):
+
+```bash
+uv run python benchmark/run.py --backend openai
+```
+
+Results are printed to the console and saved as a Markdown file in `benchmark/results/`.
+
+**Evaluation results**
+
+| Model | Parameters | Score | Accuracy |
+|-------|------------|-------|----------|
+| gpt-4o-mini | n/a | 93/100 | 93% |
+| LFM2.5-1.2B-Instruct Q4_0 | 1.2B | 71/100 | 71% |
+| LFM2-350M Q8_0 | 350M | 28/100 | 28% |
+
+These are not vibes anymore. These are actual numbers we can use to understand where we stand.
+
+In the following sections, we will see how to improve the performance of our local LFM models to bridge the gap with gpt-4o-mini.
+
+
+## Step 3: Generate synthetic data <a name="step-3-generate-synthetic-data"></a>
+
+WIP
+
+## Step 4: Fine-tune the model <a name="step-4-fine-tune-the-model"></a>
+
+Coming soon.
+
+[Join the Liquid AI Discord Server](https://discord.com/invite/DFU3WQeaYD) and post an angry message: Pau, please release this part!
+
+I am looking forward to reading it.

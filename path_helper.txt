@@ -1,0 +1,5 @@
+uhmm on a second thought since option c is the best (hybrid ) let's build it with room parameter . since it's one tv and speaker this will be in the living room. model already learned for all the rooms previously so we just enforce it for living room . for now it will always be on/off the tv in production(we won't be specifying where it is but the system will be built to know that tv/speaker/music is in the living room ) after all that's the first place you put on in the real world .
+
+
+
+think through and create this updated script

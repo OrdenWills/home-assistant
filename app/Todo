@@ -1,0 +1,7 @@
+track current state (eg current room)so when i say something like turn of the light we can dynamically chose which state and turn the light on/off
+
+improve the cache messages to make it dynamical
+    * run a list of other options for each action call that way i can randomly pull from it? , * train a sub million llm to sample from it??
+    * train a sub million llm(maybe a bert, or both)to be able to understand a different    phrasing of the same action and trigger accordinly
+
+    * train tinier submodels to find relationship in the exact word and the action performed ,same action perfromed means the words are related(or rather same meaning ? )
