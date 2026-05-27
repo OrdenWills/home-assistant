@@ -5,3 +5,6 @@ runners/
 .venv
 benchmark/
 multi-step/
+__pycache__/
+.vscode/
+C:\Users\Adolphus\projects\home-assistant\.vscode
