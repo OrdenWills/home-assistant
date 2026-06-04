@@ -1,236 +1,470 @@
-# Home Assistant powered by a local LFM
+# Home Assistant Local LFM Application
 
-This project builds a home assistant system powered entirely by a local LFM model. The focus
-is practical: every step of the journey is covered, from a first working prototype to a
-fine-tuned model for tool calling running fully on your own hardware.
+A fully local smart home assistant powered by a purpose-trained LFM2.5 model. This application demonstrates a production-ready home automation system that runs entirely on your own hardware, with no dependency on cloud APIs.
 
-In this tutorial you will learn how to:
+> **Note:** The original cookbook and tutorial content (benchmarking, synthetic data generation, fine-tuning steps) remains in the root directory. This README documents only the current application state: `app/`, `index.html`, `style.css`, and `datasets/`.
 
-1. Build a [proof of concept](#step-1-build-a-proof-of-concept) for a fully local Home Assistant.
-2. [Benchmark](#benchmark) its tool-calling accuracy so you have a clear baseline to improve on.
-3. Generate [synthetic data](#step-3-generate-synthetic-data) for model fine-tuning.
-4. [Fine-tune](#step-4-fine-tune-the-model) the model on this synthetic data to maximise accuracy.
+---
 
-## Quick start
+## 🚀 Quick Start
 
-**Requirements**
+**Requirements:**
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) for dependency management
+- [llama.cpp](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#installation) for local model inference (`llama-server` on PATH)
 
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) for running the Python app
-- [llama.cpp](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#installation) for running the model locally (`llama-server` must be on your PATH)
-
-**1. Start the app server**
+**Start the application:**
 
 ```bash
+# Activate environment and start FastAPI server
 uv run uvicorn app.server:app --port 5173 --reload
 ```
 
-**2. Open the app**
+**Open in browser:**
 
-```bash
-open http://localhost:5173
+```
+http://localhost:5173
 ```
 
-![Demo](assets/Demo.gif)
+The UI features an integrated model selector. Choose a model, and the app automatically downloads and launches `llama-server` in the background.
 
-The UI includes a model selector. When you pick a model, the app automatically downloads
-and starts `llama-server` in the background. No manual model server setup is needed.
+**Pre-download models (recommended):**
 
-### Pre-download models (recommended)
+To avoid download timeouts on first model selection, pre-cache models:
 
-Large model downloads can take time. To avoid UI timeouts when selecting models the first time, pre-download them using the provided scripts:
-
-**Option 1: PowerShell** (Windows)
-```powershell
+```bash
+# PowerShell (Windows)
 .\download_models.ps1
-```
 
-**Option 2: Batch** (Windows)
-```bash
+# Batch (Windows)
 download_models.bat
-```
 
-**Option 3: Python** (Any OS)
-```bash
+# Python (Any OS)
 uv run python download_models.py
 ```
 
-This will cache the thinking and 350M models locally. First-time downloads may take 30-60 minutes depending on your connection.
+First-time downloads may take 30–60 minutes depending on connection speed.
 
-## Step 1: Build a proof of concept
+---
 
-The main components of our solution are: 
+## 📐 Architecture
 
-- **Browser** renders the UI and sends chat messages to the server
-- **FastAPI server** handles HTTP requests, manages home state, and starts the llama.cpp server on model selection
-- **Agent loop** drives the conversation, calls the model for inference, and dispatches tool calls
-- **Tools** read and mutate the home state (lights, thermostat, doors, scenes)
-- **llama.cpp server** runs the LFM model locally and exposes an OpenAI-compatible API
+The application is built around a clean separation of concerns:
 
-```mermaid
-graph LR
-    Browser <-->|chat / state| FastAPI[FastAPI server]
-    FastAPI -->|start process| LFM[llama.cpp server]
-    FastAPI -->|run| Agent[Agent loop]
-    Agent <-->|inference| LFM
-    Agent <-->|execute| Tools
+```
+┌──────────────────────────────────────────────────────────────┐
+│                    Browser UI (HTML/CSS/JS)                  │
+│          Renders device state and sends chat messages        │
+└────────────────────┬─────────────────────────────────────────┘
+                     │ HTTP / Server-Sent Events
+                     ▼
+┌──────────────────────────────────────────────────────────────┐
+│                   FastAPI Server (8000)                      │
+│  ─────────────────────────────────────────────────────────  │
+│  ├─ Endpoint: POST /chat (streaming chat requests)          │
+│  ├─ Endpoint: GET /state (pull current home state)          │
+│  ├─ Endpoint: GET /history (chat history retrieval)         │
+│  ├─ Endpoint: Datasets API (golden_set, failure_set export) │
+│  └─ Model Registry (auto-downloads & launches llama.cpp)    │
+└────────────────────┬─────────────────────────────────────────┘
+                     │ (spawns background process)
+                     ▼
+┌──────────────────────────────────────────────────────────────┐
+│          Agent Loop (Orchestrates conversation flow)         │
+│  ─────────────────────────────────────────────────────────  │
+│  ├─ System prompt construction (device topology)            │
+│  ├─ Streaming inference with tool schemas                  │
+│  ├─ Tool call extraction & validation                       │
+│  ├─ Recursive tool execution (handles multi-turn)           │
+│  └─ Response formatting & persistence                       │
+└────────────────────┬─────────────────────────────────────────┘
+             ┌───────┴────────┬────────────────┐
+             │                │                │
+             ▼                ▼                ▼
+    ┌───────────────┐ ┌─────────────┐ ┌──────────────┐
+    │  Home State   │ │ Tool Schemas│ │Tool Handlers │
+    │   (SQLite)    │ │  & Coercion │ │ & Validators │
+    │               │ │             │ │              │
+    │ • lights      │ │ • JSON spec │ │ • Mutators   │
+    │ • doors       │ │ • 10 tools  │ │ • Verifiers  │
+    │ • thermostat  │ │ • Params    │ │ • Exceptions │
+    │ • scenes      │ │             │ │              │
+    │ • TV/speaker  │ └─────────────┘ └──────────────┘
+    │ • fans        │
+    └───────────────┘
+             │
+             └─ Local SQLite DB (cache.db)
 ```
 
-The brain of the system is a small language model (hello LFM!) that can map English sentences to the right tool calls.
+### Key Components
 
-- `toggle_lights`: turn lights on or off in a specific room
-- `set_thermostat`: change the temperature and operating mode
-- `lock_door`: lock or unlock a door
-- `get_device_status`: read the current state of any device
-- `set_scene`: activate a preset that adjusts multiple devices at once
+#### 1. **FastAPI Server** (`app/server.py`)
+- Hosts HTTP endpoints for chat, state retrieval, and dataset export
+- Manages model lifecycle (download, launch, termination)
+- Implements OpenAI-compatible API bridge to `llama.cpp`
+- Integrates with SQLite for state and cache persistence
 
-and
+**Model Registry:**
+The app includes 8 pre-configured models:
 
-- `intent_unclear`: the most important tool for robustness. The model must call it whenever the request falls outside what the system can handle, whether the request is ambiguous, off-topic (ordering food, asking about the weather), incomplete (a pronoun with no prior context like "turn it on"), or refers to an unsupported device like a TV or camera. Getting this tool right is what separates a reliable assistant from one that hallucinates actions.
+| Model | Size | Quantization | Score |
+|-------|------|-------------|-------|
+| Home Assistant SFT (1.2B) | 714 MB | Q4_K_M | **99%** |
+| Home Assistant SFT (350M) | 218 MB | Q4_K_M | **98%** |
+| Home Assistant SFT (350M) | 372 MB | Q8_0 | **99%** |
+| LFM2.5-1.2B-Thinking | 718 MB | Q4_0 | 75% |
+| LFM2.5-1.2B-Thinking | 1.28 GB | Q8_0 | 82% |
+| LFM2.5-1.2B-Instruct | 696 MB | Q4_0 | 68% |
+| LFM2.5-1.2B-Instruct | 1.25 GB | Q8_0 | 53% |
+| LFM2-VL-450M | 209 MB | Q4_0 | 40% |
 
+**Recommended models for production:** The 350M and 1.2B fine-tuned variants (`home-assistant-sft`) achieve >98% accuracy and run efficiently on consumer hardware.
 
-The sequence diagram below shows how the system starts and processes a chat message step by step. Solid arrows are calls, dashed arrows are responses:
+#### 2. **Agent Loop** (`app/agent.py`)
+Implements a stateful conversation agent with:
+- **System prompt synthesis** — Dynamically builds context from connected devices, scene options, and resolution rules
+- **Streaming inference** — Supports OpenAI-compatible APIs (local `llama.cpp` and OpenAI as fallback)
+- **Tool extraction & validation** — Parses JSON tool calls, coerces types, validates schemas
+- **Recursive execution** — Handles multi-step actions (e.g., "lock the front door and turn off the lights")
+- **State grounding** — Always provides `[STATE: ...]` prefix so the model knows current device conditions
 
-```mermaid
-sequenceDiagram
-    participant Browser
-    participant FastAPI as FastAPI server
-    participant Agent as Agent loop
-    participant Tools
-    participant LFM as llama.cpp server
+The agent supports **two backends:**
+- `local`: llama.cpp server (default)
+- `openai`: GPT-4o-mini (for comparison/debugging)
 
-    Note over Browser,LFM: Startup
-    Browser->>FastAPI: select model
-    FastAPI->>LFM: start process (background thread)
-    LFM-->>FastAPI: ready
-
-    Note over Browser,LFM: Chat request
-    Browser->>FastAPI: POST /chat
-    FastAPI->>Agent: run(message, history)
-    Agent->>LFM: inference request (with tool schemas)
-    LFM-->>Agent: tool call
-    Agent->>Tools: execute tool
-    Tools-->>Agent: result
-    Agent->>LFM: inference request (with tool result)
-    LFM-->>Agent: text response
-    Agent-->>FastAPI: text response
-    FastAPI-->>Browser: text response
-    Browser->>FastAPI: GET /state
-    FastAPI-->>Browser: updated home state
-```
-
-The FastAPI server, the agent loop, and the tools are all implemented in Python. That said, feel free to re-implement them in any other language for higher performance. Rust, for example, would be a good choice.
-
-## Step 2: Benchmarking tool-calling accuracy <a name="benchmark"></a>
-
-Play with the UI using one of the local models and you will quickly notice: 
-
-- sometimes it works
-
-  ![Happy path](assets/happy_path.gif)
-
-- sometimes it doesn't.
-
-  ![Unhappy path](assets/unhappy_path.gif)
-
-That's fine for a proof of concept. But the full power of small language models only comes out
-  when you fine-tune them.
-
-  Before you fine-tune, though, you need to know where you stand. You need to measure. You cannot ship to production based on vibes or things that more or less work. You ship based on good benchmarks and evals.
-
-
-### What's a good benchmark?
-
-A good benchmark covers the space of possible inputs by systematic taxonomy, not intuition. Here is the methodology we use to build `benchmark/`, a 100-task suite designed from the ground up around these principles.
-
-**1. Start with a taxonomy**
-
-Define the input space BEFORE writing prompts. A taxonomy makes coverage gaps visible and prevents accidental clustering around the examples you happened to think of first.
-
-Our taxonomy has three dimensions:
-
-| Dimension | Values |
-|-----------|--------|
-| Capability | `lights`, `thermostat`, `doors`, `status`, `scene`, `rejection`, `multi_tool` |
-| Phrasing | `imperative`, `colloquial`, `implicit`, `question` |
-| Inference depth | `literal` (words map 1:1 to tool + args), `semantic` (requires translation), `boundary` (model must reject) |
-
-**2. Sample from every cell**
-
-The Cartesian product of those dimensions defines the universe of task types. Sample at least one task per non-empty cell. This forces you to write prompts you would not have thought of otherwise, such as 
-- an implicit-semantic thermostat request ("It feels like a sauna in here") or
-- a boundary-case door request ("Is the house secure right now?").
-
-**3. Write programmatic verifiers**
-
-Every task has a pure Python verifier that inspects
-
-- the final `home_state` dict, or
-- captured `tool_calls` for read-only and rejection tasks.
-
-No LLM-as-judge. Deterministic, fast, cheap.
+#### 3. **Home State** (`app/state.py`)
+Single source of truth for device conditions, persisted to SQLite:
 
 ```python
-# State check: was the right final state reached?
-passed = state["lights"]["kitchen"]["state"] == "on"
-
-# Tool-call check (for status queries and rejections): was the right tool called with the right args?
-call = _find_last_call(tool_calls, "intent_unclear")
-passed = call is not None and call["args"].get("reason") == "off_topic"
+{
+  "lights": {
+    "living_room": {"state": "on|off"},
+    "bedroom": {"state": "on|off"},
+    # ... 6 rooms total
+  },
+  "doors": {
+    "front": "locked|unlocked",
+    "back": "locked|unlocked",
+    # ... 9 doors total (room-specific locks)
+  },
+  "thermostat": {
+    "temperature": 60–80 (°F),
+    "mode": "heat|cool|auto"
+  },
+  "active_scene": "movie_night|bedtime|morning|away|party|None",
+  "tv": {
+    "living_room": "on|off",
+  },
+  "speaker": {
+    "living_room": "playing|paused|stopped",
+  },
+  "fan": {
+    "room": {"state": "on|off", "speed": "low|medium|high"},
+  },
+  "music_folder": Path | None,
+  "current_track_index": int,
+}
 ```
 
-You can run the benchmark for a given model as follows:
+State mutations are atomic and immediately persisted to the database, ensuring consistency across server restarts.
 
+#### 4. **Tool System** (`app/tools/`)
+The agent can invoke 8 tools:
+
+| Tool | Parameters | Notes |
+|------|-----------|-------|
+| `toggle_lights` | room, state | On/off control for 6 connected rooms |
+| `lock_door` | door, state | Lock/unlock 9 doors (including room-specific) |
+| `set_thermostat` | temperature (60–80°F), mode | Heat/cool/auto modes |
+| `set_scene` | scene | Activates presets: movie_night, bedtime, morning, away, party |
+| `control_tv` | room, state | On/off for living_room, bedroom |
+| `control_fan` | room, state, speed | Speed control: low, medium, high |
+| `control_speaker` | room, action, media | Play/pause/stop/next/previous + optional media parameter |
+| `intent_unclear` | reason | Rejection tool: off_topic, incomplete, unsupported_device, unsupported_feature |
+
+Each tool has:
+- **Schema** (`app/tools/schemas.py`) — JSON specification for the model
+- **Handler** (`app/tools/handlers.py`) — Implementation + state mutation
+- **Validator** (`app/tools/validator.py`) — Type coercion and runtime checks
+
+#### 5. **Cache Layer** (`app/cache.py`)
+SQLite-backed caching system for:
+- Model metadata snapshots
+- Chat history per session
+- Inference results (for testing/debugging)
+
+#### 6. **Event System** (`app/events.py`)
+Real-time event streaming to the frontend:
+- Device state changes
+- Chat messages
+- Model status
+- Tool execution results
+
+---
+
+## 🎨 User Interface
+
+### File Structure
+- **`index.html`** — Single-page application shell; imports CSS and JavaScript
+- **`style.css`** — Responsive design system for desktop/mobile
+
+### Features
+
+#### Layout
+- **3-row × 2-column cockpit grid** (desktop)
+  1. Floor plan (spans both columns)
+  2. Device control panels (lights, doors, thermostat, scenes)
+  3. Chat interface (left), device status readout (right)
+  
+- **Mobile overlay** — Floating action button reveals chat on small screens
+
+#### Controls
+- **Floor Plan** — Visual representation of rooms; click to set `current_user_room`
+- **Light Toggles** — Per-room on/off switches
+- **Door Locks** — Visual lock/unlock controls
+- **Thermostat** — Temperature slider (60–80°F) + mode selector
+- **Scene Buttons** — One-click presets (Movie Night, Bedtime, etc.)
+- **Model Selector** — Dropdown to swap between 8 pre-configured models
+- **Chat Interface** — Streaming message display + input field
+- **Theme Toggle** — Light/Dark/High-Contrast modes
+
+#### Responsiveness
+The UI adapts to mobile screens:
+- Primary controls remain visible
+- Chat slides into an overlay with backdrop
+- FAB (Floating Action Button) provides quick access
+
+---
+
+## 📊 Datasets
+
+### Structure
+Located in `datasets/`:
+
+- **`golden_set.jsonl`** — Successful interactions (ground truth for model evaluation)
+- **`failure_set.jsonl`** — Failed or edge-case interactions (for debugging)
+
+Each line is a JSON record:
+
+```json
+{
+  "message": "Turn off the bedroom light",
+  "state": "[STATE: lights={bedroom:on, ...}, ...]",
+  "expected_tool_call": "toggle_lights",
+  "expected_args": {"room": "bedroom", "state": "off"},
+  "actual_tool_call": "toggle_lights",
+  "actual_args": {"room": "bedroom", "state": "off"},
+  "success": true,
+  "timestamp": "2026-06-01T12:34:56Z"
+}
+```
+
+### Purpose
+- **Golden Set** — Used to validate model behavior; should remain 100% accurate
+- **Failure Set** — Logged when the model produces unexpected tool calls or rejects valid requests; used for model retraining or prompt refinement
+
+---
+
+## 🧠 Fine-Tuned Model
+
+### LFM2.5-350M Home Assistant SFT
+
+The application ships with two production-grade fine-tuned variants:
+
+**Base Model:** [LiquidAI/LFM2.5-350M](https://huggingface.io/LiquidAI/LFM2.5-350M)
+
+**Fine-Tuned Variants:**
+1. **LFM2.5-1.2B-home-assistant-sft** (714 MB) — **99% accuracy** on task suite
+2. **LFM2.5-350M-home-assistant-sft** (218 MB) — **98% accuracy** on task suite
+
+**Training Dataset:** 157,000 synthetic examples across 33 instruction schemas
+
+**Key Capabilities:**
+
+| Capability | Example | Handled? |
+|------------|---------|----------|
+| Direct commands | "Turn on the bedroom light" | ✅ Yes |
+| Already-satisfied detection | "Turn on the lights" when all are on | ✅ Yes |
+| Pronoun resolution | "Turn it off" (current_user_room) | ✅ Yes |
+| State-aware disambiguation | "Turn off the TV" (infers living_room) | ✅ Yes |
+| Compound commands | "Lock doors and turn off lights" | ✅ Yes |
+| Action log / undo | "Undo that" (reverses recent action) | ✅ Yes |
+| Scene activation | "Movie night" | ✅ Yes |
+| Rejection (off-topic) | "Order me pizza" | ✅ Rejects with `intent_unclear` |
+| Rejection (ambiguous) | "Turn off the speaker" (multiple speakers) | ✅ Rejects with `intent_unclear` |
+
+**System Prompt:**
+The model is primed with a detailed system prompt that includes:
+- Connected device topology
+- Tool schemas and parameter constraints
+- State-aware resolution rules for pronouns and implicit references
+- Action log (recent transactions) for undo/repeat logic
+- Synonym mappings (e.g., "open" = "unlock", "close" = "lock")
+
+See [model card](./multi-step/model-card.md) for full training details.
+
+---
+
+## 🔄 Conversation Flow
+
+1. **User sends message** (via chat input)
+2. **Server receives POST /chat**
+3. **Agent constructs system prompt**
+   - Includes current `[STATE: ...]`
+   - Includes `[RECENT ACTIONS: ...]` (for undo/repeat)
+   - Includes list of connected devices
+4. **Agent streams inference** from local llama.cpp
+5. **Agent extracts tool calls** from streamed JSON
+6. **Agent validates & coerces** tool arguments
+7. **Agent executes tool** (mutates state)
+8. **Agent re-prompts model** with tool result (if recursive action needed)
+9. **Agent streams final text response** to browser
+10. **Browser updates UI** with new state + message
+11. **State persisted** to SQLite
+
+---
+
+## 🛠️ Development
+
+### File Organization
+
+```
+app/
+├── server.py           # FastAPI routes & model lifecycle
+├── agent.py            # Conversation agent & streaming
+├── state.py            # Home state schema & persistence
+├── cache.py            # SQLite cache layer
+├── events.py           # Real-time event system
+└── tools/
+    ├── __init__.py
+    ├── schemas.py      # Tool JSON schemas
+    ├── handlers.py     # Tool implementations
+    └── validator.py    # Type coercion & validation
+
+index.html             # Single-page app shell
+style.css              # Responsive design system
+datasets/
+├── golden_set.jsonl   # Successful interactions
+└── failure_set.jsonl  # Failed interactions
+```
+
+### Key Entry Points
+
+- **Start server:** `uvicorn app.server:app --port 5173 --reload`
+- **Run tests:** `uv run pytest tests/`
+- **Check state:** `python -c "from app.state import load_state; load_state(); print(home_state)"`
+
+### Adding a New Tool
+
+1. Define schema in `app/tools/schemas.py` (JSON object + parameter spec)
+2. Implement handler in `app/tools/handlers.py` (function that mutates state)
+3. Update system prompt in `app/agent.py` to include the new tool
+4. Add test cases to `datasets/golden_set.jsonl`
+5. Restart server; model will see new tool in available actions
+
+---
+
+## 🐛 Debugging
+
+### Check Home State
 ```bash
-uv run python benchmark/run.py \
-    --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
-    --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf
+python -c "
+from app.state import load_state
+load_state()
+from app.state import home_state
+import json
+print(json.dumps(home_state, indent=2))
+"
 ```
 
-**Run a single task by number (1-101)**, for example:
-
+### View Chat History
 ```bash
-uv run python benchmark/run.py \
-    --hf-repo LiquidAI/LFM2.5-1.2B-Instruct-GGUF \
-    --hf-file LFM2.5-1.2B-Instruct-Q4_0.gguf \
-    --task 5
+python -c "
+from app.state import load_chat_history
+history = load_chat_history()
+for msg in history:
+    print(msg)
+"
 ```
 
-It's also worth running the benchmark against a frontier model like GPT-4o-mini.
-
-  Why? Because a frontier model scoring near-perfect tells you the agent harness is correct. The
-  prompts, the tool schemas, the verification logic. If a state-of-the-art model doesn't pass almost
-  everything, the problem is not the model. The problem is your code.
-
-
-**Run against OpenAI gpt-4o-mini** (requires `OPENAI_API_KEY` in `.env`):
-
+### Check Cache
 ```bash
-uv run python benchmark/run.py --backend openai
+python -c "
+from app.cache import list_entries
+for entry in list_entries():
+    print(entry)
+"
 ```
 
-Results are printed to the console and saved as a Markdown file in `benchmark/results/`.
+### Model Inference Test
+Switch to `openai` backend in `app/agent.py` to test against GPT-4o-mini:
 
-**Evaluation results**
+```python
+# In app/agent.py
+# Change: run_agent_stream(..., backend='local')
+# To:     run_agent_stream(..., backend='openai')
+```
 
-| Model | Parameters | Score | Accuracy |
-|-------|------------|-------|----------|
-| gpt-4o-mini | n/a | 93/100 | 93% |
-| LFM2.5-1.2B-Instruct Q4_0 | 1.2B | 71/100 | 71% |
-| LFM2-350M Q8_0 | 350M | 28/100 | 28% |
+---
 
-These are not vibes anymore. These are actual numbers we can use to understand where we stand.
+## 📝 Environment Variables
 
-In the following sections, we will see how to improve the performance of our local LFM models to bridge the gap with gpt-4o-mini.
+Create a `.env` file in the project root:
 
+```env
+# OpenAI backend (optional, for GPT-4o-mini testing)
+OPENAI_API_KEY=sk-...
 
-## Step 3: Generate synthetic data <a name="step-3-generate-synthetic-data"></a>
+# Model cache directory (optional)
+MODEL_CACHE_DIR=./models
 
-WIP
+# Server port (optional, default 5173)
+SERVER_PORT=5173
+```
 
-## Step 4: Fine-tune the model <a name="step-4-fine-tune-the-model"></a>
+---
 
-Coming soon.
+## ⚠️ Known Limitations
 
-[Join the Liquid AI Discord Server](https://discord.com/invite/DFU3WQeaYD) and post an angry message: Pau, please release this part!
+- **Temperature range fixed at 60–80°F** — Out-of-range requests produce a text explanation, not a tool call
+- **No brightness/color control** — Dimming and color-change requests trigger `intent_unclear(unsupported_feature)`
+- **English only** — All training data is English; other languages untested
+- **Music playback limited to local library** — The `media` parameter for speaker control maps only to pre-indexed tracks
+- **State must be accurate** — Stale `[STATE: ...]` causes incorrect disambiguation or rejection
 
-I am looking forward to reading it.
+---
+
+## 🎯 What Changed from the Original README
+
+The original README documented a **tutorial and benchmarking framework** for building a local home assistant. This APP_README documents the **completed application**:
+
+| Aspect | Original | Current App |
+|--------|----------|-------------|
+| Purpose | Tutorial/cookbook | Production-ready application |
+| Focus | Benchmarking & fine-tuning steps | Functional smart home control |
+| Model | Multiple base models (1.2B, 350M) | Pre-fine-tuned home assistant models |
+| Datasets | Generation scripts | Golden/failure sets for validation |
+| UI | Mentioned as part of tutorial | Fully responsive web interface |
+| State | Simple in-memory | Persistent SQLite database |
+| Tools | 5 basic tools | 8 specialized tools + advanced resolution |
+| Caching | Not mentioned | SQLite-backed cache layer |
+| Events | Not mentioned | Real-time event streaming |
+
+---
+
+## 📚 References
+
+- **Model Card:** [./multi-step/model-card.md](./multi-step/model-card.md)
+- **LiquidAI LFM2.5:** [huggingface.co/LiquidAI](https://huggingface.co/LiquidAI)
+- **llama.cpp:** [github.com/ggerganov/llama.cpp](https://github.com/ggerganov/llama.cpp)
+- **FastAPI:** [fastapi.tiangolo.com](https://fastapi.tiangolo.com)
+
+---
+
+## 📜 License
+
+Apache 2.0 (same as base model and dependencies)
+
+---
+
+**Last Updated:** June 1, 2026  
+**Application Version:** 1.0 (Production Preview)

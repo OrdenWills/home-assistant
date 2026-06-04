@@ -1187,7 +1187,7 @@
       for (const [room, spkState] of Object.entries(state.speaker || {})) {
         const el = document.getElementById(`gadget-speaker-${room}`);
         if (el) {
-          if (spkState === "playing") el.classList.add("active-gadget");
+          if (spkState === "playing" || spkState === "paused") el.classList.add("active-gadget");
           else el.classList.remove("active-gadget");
         }
       }
@@ -2404,26 +2404,30 @@
       const marquee = document.getElementById("track-marquee");
       const marqueeText = document.getElementById("track-marquee-text");
 
-      if (status === "playing") {
-        if (disc) disc.classList.add("spinning");
-        if (playIcon) playIcon.classList.add("hidden");
-        if (pauseIcon) pauseIcon.classList.remove("hidden");
-        if (playBtn) playBtn.onclick = () => handleSpeakerAction("pause");
+      if (status === "playing" || status === "paused") {
         if (speakerCard) speakerCard.classList.add("active-gadget");
-        // Show scrolling track name
         if (marquee && marqueeText && trackName) {
-          // Strip extension and clean for display
           const display = trackName.replace(/\.[^.]+$/, '');
           marqueeText.textContent = display;
           marquee.classList.add("active");
         }
       } else {
+        if (speakerCard) speakerCard.classList.remove("active-gadget");
+        if (marquee) marquee.classList.remove("active");
+      }
+
+      if (status === "playing") {
+        if (disc) disc.classList.add("spinning");
+        if (playIcon) playIcon.classList.add("hidden");
+        if (pauseIcon) pauseIcon.classList.remove("hidden");
+        if (playBtn) playBtn.onclick = () => handleSpeakerAction("pause");
+        if (marqueeText) marqueeText.style.animationPlayState = "running";
+      } else {
         if (disc) disc.classList.remove("spinning");
         if (playIcon) playIcon.classList.remove("hidden");
         if (pauseIcon) pauseIcon.classList.add("hidden");
         if (playBtn) playBtn.onclick = () => handleSpeakerAction("play");
-        if (speakerCard) speakerCard.classList.remove("active-gadget");
-        if (marquee) marquee.classList.remove("active");
+        if (marqueeText) marqueeText.style.animationPlayState = "paused";
       }
     }
 

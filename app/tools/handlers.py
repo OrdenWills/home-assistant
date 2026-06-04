@@ -1,3 +1,4 @@
+# app/tools/handlers.py
 import os
 import random
 import threading
@@ -309,7 +310,7 @@ def control_speaker(room: str, action: str, media: str = None, triggered_by: str
                         pygame.mixer.music.pause()
                     elif action == "stop":
                         pygame.mixer.music.stop()
-                    elif action == "resume" or (action == "play" and current_status == "paused"):
+                    elif action == "resume" or (action == "play" and current_status == "paused" and not media):
                         # Resume from where we left off — don't reload the track
                         pygame.mixer.music.unpause()
                         start_audio_monitor()
