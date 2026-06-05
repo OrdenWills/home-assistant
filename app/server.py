@@ -388,14 +388,22 @@ def delete_cache_entry(req: CacheDeleteRequest):
 class SpeakerControlRequest(BaseModel):
     room: str
     action: str
+    volume: int | None = None
+    media: str | None = None
 
 @app.post("/speaker/control")
 def ui_control_speaker(req: SpeakerControlRequest):
     """Manual speaker control from UI. Logs to action log for model context."""
-    res = TOOL_HANDLERS["control_speaker"](req.room, req.action)
+    kwargs = {"room": req.room, "action": req.action}
+    if req.volume is not None:
+        kwargs["volume"] = req.volume
+    if req.media is not None:
+        kwargs["media"] = req.media
+        
+    res = TOOL_HANDLERS["control_speaker"](**kwargs)
     if res.get("success"):
-        summary = _summarise_tool("control_speaker", {"room": req.room, "action": req.action}, res)
-        log_transaction([{"name": "control_speaker", "args": {"room": req.room, "action": req.action}}], summary)
+        summary = _summarise_tool("control_speaker", kwargs, res)
+        log_transaction([{"name": "control_speaker", "args": kwargs}], summary)
     return JSONResponse(res)
 
 class RepeatModeRequest(BaseModel):

@@ -233,13 +233,19 @@
         <div class="panel">
           <div class="panel-label">
             Gadgets
+            <div class="volume-container" title="Adjust Volume">
+              <svg class="volume-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+              <input type="range" id="volume-slider" min="0" max="100" value="100" />
+            </div>
             <button class="folder-btn" id="select-folder-btn" title="Select Music Folder">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
               </svg>
             </button>
-          </div>
-          <div class="panel-body">
+          </div>          <div class="panel-body">
             <div class="device-grid" id="gadgets-grid">
               <div class="device-card" id="gadget-tv-living_room" data-room="living_room">
                 <div class="icon-circle">
@@ -1229,6 +1235,12 @@
         }
         // Speaker UI sync
         updateSpeakerUI(state.speaker?.living_room, state.current_track_name);
+        
+        // Volume UI sync
+        if (state.speaker_volume !== undefined) {
+          const volSlider = document.getElementById("volume-slider");
+          if (volSlider) volSlider.value = state.speaker_volume;
+        }
       } catch (e) {
         console.error("[RefreshState] Error:", e);
       }
@@ -2316,6 +2328,28 @@
 
     if (mobileChatFab) mobileChatFab.addEventListener("click", () => toggleMobileChat(true));
     if (mobileChatClose) mobileChatClose.addEventListener("click", () => toggleMobileChat(false));
+
+    // ── Volume Control ────────────────────────────────────────
+    const volumeSlider = document.getElementById("volume-slider");
+    let volumeDebounceTimer = null;
+
+    if (volumeSlider) {
+      volumeSlider.addEventListener("input", (e) => {
+        const vol = e.target.value;
+        if (volumeDebounceTimer) clearTimeout(volumeDebounceTimer);
+        volumeDebounceTimer = setTimeout(async () => {
+          try {
+            await fetch("/speaker/control", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ room: "living_room", action: "volume", volume: parseInt(vol) })
+            });
+          } catch (err) {
+            console.error("Volume control failed", err);
+          }
+        }, 100);
+      });
+    }
 
     // ── Folder Selection ──────────────────────────────────────
     const selectFolderBtn = document.getElementById("select-folder-btn");

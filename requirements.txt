@@ -1,0 +1,24 @@
+# Core web framework
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+
+# HTTP and API clients
+huggingface-hub>=0.17.0
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# Data validation and serialization
+pydantic>=2.0.0
+
+# Audio playback
+pygame>=2.5.0
+
+# Fuzzy string matching (for music track search)
+rapidfuzz>=3.0.0
+
+# GUI for folder selection
+# tkinter is part of Python standard library on Windows
+# On Linux/Mac, install system package: python3-tk
+
+# Database (SQLite is part of Python standard library)

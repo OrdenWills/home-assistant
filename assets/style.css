@@ -527,7 +527,7 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
 }
 
 .folder-btn {
-  margin-left: auto;
+  margin-left: 6px;
   background: var(--surface-2);
   border: 1px solid var(--border-light);
   border-radius: 6px;
@@ -562,6 +562,47 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.volume-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.volume-icon {
+  width: 14px;
+  height: 14px;
+}
+
+#volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 60px;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+#volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#volume-slider::-webkit-slider-thumb:hover {
+  background: var(--accent);
+}
+
+
 
 /* ── Track name marquee ── */
 .track-marquee {

@@ -247,12 +247,20 @@ def control_tv(room: str, state: str) -> dict:
     return {"success": True, "room": room, "state": state}
 
 
-def control_speaker(room: str, action: str, media: str = None, triggered_by: str = "user") -> dict:
+def control_speaker(room: str, action: str, media: str = None, triggered_by: str = "user", volume: int = None) -> dict:
     if "speaker" not in home_state or room not in home_state["speaker"]:
         return {"success": False, "error": f"No speaker in {room}"}
     
     current_status = home_state["speaker"][room]
     
+    if action == "volume" and volume is not None:
+        home_state["speaker_volume"] = volume
+        persist_state()
+        if _ensure_mixer():
+            import pygame
+            pygame.mixer.music.set_volume(volume / 100.0)
+        return {"success": True, "room": room, "action": "volume", "volume": volume}
+
     # Track whether this is an explicit stop (True) or a play/natural action (False)
     if action == "play":
         home_state["speaker"][room] = "playing"
@@ -319,6 +327,9 @@ def control_speaker(room: str, action: str, media: str = None, triggered_by: str
                             pygame.mixer.music.load(track_path)
                             # Set up repeat mode based on home_state
                             repeat_mode = home_state.get("repeat_mode", "none")
+                            vol = home_state.get("speaker_volume", 100)
+                            pygame.mixer.music.set_volume(vol / 100.0)
+                            
                             if repeat_mode == "one":
                                 pygame.mixer.music.play(loops=-1)  # Loop current track infinitely
                             else:

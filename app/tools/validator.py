@@ -20,7 +20,7 @@ _ROOMS   = {"bedroom", "bathroom", "office", "hallway", "kitchen", "living_room"
 _DOORS   = {"front", "back", "garage", "side", "bedroom", "bathroom", "office", "kitchen", "living_room"}
 _TV_ROOMS = {"living_room", "bedroom"}
 _SPEAKER_ROOMS = {"living_room", "bedroom", "kitchen", "office", "hallway"}
-_SPEAKER_ACTIONS = {"play", "pause", "stop", "next", "previous"}
+_SPEAKER_ACTIONS = {"play", "pause", "stop", "next", "previous", "volume"}
 _FAN_ROOMS = {"living_room", "bedroom", "kitchen", "office"}
 _FAN_SPEEDS = {"low", "medium", "high"}
 
