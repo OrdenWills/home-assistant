@@ -29,7 +29,7 @@ def get_system_prompt(avail_r: list, avail_d: list, tv_str: str, spk_str: str, f
         "  set_scene(scene='movie_night'|'bedtime'|'morning'|'away'|'party')\n"
         "  control_tv(room, state='on'|'off')\n"
         "  control_fan(room, state='on'|'off'[, speed='low'|'medium'|'high'])\n"
-        "  control_speaker(room, action='play'|'pause'|'stop'|'next'|'previous'[, media='<str>'])\n"
+        "  control_speaker(room, action='play'|'pause'|'stop'|'next'|'previous'|'volume'[, media='<str>', volume=<int 0-100>])\n"
         "  intent_unclear(reason='off_topic'|'incomplete'|'unsupported_device'"
         "|'unsupported_feature')\n\n"
         f"CONNECTED ROOMS (lights): {', '.join(avail_r)}\n"
