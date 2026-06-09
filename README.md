@@ -108,16 +108,16 @@ The app includes 8 pre-configured models:
 
 | Model | Size | Quantization | Score |
 |-------|------|-------------|-------|
-| Home Assistant SFT (1.2B) | 714 MB | Q4_K_M | **99%** |
-| Home Assistant SFT (350M) | 218 MB | Q4_K_M | **98%** |(latest finetune)
-| Home Assistant SFT (350M) | 372 MB | Q8_0 | **99%** |(latest finetune)
+| Home Assistant SFT (1.2B) | 714 MB | Q4_K_M | **95%** |
+| Home Assistant SFT (350M) | 218 MB | Q4_K_M | **96%** |
+| Home Assistant SFT (350M) | 372 MB | Q8_0 | **96%** |
 | LFM2.5-1.2B-Thinking | 718 MB | Q4_0 | 75% |
 | LFM2.5-1.2B-Thinking | 1.28 GB | Q8_0 | 82% |
 | LFM2.5-1.2B-Instruct | 696 MB | Q4_0 | 68% |
 | LFM2.5-1.2B-Instruct | 1.25 GB | Q8_0 | 53% |
 | LFM2-VL-450M | 209 MB | Q4_0 | 40% |
 
-**Recommended models for production:** The 350M and 1.2B fine-tuned variants (`home-assistant-sft`) achieve >98% accuracy and run efficiently on consumer hardware.
+**Recommended models for production:** The 350M variants (`home-assistant-sft`) achieve >96% accuracy and run efficiently on consumer hardware.
 
 #### 2. **Agent Loop** (`app/agent.py`)
 Implements a stateful conversation agent with:
@@ -273,7 +273,7 @@ The application ships with two production-grade fine-tuned variants:
 **Base Model:** [LiquidAI/LFM2.5-350M](https://huggingface.io/LiquidAI/LFM2.5-350M)
 
 **Fine-Tuned Variants:**
-1. **LFM2.5-350M-home-assistant-sft** (218 MB) — **98% accuracy** on task suite
+1. **LFM2.5-350M-home-assistant-sft** (218 MB) — **96% accuracy** on task suite
 
 **Training Dataset:** 157,000 synthetic examples across 33 instruction schemas
 
