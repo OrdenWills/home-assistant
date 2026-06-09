@@ -109,8 +109,8 @@ The app includes 8 pre-configured models:
 | Model | Size | Quantization | Score |
 |-------|------|-------------|-------|
 | Home Assistant SFT (1.2B) | 714 MB | Q4_K_M | **99%** |
-| Home Assistant SFT (350M) | 218 MB | Q4_K_M | **98%** |
-| Home Assistant SFT (350M) | 372 MB | Q8_0 | **99%** |
+| Home Assistant SFT (350M) | 218 MB | Q4_K_M | **98%** |(latest finetune)
+| Home Assistant SFT (350M) | 372 MB | Q8_0 | **99%** |(latest finetune)
 | LFM2.5-1.2B-Thinking | 718 MB | Q4_0 | 75% |
 | LFM2.5-1.2B-Thinking | 1.28 GB | Q8_0 | 82% |
 | LFM2.5-1.2B-Instruct | 696 MB | Q4_0 | 68% |
@@ -273,8 +273,7 @@ The application ships with two production-grade fine-tuned variants:
 **Base Model:** [LiquidAI/LFM2.5-350M](https://huggingface.io/LiquidAI/LFM2.5-350M)
 
 **Fine-Tuned Variants:**
-1. **LFM2.5-1.2B-home-assistant-sft** (714 MB) — **99% accuracy** on task suite
-2. **LFM2.5-350M-home-assistant-sft** (218 MB) — **98% accuracy** on task suite
+1. **LFM2.5-350M-home-assistant-sft** (218 MB) — **98% accuracy** on task suite
 
 **Training Dataset:** 157,000 synthetic examples across 33 instruction schemas
 
