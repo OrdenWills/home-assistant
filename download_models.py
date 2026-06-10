@@ -61,8 +61,16 @@ MODELS = [
         "name": "Home Assistant SFT (Finetuned)",
         "repo": "OrdenWills/LFM2.5-350M-home-assistant-sft",
         "file": "LFM2.5-350M.Q4_K_M.gguf",
+        "priority": 8,
+    },
+    {
+        "id": "home-assistant-sft(moe)",
+        "name": "Home Assistant (moe)",
+        "repo": "LiquidAI/LFM2.5-8B-A1B-GGUF",
+        "file": "LFM2.5-8B-A1B-Q8_0.gguf",
         "priority": 1,
     },
+
 ]
 
 

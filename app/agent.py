@@ -344,9 +344,10 @@ def run_agent_stream(
         brace_depth   = 0
         state         = "init"      # "init" | "thinking" | "streaming" | "tool_buffer"
         tool_events   = []
-        marker_count  = 0           # how many fjärilsart we've seen (0, 1, 2)
+        marker_count  = 0           # how many markers we've seen
         real_response = ""          # accumulate response text (for done event)
         real_think    = ""          # accumulate thinking text (for logging)
+        active_think_end_marker = THINK_MARKER
 
         def _safe_flush(text, marker):
             """Split text into (safe_to_emit, must_hold) to avoid cutting
@@ -355,6 +356,11 @@ def run_agent_stream(
                 if text.endswith(marker[:i]):
                     return text[:-i], text[-i:]
             return text, ""
+
+        def _clean_markers(t):
+            if not t:
+                return ""
+            return t.replace(THINK_MARKER, "").replace("<think>", "").replace("</think>", "")
 
         for chunk in stream:
             delta = ""
@@ -369,15 +375,22 @@ def run_agent_stream(
             # ── Process pending buffer ────────────────────────────────────
             while pending:
 
-                # ── INIT: looking for first fjärilsart or { ───────────────
+                # ── INIT: looking for first think marker or { ───────────────
                 if state == "init":
-                    idx = pending.find(THINK_MARKER)
-                    if idx >= 0:
-                        # Found first marker — discard it, enter THINKING
-                        # (any text before it is pre-think junk, discard)
-                        pending = pending[idx + MARKER_LEN:]
+                    idx_fj = pending.find(THINK_MARKER)
+                    idx_tk = pending.find("<think>")
+                    
+                    if idx_fj >= 0 and (idx_tk < 0 or idx_fj < idx_tk):
+                        pending = pending[idx_fj + MARKER_LEN:]
                         marker_count = 1
                         state = "thinking"
+                        active_think_end_marker = THINK_MARKER
+                        continue
+                    elif idx_tk >= 0:
+                        pending = pending[idx_tk + 7:]
+                        marker_count = 1
+                        state = "thinking"
+                        active_think_end_marker = "</think>"
                         continue
 
                     # Check if { appears (non-thinking model, immediate tool call)
@@ -386,44 +399,47 @@ def run_agent_stream(
                         # Emit any text before { as token (unlikely, but safe)
                         before = pending[:brace_idx].strip()
                         if before:
-                            yield {"type": "token", "text": before}
+                            yield {"type": "token", "text": _clean_markers(before)}
                         pending = pending[brace_idx:]
                         state = "streaming"   # will immediately hit { → tool_buffer
                         continue
 
                     # No marker, no brace yet — check if we should keep waiting
                     if len(pending) >= INIT_PATIENCE:
-                        # Enough chars without seeing marker → non-thinking model
-                        # Treat all pending as response text
                         state = "streaming"
-                        continue  # re-process pending in streaming state
+                        continue
 
                     # Could be partial marker at end — hold
-                    safe, held = _safe_flush(pending, THINK_MARKER)
+                    safe_fj, held_fj = _safe_flush(pending, THINK_MARKER)
+                    safe_tk, held_tk = _safe_flush(pending, "<think>")
+                    held_len = max(len(held_fj), len(held_tk))
+                    if held_len > 0:
+                        safe = pending[:-held_len]
+                        held = pending[-held_len:]
+                    else:
+                        safe = pending
+                        held = ""
                     if safe:
-                        # In INIT we don't emit yet (waiting to classify)
-                        # But if we have safe text with no marker, it means
-                        # more text arrived without marker — switch to streaming
-                        if len(safe) > MARKER_LEN:
+                        if len(safe) > max(MARKER_LEN, 7):
                             state = "streaming"
                             continue
                     break  # wait for more data
 
-                # ── THINKING: emit think_tokens until second fjärilsart ───
+                # ── THINKING: emit think_tokens until second marker ───
                 elif state == "thinking":
-                    idx = pending.find(THINK_MARKER)
+                    idx = pending.find(active_think_end_marker)
                     if idx >= 0:
                         # Found closing marker — emit remaining think text
                         if idx > 0:
                             yield {"type": "think_token", "text": pending[:idx]}
                         yield {"type": "think_done"}
-                        pending = pending[idx + MARKER_LEN:]
+                        pending = pending[idx + len(active_think_end_marker):]
                         marker_count = 2
                         state = "streaming"
                         continue
 
                     # No closing marker yet — flush safe portion as think_token
-                    safe, held = _safe_flush(pending, THINK_MARKER)
+                    safe, held = _safe_flush(pending, active_think_end_marker)
                     if safe:
                         real_think += safe
                         yield {"type": "think_token", "text": safe}
@@ -437,7 +453,7 @@ def run_agent_stream(
                         # Emit text before the brace as response tokens
                         before = pending[:brace_idx]
                         if before:
-                            cleaned = before.replace(THINK_MARKER, "")
+                            cleaned = _clean_markers(before)
                             if cleaned:
                                 real_response += cleaned
                                 yield {"type": "token", "text": cleaned}
@@ -450,9 +466,17 @@ def run_agent_stream(
                     else:
                         # No brace — flush safe portion as response tokens
                         # (hold back chars that could be start of marker or {)
-                        safe, held = _safe_flush(pending, THINK_MARKER)
+                        safe_fj, held_fj = _safe_flush(pending, THINK_MARKER)
+                        safe_tk, held_tk = _safe_flush(pending, "<think>")
+                        held_len = max(len(held_fj), len(held_tk))
+                        if held_len > 0:
+                            safe = pending[:-held_len]
+                            held = pending[-held_len:]
+                        else:
+                            safe = pending
+                            held = ""
                         if safe:
-                            cleaned = safe.replace(THINK_MARKER, "")
+                            cleaned = _clean_markers(safe)
                             if cleaned:
                                 real_response += cleaned
                                 yield {"type": "token", "text": cleaned}
@@ -491,7 +515,7 @@ def run_agent_stream(
                                         yield {"type": "tool_call", "name": name, "args": args, "result": result}
                                 else:
                                     # Not a tool call — emit as response text
-                                    cleaned = tool_buffer.replace(THINK_MARKER, "")
+                                    cleaned = _clean_markers(tool_buffer)
                                     if cleaned:
                                         real_response += cleaned
                                         yield {"type": "token", "text": cleaned}
@@ -504,7 +528,7 @@ def run_agent_stream(
                         pending = ""
                         # Safety valve
                         if len(tool_buffer) > 600:
-                            cleaned = tool_buffer.replace(THINK_MARKER, "")
+                            cleaned = _clean_markers(tool_buffer)
                             if cleaned:
                                 yield {"type": "token", "text": cleaned}
                             tool_buffer = ""
@@ -513,11 +537,11 @@ def run_agent_stream(
 
         # ── Flush remaining buffers ───────────────────────────────────────
         if pending:
-            cleaned = pending.replace(THINK_MARKER, "")
+            cleaned = _clean_markers(pending)
             if cleaned:
                 yield {"type": "token", "text": cleaned}
         if tool_buffer:
-            cleaned = tool_buffer.replace(THINK_MARKER, "")
+            cleaned = _clean_markers(tool_buffer)
             if cleaned:
                 real_response += cleaned
                 yield {"type": "token", "text": cleaned}
