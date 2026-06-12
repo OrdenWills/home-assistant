@@ -528,6 +528,32 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   justify-content: center;
 }
 
+/* ── Fan Speed Indicator ── */
+.fan-speed-indicator {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-left: 4px;
+}
+
+.speed-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.3;
+  transition: background 0.3s ease, opacity 0.3s ease, box-shadow 0.3s ease;
+}
+
+.quad-item.speed-low .dot-low,
+.quad-item.speed-medium .dot-low,
+.quad-item.speed-medium .dot-medium,
+.quad-item.speed-high .speed-dot {
+  background: var(--green);
+  opacity: 1;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
 .device-card {
   background: var(--surface-2);
   border: 1px solid var(--border);

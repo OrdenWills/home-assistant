@@ -270,6 +270,11 @@
                       <circle cx="12" cy="12" r="2"></circle>
                     </svg>
                   </div>
+                  <div class="fan-speed-indicator">
+                    <div class="speed-dot dot-high"></div>
+                    <div class="speed-dot dot-medium"></div>
+                    <div class="speed-dot dot-low"></div>
+                  </div>
                 </div>
                 <div class="device-card quad-item" id="gadget-fan-bedroom" data-room="bedroom" title="Bedroom Fan">
                   <div class="icon-circle">
@@ -278,6 +283,11 @@
                       <circle cx="12" cy="12" r="2"></circle>
                     </svg>
                   </div>
+                  <div class="fan-speed-indicator">
+                    <div class="speed-dot dot-high"></div>
+                    <div class="speed-dot dot-medium"></div>
+                    <div class="speed-dot dot-low"></div>
+                  </div>
                 </div>
                 <div class="device-card quad-item" id="gadget-fan-office" data-room="office" title="Office Fan">
                   <div class="icon-circle">
@@ -285,6 +295,11 @@
                       <path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"></path>
                       <circle cx="12" cy="12" r="2"></circle>
                     </svg>
+                  </div>
+                  <div class="fan-speed-indicator">
+                    <div class="speed-dot dot-high"></div>
+                    <div class="speed-dot dot-medium"></div>
+                    <div class="speed-dot dot-low"></div>
                   </div>
                 </div>
               </div>
@@ -1224,8 +1239,13 @@
       for (const [room, fanObj] of Object.entries(state.fan || {})) {
         const el = document.getElementById(`gadget-fan-${room}`);
         if (el) {
-          if (fanObj.state === "on") el.classList.add("active-gadget");
-          else el.classList.remove("active-gadget");
+          if (fanObj.state === "on") {
+            el.classList.add("active-gadget");
+            el.classList.remove("speed-low", "speed-medium", "speed-high");
+            if (fanObj.speed) el.classList.add(`speed-${fanObj.speed}`);
+          } else {
+            el.classList.remove("active-gadget", "speed-low", "speed-medium", "speed-high");
+          }
         }
       }
 
