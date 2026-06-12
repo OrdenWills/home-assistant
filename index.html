@@ -83,6 +83,12 @@
                   <circle cx="12" cy="6" r="3.5" />
                   <path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" />
                 </svg>
+                <div class="fp-gadgets">
+                  <svg id="fp-fan-bedroom" class="fp-gadget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"></path>
+                    <circle cx="12" cy="12" r="2"></circle>
+                  </svg>
+                </div>
               </div>
               <div class="fp-room" id="fp-room-bathroom">
                 <span class="fp-room-label">Bathroom</span>
@@ -97,6 +103,12 @@
                   <circle cx="12" cy="6" r="3.5" />
                   <path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" />
                 </svg>
+                <div class="fp-gadgets">
+                  <svg id="fp-fan-office" class="fp-gadget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"></path>
+                    <circle cx="12" cy="12" r="2"></circle>
+                  </svg>
+                </div>
               </div>
               <div class="fp-room" id="fp-room-hallway">
                 <span class="fp-room-label">Hallway</span>
@@ -118,6 +130,21 @@
                   <circle cx="12" cy="6" r="3.5" />
                   <path d="M12 11c-4 0-6 2-6 4v1h12v-1c0-2-2-4-6-4z" />
                 </svg>
+                <div class="fp-gadgets">
+                  <svg id="fp-tv-living_room" class="fp-gadget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                    <polyline points="17 2 12 7 7 2"></polyline>
+                  </svg>
+                  <svg id="fp-speaker-living_room" class="fp-gadget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <circle cx="12" cy="14" r="4"></circle>
+                    <line x1="12" y1="6" x2="12.01" y2="6"></line>
+                  </svg>
+                  <svg id="fp-fan-living_room" class="fp-gadget-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"></path>
+                    <circle cx="12" cy="12" r="2"></circle>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -1276,6 +1303,20 @@
           el.classList.toggle("locked", doorState === "locked");
           el.classList.toggle("unlocked", doorState !== "locked");
         }
+      }
+
+      // Update Gadget Icons in Floorplan
+      for (const [room, tvState] of Object.entries(state.tv || {})) {
+        const fpTv = document.getElementById(`fp-tv-${room}`);
+        if (fpTv) fpTv.classList.toggle("active", tvState === "on");
+      }
+      for (const [room, spkState] of Object.entries(state.speaker || {})) {
+        const fpSpk = document.getElementById(`fp-speaker-${room}`);
+        if (fpSpk) fpSpk.classList.toggle("active", spkState === "playing" || spkState === "paused");
+      }
+      for (const [room, fanObj] of Object.entries(state.fan || {})) {
+        const fpFan = document.getElementById(`fp-fan-${room}`);
+        if (fpFan) fpFan.classList.toggle("active", fanObj.state === "on");
       }
     }
 

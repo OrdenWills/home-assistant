@@ -1917,6 +1917,28 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
   animation: fp-person-pop 0.2s ease;
 }
 
+.fp-gadgets {
+  position: absolute;
+  top: 4px;
+  right: 11px;
+  display: flex;
+  gap: 4px;
+  flex-direction: row;
+}
+
+.fp-gadget-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  opacity: 0.3;
+  transition: opacity 0.3s ease, color 0.3s ease;
+}
+
+.fp-gadget-icon.active {
+  color: var(--green);
+  opacity: 1;
+}
+
 #send-btn {
   position: relative;
   min-width: 70px;
