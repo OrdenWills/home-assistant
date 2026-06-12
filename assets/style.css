@@ -512,6 +512,22 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   min-height: 0;
 }
 
+/* ── Quad container for TV and Fans ── */
+.quad-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  height: 100%;
+}
+
+.device-card.quad-item {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .device-card {
   background: var(--surface-2);
   border: 1px solid var(--border);
