@@ -56,7 +56,7 @@ home_state: dict = {
     "fan": {
         "living_room": {"state": "off", "speed": "medium"},
         "bedroom": {"state": "off", "speed": "medium"},
-        "kitchen": {"state": "off", "speed": "medium"},
+        # "kitchen": {"state": "off", "speed": "medium"},
         "office": {"state": "off", "speed": "medium"},
     },
     "active_model_id": "home-assistant-sft(small)",
@@ -109,10 +109,12 @@ def load_state(path: Path = _DB_PATH) -> None:
     try:
         stored = json.loads(row["payload"])
         
-        # Deep merge for structured device dictionaries to preserve new keys
+        # Deep merge for structured device dictionaries to preserve new keys,
+        # but only keep keys that exist in the default schema.
         for key in ["lights", "doors", "tv", "speaker", "fan"]:
             if key in stored and isinstance(stored[key], dict):
-                home_state[key].update(stored[key])
+                filtered_stored = {k: v for k, v in stored[key].items() if k in home_state[key]}
+                home_state[key].update(filtered_stored)
         
         # Shallow update for other top-level keys
         for key, value in stored.items():
