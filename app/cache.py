@@ -81,6 +81,7 @@ def build_snapshot(home_state: dict) -> dict:
         "thermostat": home_state.get("thermostat", {}),
         "tv": home_state.get("tv", {}),
         "speaker": home_state.get("speaker", {}),
+        "speaker_volume": home_state.get("speaker_volume"),
         "fan": home_state.get("fan", {}),
         "current_user_room": home_state.get("current_user_room"),
     }

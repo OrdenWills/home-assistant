@@ -62,6 +62,7 @@ home_state: dict = {
     "active_model_id": "home-assistant-sft(small)",
     "music_folder": None,
     "current_track_index": 0,
+    "speaker_volume": 100,
     "playback_intent": {
         "room": None,
         "action": None,      # "play", "pause", "stop", "next", "previous"
@@ -198,6 +199,7 @@ def build_state_summary(current_room: str | None = None) -> str:
     therm = home_state["thermostat"]
     scene = home_state.get("active_scene") or "none"
     room = current_room or ""
+    vol = home_state.get("speaker_volume", 100)
     return (
         f"[STATE: lights={{{lights}}}, "
         f"doors={{{doors}}}, "
@@ -205,6 +207,7 @@ def build_state_summary(current_room: str | None = None) -> str:
         f"scene={scene}, "
         f"tv={{{tv_str}}}, "
         f"speaker={{{sp_str}}}, "
+        f"speaker_volume={vol}%, "
         f"fan={{{fan_str}}}, "
         f"current_user_room={room}]"
     )
