@@ -152,9 +152,9 @@ def _start_llama_server_bg(model: dict) -> None:
 
     base_cmd = "C:\\Users\\Adolphus\\llama-b8479-bin-win-cpu-x64\\llama-server.exe"
     if model_path:
-        cmd = [base_cmd, "--model", model_path, "--port", "8080", "--ctx-size", "2048", "--threads", "4", "--cache-reuse", "512"]
+        cmd = [base_cmd, "--model", model_path, "--port", "8080", "--ctx-size", "2048", "--threads", "4", "--cache-reuse", "1024"]
     else:
-        cmd = [base_cmd, "--hf-repo", model["hf_repo"], "--hf-file", model["hf_file"], "--port", "8080", "--ctx-size", "2048", "--threads", "4", "--cache-reuse", "512"]
+        cmd = [base_cmd, "--hf-repo", model["hf_repo"], "--hf-file", model["hf_file"], "--port", "8080", "--ctx-size", "2048", "--threads", "4", "--cache-reuse", "1024"]
 
     print(f"[LlamaServer] Command: {' '.join(cmd)}")
     try:
