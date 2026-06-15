@@ -1290,6 +1290,15 @@
         const sceneEl = document.getElementById(`scene-${state.active_scene}`);
         if (sceneEl) sceneEl.classList.add("scene-active");
       }
+
+      // Volume UI sync
+      if (state.speaker_volume !== undefined) {
+        const volSlider = document.getElementById("volume-slider");
+        if (volSlider) {
+          volSlider.value = state.speaker_volume;
+          updateVolumeIcon(state.speaker_volume);
+        }
+      }
     }
 
     function updateFloorplan(state) {
@@ -1371,15 +1380,6 @@
         }
         // Speaker UI sync
         updateSpeakerUI(state.speaker?.living_room, state.current_track_name);
-        
-        // Volume UI sync
-        if (state.speaker_volume !== undefined) {
-          const volSlider = document.getElementById("volume-slider");
-          if (volSlider) {
-            volSlider.value = state.speaker_volume;
-            updateVolumeIcon(state.speaker_volume);
-          }
-        }
       } catch (e) {
         console.error("[RefreshState] Error:", e);
       }
