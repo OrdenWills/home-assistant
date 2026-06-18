@@ -159,52 +159,12 @@ body {
 /* ── Layout ── */
 #app {
   display: grid;
-  grid-template-rows: 48px 1fr;
+  grid-template-rows: 1fr;
   height: 100vh;
   height: 100dvh;
   /* Better for mobile viewports */
 }
 
-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-weight: 600;
-  font-size: 15px;
-}
-
-.brand-logo {
-  height: 20px;
-  width: auto;
-  flex-shrink: 0;
-}
-
-.brand-sep {
-  color: var(--border);
-  font-weight: 300;
-  font-size: 16px;
-  margin: 0 2px;
-}
-
-.brand-app {
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-header .meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 
 #model-label {
   font-size: 11px;
@@ -238,6 +198,12 @@ header .meta {
   background: var(--gradient);
   color: #fff;
   border-color: transparent;
+}
+
+#theme-toggle {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 main {
@@ -2192,17 +2158,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 /* ── Mobile & Tablet Responsiveness ── */
 @media (max-width: 900px) {
 
-  header {
-    padding: 0 16px;
-  }
 
-  .brand-app {
-    font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 180px;
-  }
 
   /* Unravel the two grids completely, making everything a single scrollable flex container */
   main {
@@ -2410,10 +2366,7 @@ html[data-theme="dark"] .mode-text[data-mode="cool"] {
 
 @media (max-width: 480px) {
 
-  .brand-app,
-  .brand-sep {
-    display: none;
-  }
+
 
   .model-dropdown {
     min-width: 260px;
