@@ -200,6 +200,12 @@ def build_state_summary(current_room: str | None = None) -> str:
     scene = home_state.get("active_scene") or "none"
     room = current_room or ""
     vol = home_state.get("speaker_volume", 100)
+    
+    # Check if any speaker is currently active (playing or paused)
+    any_active_speaker = any(s in ["playing", "paused"] for s in home_state.get("speaker", {}).values())
+    track = home_state.get("current_track_name")
+    track_str = track if (track and any_active_speaker) else "none"
+
     return (
         f"[STATE: lights={{{lights}}}, "
         f"doors={{{doors}}}, "
@@ -208,6 +214,7 @@ def build_state_summary(current_room: str | None = None) -> str:
         f"tv={{{tv_str}}}, "
         f"speaker={{{sp_str}}}, "
         f"speaker_volume={vol}%, "
+        f"current_track_name={track_str}, "
         f"fan={{{fan_str}}}, "
         f"current_user_room={room}]"
     )
