@@ -307,9 +307,11 @@ def control_speaker(room: str, action: str, media: str = None, triggered_by: str
                 
                 track_name = files[idx]
                 track_path = os.path.join(music_folder, track_name)
-                home_state["current_track_name"] = track_name
+                cleaned_name = clean_track_name(track_name)
+                home_state["current_track_name"] = cleaned_name
                 persist_state()
-                res["current_track"] = track_name
+                res["current_track"] = cleaned_name
+                res["current_track_name"] = cleaned_name
                 
                 # Perform actual audio actions
                 if _ensure_mixer():
@@ -385,6 +387,33 @@ _QUERY_FILLER_RE = _re.compile(
     r'\b(?:for\s+me|for\s+us|please|on\s+the\s+speaker)\s*$', _re.IGNORECASE)
 # Leading article (only stripped when query has more substance)
 _LEADING_ARTICLE_RE = _re.compile(r'^(?:the|a|an)\s+', _re.IGNORECASE)
+
+
+def clean_track_name(filename: str) -> str:
+    """
+    Clean filename to retrieve only the clean song/track title.
+    Removes extensions, download sources/domains, YouTube suffixes, and media noise.
+    """
+    import re
+    # 1. Remove extension
+    name = re.sub(r'\.(mp3|wav|ogg)$', '', filename, flags=re.IGNORECASE)
+    
+    # 2. Remove site names / download source tags (e.g. -[TrendyBeatz.com], _Okhype.com)
+    site_pattern = r'[_\-\s]*[\[\(]?\s*(?:www\.)?[a-zA-Z0-9\-]+\.[a-zA-Z]{2,4}(?:_\S*)?\s*[\]\)]?'
+    name = re.sub(site_pattern, '', name, flags=re.IGNORECASE)
+    
+    # 3. Remove YouTube 11-character alphanumeric suffix (e.g., _c3yGT6xn8lc)
+    yt_pattern = r'_[A-Za-z0-9]{11}$'
+    name = re.sub(yt_pattern, '', name)
+    
+    # 4. Remove common noise/suffixes (e.g. (Official Video), (Official Audio))
+    noise_pattern = r'[_\-\s]*[\[\(]\s*(?:Official\s*(?:Audio|Video|Music\s*Video)?|Piano\s*Tutorial|Audio)\s*[\]\)]'
+    name = re.sub(noise_pattern, '', name, flags=re.IGNORECASE)
+    
+    # 5. Clean up any trailing/leading whitespace or leftover hyphens/underscores
+    name = name.strip('_- ')
+    
+    return name
 
 
 def _clean_filename(name: str) -> str:
