@@ -449,6 +449,25 @@ html[data-theme="dark-hc"] .fp-room.lit .fp-room-label {
   gap: 8px;
   flex-shrink: 0;
   width: 100%;
+  position: relative;
+}
+
+.header-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 20px;
+  width: auto;
+  object-fit: contain;
+  pointer-events: none;
+  transition: filter 0.15s ease;
+}
+
+/* Invert black logo for dark modes */
+html[data-theme="soft-dark"] .header-logo,
+html[data-theme="dark-hc"] .header-logo {
+  filter: invert(1);
 }
 
 .panel-label::before {
