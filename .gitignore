@@ -23,3 +23,4 @@ tests/test_event_emission.py
 tests/test_sse_endpoint.py
 datasets/golden_set.jsonl
 datasets/failure_set.jsonl
+pocket.txt
